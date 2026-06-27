@@ -94,3 +94,7 @@ Desktop.ini
 
 # notas locais
 nota.txt
+
+.agents
+.claude
+.codex
