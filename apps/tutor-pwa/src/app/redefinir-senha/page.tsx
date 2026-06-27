@@ -43,7 +43,7 @@ export default function RedefinirSenhaPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
       <div className="mb-8 text-center">
-        <p className="font-accent text-base font-semibold text-orange">MyLivePet</p>
+        <img src="/brand/logopet.svg" alt="MyLivePet" className="mx-auto h-12 w-auto" />
         <h1 className="mt-1 font-heading text-2xl font-bold text-graphite">
           Defina sua senha de acesso
         </h1>

@@ -34,7 +34,7 @@ export function MobileNav({
       {/* Barra superior (apenas mobile) */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-graphite/10 bg-graphite px-4 py-3 text-white md:hidden">
         <div>
-          <p className="font-accent text-base font-bold text-orange">Pet Live Pro</p>
+          <img src="/brand/logopet.svg" alt="Pet Live Pro" className="h-9 w-auto" />
           <p className="text-[11px] text-gray-soft/60">{tenantName}</p>
         </div>
         <button
@@ -59,7 +59,7 @@ export function MobileNav({
             <div>
               <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <p className="font-accent text-base font-bold text-orange">Pet Live Pro</p>
+                  <img src="/brand/logopet.svg" alt="Pet Live Pro" className="h-9 w-auto" />
                   <p className="text-xs text-gray-soft/60">{tenantName}</p>
                 </div>
                 <button

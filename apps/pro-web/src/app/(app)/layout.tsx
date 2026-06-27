@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <aside className="fixed inset-y-0 hidden w-64 flex-col justify-between bg-graphite p-4 text-white md:flex">
         <div>
           <div className="mb-8 px-2 pt-2">
-            <p className="font-accent text-base font-bold text-orange">Pet Live Pro</p>
+            <img src="/brand/logopet.svg" alt="Pet Live Pro" className="h-10 w-auto" />
             <p className="mt-0.5 text-xs text-gray-soft/60">{tenant?.tenantName ?? "—"}</p>
           </div>
           <Nav />

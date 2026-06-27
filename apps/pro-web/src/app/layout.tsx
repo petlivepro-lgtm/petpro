@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "Pet Live Pro",
   description: "Gestão profissional do cuidado pet — Pet Live Pro",
   icons: {
-    icon: "/brand/favicon.ico",
+    icon: "/brand/faviconpet.svg",
   },
 };
 

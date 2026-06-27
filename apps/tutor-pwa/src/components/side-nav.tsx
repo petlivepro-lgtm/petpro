@@ -13,7 +13,7 @@ export function SideNav({ tenantName }: { tenantName: string }) {
     <aside className="fixed inset-y-0 hidden w-64 flex-col justify-between border-r border-graphite/10 bg-surface p-4 lg:flex">
       <div>
         <div className="mb-8 px-2 pt-2">
-          <p className="font-accent text-base font-bold text-orange">MyLivePet</p>
+          <img src="/brand/logopet.svg" alt="MyLivePet" className="h-10 w-auto" />
           <p className="mt-0.5 text-xs text-gray-neutral">{tenantName}</p>
         </div>
         <nav className="space-y-1">

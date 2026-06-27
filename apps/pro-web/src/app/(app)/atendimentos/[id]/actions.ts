@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { appointmentStepInput, behaviorFeedbackInput } from "@mylivepet/types";
+import { behaviorFeedbackInput } from "@mylivepet/types";
 
 const BUCKET = "appointment-photos";
 
@@ -81,38 +81,6 @@ export async function startAppointment(formData: FormData) {
     .update({ status: "IN_PROGRESS", started_at: new Date().toISOString() })
     .eq("id", id);
   revalidatePath(`/atendimentos/${id}`);
-}
-
-/** Registra um passo/observação no atendimento em andamento. */
-export async function addStep(formData: FormData) {
-  const parsed = appointmentStepInput.safeParse({
-    appointment_id: str(formData.get("appointment_id")),
-    label: str(formData.get("label")),
-  });
-  if (!parsed.success) return;
-
-  const supabase = await createClient();
-  const { data: appt } = await supabase
-    .from("appointment")
-    .select("tenant_id")
-    .eq("id", parsed.data.appointment_id)
-    .single();
-  if (!appt) return;
-
-  const { count } = await supabase
-    .from("appointment_step")
-    .select("id", { count: "exact", head: true })
-    .eq("appointment_id", parsed.data.appointment_id);
-
-  await supabase.from("appointment_step").insert({
-    tenant_id: appt.tenant_id,
-    appointment_id: parsed.data.appointment_id,
-    label: parsed.data.label,
-    position: count ?? 0,
-    done: false,
-    done_at: null,
-  });
-  revalidatePath(`/atendimentos/${parsed.data.appointment_id}`);
 }
 
 /** Marca/desmarca um passo do checklist como concluído. */
