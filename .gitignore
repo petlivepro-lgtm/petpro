@@ -1,0 +1,96 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# builds
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# env (segredos) — ignora todos os .env, exceto o exemplo
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# chaves, certificados e segredos
+*.pem
+*.key
+*.crt
+*.cert
+*.cer
+*.der
+*.p12
+*.pfx
+*.keystore
+*.jks
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.gpg
+*.asc
+secrets.*
+*.secret
+*secrets.json
+service-account*.json
+gcp-*.json
+*-credentials.json
+credentials.json
+
+# cloud / deploy (tokens e configs de projeto)
+.vercel/
+.netlify/
+.aws/
+.gcloud/
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
+# supabase (local)
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+
+# npm / auth
+.npmrc.local
+.yarnrc.local
+.auth.json
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# coverage / testes
+coverage/
+.nyc_output/
+
+# cache
+.cache/
+.eslintcache
+.parcel-cache/
+
+# IDE / editor
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# notas locais
+nota.txt

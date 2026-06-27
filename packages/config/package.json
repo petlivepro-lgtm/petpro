@@ -1,0 +1,12 @@
+{
+  "name": "@mylivepet/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tailwind-preset": "./tailwind-preset.js",
+    "./tokens": "./tokens.js",
+    "./tsconfig.base.json": "./tsconfig.base.json"
+  },
+  "files": ["tailwind-preset.js", "tokens.js", "tsconfig.base.json"]
+}

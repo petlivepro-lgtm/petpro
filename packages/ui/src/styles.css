@@ -1,0 +1,11 @@
+/* Fontes do branding via next/font são injetadas nos apps.
+   Este arquivo guarda utilitários base compartilhados. */
+:root {
+  --brand-orange: #ff6a00;
+  --brand-graphite: #1f2a33;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
