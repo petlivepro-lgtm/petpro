@@ -21,9 +21,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="lg:ml-64">
         {/* topo só-mobile */}
         <header className="flex items-center justify-between px-5 pt-6 lg:hidden">
-          <div>
-            <img src="/brand/logopet.svg" alt="MyLivePet" className="h-9 w-auto" />
-            {ctx && <p className="text-xs text-gray-neutral">{ctx.tenantName}</p>}
+          <div className="min-w-0">
+            <img
+              src="/brand/logopet.svg"
+              alt="MyLivePet"
+              className="h-12 max-w-[160px] object-contain"
+            />
+            {ctx && <p className="truncate text-xs text-gray-neutral">{ctx.tenantName}</p>}
           </div>
         </header>
 

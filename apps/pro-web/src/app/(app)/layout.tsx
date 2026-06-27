@@ -19,26 +19,30 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen bg-surface-muted">
-      <aside className="fixed inset-y-0 hidden w-64 flex-col justify-between bg-graphite p-4 text-white md:flex">
+      <aside className="fixed inset-y-0 hidden w-64 flex-col justify-between border-r border-graphite/10 bg-surface p-4 md:flex">
         <div>
           <div className="mb-8 px-2 pt-2">
-            <img src="/brand/logopet.svg" alt="Pet Live Pro" className="h-10 w-auto" />
-            <p className="mt-0.5 text-xs text-gray-soft/60">{tenant?.tenantName ?? "—"}</p>
+            <img
+              src="/brand/logopet.svg"
+              alt="Pet Live Pro"
+              className="h-20 w-auto"
+            />
+            <p className="mt-0.5 text-xs text-gray-neutral">{tenant?.tenantName ?? "—"}</p>
           </div>
           <Nav />
         </div>
-        <div className="border-t border-white/10 pt-3">
+        <div className="border-t border-graphite/10 pt-3">
           <div className="mb-2 flex items-center gap-3 px-2">
-            <Avatar name={email} size="sm" className="bg-white/10 text-white" />
+            <Avatar name={email} size="sm" />
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-white">{email}</p>
-              {tenant && <p className="text-xs capitalize text-gray-soft/60">{tenant.role.toLowerCase()}</p>}
+              <p className="truncate text-sm font-medium text-graphite">{email}</p>
+              {tenant && <p className="text-xs capitalize text-gray-neutral">{tenant.role.toLowerCase()}</p>}
             </div>
           </div>
           <form action={signOut}>
             <Button
               variant="ghost"
-              className="w-full justify-start text-gray-soft/80 hover:bg-white/5 hover:text-white"
+              className="w-full justify-start text-graphite/70 hover:bg-surface-muted"
               type="submit"
             >
               <LogOut className="h-4 w-4" />

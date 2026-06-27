@@ -1,23 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
-import { Card, Badge, PhotoGallery, RatingStars, EmptyState } from "@mylivepet/ui";
-import { APPOINTMENT_STATUS_LABEL, type AppointmentStatus } from "@mylivepet/types";
+import { EmptyState } from "@mylivepet/ui";
+import { type AppointmentStatus } from "@mylivepet/types";
 import { ClipboardList } from "lucide-react";
-import { TutorFeedbackForm } from "@/components/tutor-feedback-form";
+import { AppointmentHistoryCard } from "@/components/appointment-history-card";
 
 function fmt(v: string | null) {
   if (!v) return "—";
   return new Date(v).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
-
-const tone: Record<AppointmentStatus, React.ComponentProps<typeof Badge>["tone"]> = {
-  REQUESTED: "warning",
-  CONFIRMED: "info",
-  CHECKED_IN: "info",
-  IN_PROGRESS: "info",
-  COMPLETED: "success",
-  REJECTED: "danger",
-  CANCELLED: "neutral",
-};
 
 export default async function HistoricoPage() {
   const supabase = await createClient();
@@ -51,59 +41,23 @@ export default async function HistoricoPage() {
             const tutorFb = fbs.find((f) => f.direction === "TUTOR_TO_PETSHOP");
             const steps = ((a.appointment_step as unknown as { id: string; label: string; done_at: string | null; position: number }[]) ?? [])
               .slice()
-              .sort((x, y) => x.position - y.position);
+              .sort((x, y) => x.position - y.position)
+              .map((s) => ({ id: s.id, label: s.label, doneAtLabel: fmt(s.done_at) }));
             const photos = a.photos ?? [];
-            const completed = status === "COMPLETED";
 
             return (
-              <Card key={a.id} className="space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-heading font-semibold text-graphite">
-                      {pet?.name ?? "Pet"} · {service?.name ?? "Serviço"}
-                    </p>
-                    <p className="text-xs text-gray-neutral">{fmt(a.finished_at ?? a.scheduled_at)}</p>
-                  </div>
-                  <Badge tone={tone[status]}>{APPOINTMENT_STATUS_LABEL[status]}</Badge>
-                </div>
-
-                {completed && photos.length > 0 && <PhotoGallery photos={photos} alt={pet?.name ?? "Pet"} />}
-
-                {completed && steps.length > 0 && (
-                  <div>
-                    <p className="mb-1 text-sm font-medium text-graphite">Passos do atendimento</p>
-                    <ul className="space-y-1">
-                      {steps.map((s) => (
-                        <li key={s.id} className="flex items-center justify-between text-sm text-gray-neutral">
-                          <span>• {s.label}</span>
-                          <span className="text-xs">{fmt(s.done_at)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {behavior?.comment && (
-                  <div className="rounded-xl bg-surface-muted p-3">
-                    <p className="text-sm font-medium text-graphite">Comportamento do pet</p>
-                    <p className="text-sm text-gray-neutral">{behavior.comment}</p>
-                  </div>
-                )}
-
-                {completed && (
-                  <div className="border-t border-graphite/5 pt-3">
-                    {tutorFb ? (
-                      <div>
-                        <p className="mb-1 text-sm font-medium text-graphite">Sua avaliação</p>
-                        {typeof tutorFb.rating === "number" && <RatingStars value={tutorFb.rating} />}
-                        {tutorFb.comment && <p className="mt-1 text-sm text-gray-neutral">{tutorFb.comment}</p>}
-                      </div>
-                    ) : (
-                      <TutorFeedbackForm appointmentId={a.id} />
-                    )}
-                  </div>
-                )}
-              </Card>
+              <AppointmentHistoryCard
+                key={a.id}
+                appointmentId={a.id}
+                petName={pet?.name ?? "Pet"}
+                serviceName={service?.name ?? "Serviço"}
+                status={status}
+                dateLabel={fmt(a.finished_at ?? a.scheduled_at)}
+                steps={steps}
+                behaviorComment={behavior?.comment ?? null}
+                photos={photos}
+                tutorFb={tutorFb ? { rating: tutorFb.rating, comment: tutorFb.comment } : null}
+              />
             );
           })}
         </div>
