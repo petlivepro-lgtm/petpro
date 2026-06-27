@@ -646,6 +646,7 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          default_steps: string[]
           description: string | null
           duration_min: number
           id: string
@@ -656,6 +657,7 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          default_steps?: string[]
           description?: string | null
           duration_min?: number
           id?: string
@@ -666,6 +668,7 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          default_steps?: string[]
           description?: string | null
           duration_min?: number
           id?: string

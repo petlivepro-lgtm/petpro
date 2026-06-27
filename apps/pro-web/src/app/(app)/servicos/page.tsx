@@ -1,4 +1,4 @@
-import { Scissors, Clock } from "lucide-react";
+import { Scissors, Clock, ListChecks } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, PageHeader, StatusChip, EmptyState } from "@mylivepet/ui";
 import { formatBRL } from "@mylivepet/types";
@@ -9,7 +9,7 @@ export default async function ServicosPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("service_type")
-    .select("id, name, description, price_cents, duration_min, active")
+    .select("id, name, description, price_cents, duration_min, active, default_steps")
     .order("name");
 
   const list = data ?? [];
@@ -49,6 +49,12 @@ export default async function ServicosPage() {
                 <span className="inline-flex items-center gap-1 text-sm text-gray-neutral">
                   <Clock className="h-3.5 w-3.5" /> {s.duration_min}min
                 </span>
+                {s.default_steps.length > 0 && (
+                  <span className="inline-flex items-center gap-1 text-sm text-gray-neutral">
+                    <ListChecks className="h-3.5 w-3.5" /> {s.default_steps.length}{" "}
+                    {s.default_steps.length === 1 ? "passo" : "passos"}
+                  </span>
+                )}
               </div>
               <div className="mt-3 flex items-center justify-between border-t border-graphite/5 pt-3">
                 {!s.active && <span className="text-xs text-gray-neutral">Oculto no app</span>}

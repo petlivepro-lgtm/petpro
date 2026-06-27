@@ -20,13 +20,12 @@ import {
   TimelineItem,
   PhotoGallery,
   RatingStars,
-  Input,
-  Label,
 } from "@mylivepet/ui";
 import { AppointmentStatusBadge } from "@/components/status-badge";
 import { FinishAppointmentDialog } from "@/components/finish-appointment-dialog";
+import { AppointmentChecklist } from "@/components/appointment-checklist";
 import type { AppointmentStatus } from "@mylivepet/types";
-import { startAppointment, addStep } from "./actions";
+import { startAppointment } from "./actions";
 
 function fmt(v: string | null) {
   if (!v) return "—";
@@ -54,7 +53,7 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
 
   const { data: steps } = await supabase
     .from("appointment_step")
-    .select("id, label, done_at, position")
+    .select("id, label, done, done_at, position")
     .eq("appointment_id", id)
     .order("position", { ascending: true });
 
@@ -74,9 +73,12 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
   events.push({ key: "ag", title: "Agendado", time: appt.scheduled_at, icon: <CalendarClock className="h-4 w-4" />, color: "#1D4E5F" });
   if (appt.started_at)
     events.push({ key: "ini", title: "Atendimento iniciado", time: appt.started_at, icon: <Play className="h-4 w-4" />, color: "#FF6A00" });
-  (steps ?? []).forEach((s) =>
-    events.push({ key: s.id, title: s.label, time: s.done_at, icon: <ListChecks className="h-4 w-4" />, color: "#1D6E84" }),
-  );
+  // Apenas passos concluídos entram na timeline; os pendentes vivem no checklist.
+  (steps ?? [])
+    .filter((s) => s.done_at != null)
+    .forEach((s) =>
+      events.push({ key: s.id, title: s.label, time: s.done_at, icon: <ListChecks className="h-4 w-4" />, color: "#1D6E84" }),
+    );
   if (appt.finished_at)
     events.push({ key: "fim", title: "Atendimento finalizado", time: appt.finished_at, icon: <Check className="h-4 w-4" />, color: "#2E7D5B" });
 
@@ -171,16 +173,10 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
 
             {status === "IN_PROGRESS" && (
               <div className="space-y-4">
-                <form action={addStep} className="space-y-2">
-                  <input type="hidden" name="appointment_id" value={id} />
-                  <Label htmlFor="label">Adicionar passo</Label>
-                  <div className="flex gap-2">
-                    <Input id="label" name="label" required placeholder="Ex.: Banho concluído" />
-                    <Button type="submit" variant="secondary">
-                      Add
-                    </Button>
-                  </div>
-                </form>
+                <AppointmentChecklist
+                  appointmentId={id}
+                  steps={(steps ?? []).map((s) => ({ id: s.id, label: s.label, done: s.done }))}
+                />
                 <FinishAppointmentDialog appointmentId={id} />
               </div>
             )}

@@ -30,6 +30,10 @@ function parse(formData: FormData) {
     price_cents: toCents(formData.get("price")),
     duration_min: toInt(formData.get("duration_min")),
     active: formData.get("active") === "on",
+    default_steps: formData
+      .getAll("steps")
+      .map((v) => (typeof v === "string" ? v.trim() : ""))
+      .filter((s) => s !== ""),
   });
 }
 
@@ -50,6 +54,7 @@ export async function createServiceType(_prev: FormState, formData: FormData): P
     price_cents: parsed.data.price_cents,
     duration_min: parsed.data.duration_min,
     active: parsed.data.active ?? true,
+    default_steps: parsed.data.default_steps ?? [],
   });
   if (error) return { ok: false, error: error.message };
 
@@ -75,6 +80,7 @@ export async function updateServiceType(_prev: FormState, formData: FormData): P
       price_cents: parsed.data.price_cents,
       duration_min: parsed.data.duration_min,
       active: parsed.data.active ?? true,
+      default_steps: parsed.data.default_steps ?? [],
     })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };

@@ -9,6 +9,10 @@ const sora = Sora({ subsets: ["latin"], variable: "--font-accent" });
 export const metadata: Metadata = {
   title: "MyLivePet",
   description: "Acompanhe o cuidado do seu pet com clareza e tranquilidade.",
+  icons: {
+    icon: "/brand/favicon.ico",
+    apple: "/brand/icon-192.png",
+  },
 };
 
 export const viewport: Viewport = {

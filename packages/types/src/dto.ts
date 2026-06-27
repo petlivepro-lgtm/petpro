@@ -86,6 +86,7 @@ export const serviceTypeInput = z.object({
   price_cents: z.number().int().min(0),
   duration_min: z.number().int().positive("Informe a duração em minutos"),
   active: z.boolean().optional(),
+  default_steps: z.array(z.string().min(1)).optional(),
 });
 export type ServiceTypeInput = z.infer<typeof serviceTypeInput>;
 

@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, X } from "lucide-react";
 import { Button, CurrencyInput, Dialog, Input, Label } from "@mylivepet/ui";
 import {
   createServiceType,
@@ -17,12 +17,14 @@ export type ServiceRow = {
   price_cents: number;
   duration_min: number;
   active: boolean;
+  default_steps: string[];
 };
 
 export function ServiceDialog({ service }: { service?: ServiceRow }) {
   const router = useRouter();
   const isEdit = !!service;
   const [open, setOpen] = useState(false);
+  const [steps, setSteps] = useState<string[]>(service?.default_steps ?? []);
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     isEdit ? updateServiceType : createServiceType,
     { ok: false },
@@ -34,6 +36,11 @@ export function ServiceDialog({ service }: { service?: ServiceRow }) {
       router.refresh();
     }
   }, [state, router]);
+
+  // Sincroniza os passos com o serviço sempre que o diálogo é aberto.
+  useEffect(() => {
+    if (open) setSteps(service?.default_steps ?? []);
+  }, [open, service]);
 
   return (
     <>
@@ -105,6 +112,44 @@ export function ServiceDialog({ service }: { service?: ServiceRow }) {
             />
             Ativo (visível no app)
           </label>
+
+          <div>
+            <Label>Passo a passo do atendimento</Label>
+            <p className="mb-2 text-xs text-gray-neutral">
+              Esses passos aparecem como checklist ao iniciar o atendimento.
+            </p>
+            <div className="space-y-2">
+              {steps.map((step, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input
+                    name="steps"
+                    value={step}
+                    onChange={(e) =>
+                      setSteps((prev) => prev.map((s, j) => (j === i ? e.target.value : s)))
+                    }
+                    placeholder={`Ex.: ${i === 0 ? "Recepção do pet" : "Banho concluído"}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSteps((prev) => prev.filter((_, j) => j !== i))}
+                    aria-label={`Remover passo ${i + 1}`}
+                    className="rounded-lg p-2 text-gray-neutral transition-colors hover:bg-danger/10 hover:text-danger"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="mt-2"
+              onClick={() => setSteps((prev) => [...prev, ""])}
+            >
+              <Plus className="h-4 w-4" /> Adicionar passo
+            </Button>
+          </div>
 
           {state.error && <p className="text-sm text-danger">{state.error}</p>}
 

@@ -42,6 +42,40 @@ export async function startAppointment(formData: FormData) {
   const id = str(formData.get("appointment_id"));
   if (!id) return;
   const supabase = await createClient();
+
+  // Semeia o checklist com o fluxo padrão do serviço (uma única vez).
+  const { data: appt } = await supabase
+    .from("appointment")
+    .select("tenant_id, service_type_id")
+    .eq("id", id)
+    .single();
+  if (appt?.service_type_id) {
+    const { data: service } = await supabase
+      .from("service_type")
+      .select("default_steps")
+      .eq("id", appt.service_type_id)
+      .single();
+    const defaultSteps = service?.default_steps ?? [];
+    if (defaultSteps.length > 0) {
+      const { count } = await supabase
+        .from("appointment_step")
+        .select("id", { count: "exact", head: true })
+        .eq("appointment_id", id);
+      if ((count ?? 0) === 0) {
+        await supabase.from("appointment_step").insert(
+          defaultSteps.map((label, position) => ({
+            tenant_id: appt.tenant_id,
+            appointment_id: id,
+            label,
+            position,
+            done: false,
+            done_at: null,
+          })),
+        );
+      }
+    }
+  }
+
   await supabase
     .from("appointment")
     .update({ status: "IN_PROGRESS", started_at: new Date().toISOString() })
@@ -75,10 +109,25 @@ export async function addStep(formData: FormData) {
     appointment_id: parsed.data.appointment_id,
     label: parsed.data.label,
     position: count ?? 0,
-    done: true,
-    done_at: new Date().toISOString(),
+    done: false,
+    done_at: null,
   });
   revalidatePath(`/atendimentos/${parsed.data.appointment_id}`);
+}
+
+/** Marca/desmarca um passo do checklist como concluído. */
+export async function toggleStep(formData: FormData) {
+  const stepId = str(formData.get("step_id"));
+  const appointmentId = str(formData.get("appointment_id"));
+  if (!stepId || !appointmentId) return;
+  const done = formData.get("done") === "true";
+
+  const supabase = await createClient();
+  await supabase
+    .from("appointment_step")
+    .update({ done, done_at: done ? new Date().toISOString() : null })
+    .eq("id", stepId);
+  revalidatePath(`/atendimentos/${appointmentId}`);
 }
 
 /** Finaliza o atendimento: fotos + comportamento + status COMPLETED. */
