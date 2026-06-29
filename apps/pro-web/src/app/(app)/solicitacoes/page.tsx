@@ -1,74 +1,92 @@
-import { Check, X, CalendarClock, Clock } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Button, Card, Avatar, PageHeader, EmptyState, StatusChip } from "@mylivepet/ui";
-import { updateAppointmentStatus } from "../actions";
-
-function formatDate(v: string | null) {
-  if (!v) return "—";
-  return new Date(v).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-}
+import { PageHeader, EmptyState } from "@mylivepet/ui";
+import {
+  SolicitacaoCard,
+  type SolicitacaoGroup,
+} from "@/components/solicitacao-card";
 
 export default async function SolicitacoesPage() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("appointment")
-    .select("id, scheduled_at, notes, pet(name), service_type(name), tutor(full_name)")
-    .eq("status", "REQUESTED")
-    .order("created_at", { ascending: true });
+
+  const [{ data: appointments }, { data: reservations }] = await Promise.all([
+    supabase
+      .from("appointment")
+      .select("id, scheduled_at, notes, tutor_id, pet(name), service_type(name), tutor(full_name)")
+      .eq("status", "REQUESTED")
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("product_reservation")
+      .select(
+        "id, note, expires_at, created_at, tutor_id, tutor(full_name), product_reservation_item(id, quantity, price_cents, product(name))",
+      )
+      .eq("status", "RESERVED")
+      .order("created_at", { ascending: true }),
+  ]);
+
+  // Agrupa agendamentos pendentes e reservas ativas por tutor.
+  const groups = new Map<string, SolicitacaoGroup>();
+  const ensure = (tutorId: string, tutorName: string): SolicitacaoGroup => {
+    let g = groups.get(tutorId);
+    if (!g) {
+      g = { tutorId, tutorName, appointments: [], reservations: [] };
+      groups.set(tutorId, g);
+    }
+    return g;
+  };
+
+  for (const a of appointments ?? []) {
+    const tutor = a.tutor as unknown as { full_name: string } | null;
+    const pet = a.pet as unknown as { name: string } | null;
+    const service = a.service_type as unknown as { name: string } | null;
+    ensure(a.tutor_id, tutor?.full_name ?? "Tutor").appointments.push({
+      id: a.id,
+      scheduled_at: a.scheduled_at,
+      notes: a.notes,
+      petName: pet?.name ?? "Pet",
+      serviceName: service?.name ?? "Serviço",
+    });
+  }
+
+  for (const r of reservations ?? []) {
+    const tutor = r.tutor as unknown as { full_name: string } | null;
+    const items = (r.product_reservation_item as unknown as {
+      id: string;
+      quantity: number;
+      price_cents: number;
+      product: { name: string } | null;
+    }[]) ?? [];
+    ensure(r.tutor_id, tutor?.full_name ?? "Tutor").reservations.push({
+      id: r.id,
+      note: r.note,
+      expires_at: r.expires_at,
+      items: items.map((i) => ({
+        id: i.id,
+        quantity: i.quantity,
+        price_cents: i.price_cents,
+        productName: i.product?.name ?? "Produto",
+      })),
+    });
+  }
+
+  const list = [...groups.values()];
 
   return (
     <div>
       <PageHeader
-        title="Solicitações de agendamento"
-        subtitle="Pedidos feitos pelos tutores no MyLivePet, aguardando confirmação."
+        title="Solicitações"
+        subtitle="Agendamentos e produtos reservados pelos tutores no MyLivePet, aguardando confirmação."
       />
 
       <div className="space-y-3">
-        {(data ?? []).map((a) => {
-          const pet = a.pet as unknown as { name: string } | null;
-          const service = a.service_type as unknown as { name: string } | null;
-          const tutor = a.tutor as unknown as { full_name: string } | null;
-          return (
-            <Card key={a.id} className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <Avatar name={tutor?.full_name ?? "Tutor"} />
-                <div>
-                  <p className="font-heading font-semibold text-graphite">
-                    {pet?.name ?? "Pet"} · {service?.name ?? "Serviço"}
-                  </p>
-                  <p className="text-sm text-gray-neutral">{tutor?.full_name ?? "Tutor"}</p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    <StatusChip tone="warning">
-                      <Clock className="h-3 w-3" /> {formatDate(a.scheduled_at)}
-                    </StatusChip>
-                    {a.notes && <span className="text-sm italic text-gray-neutral">“{a.notes}”</span>}
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <form action={updateAppointmentStatus}>
-                  <input type="hidden" name="appointment_id" value={a.id} />
-                  <input type="hidden" name="status" value="CONFIRMED" />
-                  <Button size="sm" type="submit">
-                    <Check className="h-4 w-4" /> Confirmar
-                  </Button>
-                </form>
-                <form action={updateAppointmentStatus}>
-                  <input type="hidden" name="appointment_id" value={a.id} />
-                  <input type="hidden" name="status" value="REJECTED" />
-                  <Button size="sm" variant="secondary" type="submit">
-                    <X className="h-4 w-4" /> Recusar
-                  </Button>
-                </form>
-              </div>
-            </Card>
-          );
-        })}
-        {(data ?? []).length === 0 && (
+        {list.map((group) => (
+          <SolicitacaoCard key={group.tutorId} group={group} />
+        ))}
+        {list.length === 0 && (
           <EmptyState
             icon={<CalendarClock className="h-6 w-6" />}
             title="Nenhuma solicitação pendente"
-            description="Quando um tutor agendar pelo MyLivePet, o pedido aparece aqui para você confirmar."
+            description="Quando um tutor agendar ou reservar produtos pelo MyLivePet, o pedido aparece aqui para você confirmar."
           />
         )}
       </div>
