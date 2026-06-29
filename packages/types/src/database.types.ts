@@ -24,6 +24,7 @@ export type Database = {
           origin: Database["public"]["Enums"]["appointment_origin"]
           pet_id: string
           photos: string[]
+          request_group_id: string | null
           scheduled_at: string | null
           service_type_id: string | null
           staff_id: string | null
@@ -41,6 +42,7 @@ export type Database = {
           origin?: Database["public"]["Enums"]["appointment_origin"]
           pet_id: string
           photos?: string[]
+          request_group_id?: string | null
           scheduled_at?: string | null
           service_type_id?: string | null
           staff_id?: string | null
@@ -58,6 +60,7 @@ export type Database = {
           origin?: Database["public"]["Enums"]["appointment_origin"]
           pet_id?: string
           photos?: string[]
+          request_group_id?: string | null
           scheduled_at?: string | null
           service_type_id?: string | null
           staff_id?: string | null

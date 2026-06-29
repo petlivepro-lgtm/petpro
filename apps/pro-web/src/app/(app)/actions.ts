@@ -3,7 +3,11 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { appointmentStatusUpdate, reservationCancel } from "@mylivepet/types";
+import {
+  appointmentStatusUpdate,
+  appointmentStatusBatchUpdate,
+  reservationCancel,
+} from "@mylivepet/types";
 
 export async function signOut() {
   const supabase = await createClient();
@@ -24,6 +28,27 @@ export async function updateAppointmentStatus(formData: FormData) {
     .from("appointment")
     .update({ status: parsed.data.status })
     .eq("id", parsed.data.appointment_id);
+
+  revalidatePath("/solicitacoes");
+  revalidatePath("/atendimentos");
+}
+
+/**
+ * Staff confirma/recusa vários serviços de uma solicitação de uma vez
+ * (mesmo request_group_id). RLS garante o tenant.
+ */
+export async function updateAppointmentsStatus(formData: FormData) {
+  const parsed = appointmentStatusBatchUpdate.safeParse({
+    appointment_ids: formData.getAll("appointment_ids"),
+    status: formData.get("status"),
+  });
+  if (!parsed.success) return;
+
+  const supabase = await createClient();
+  await supabase
+    .from("appointment")
+    .update({ status: parsed.data.status })
+    .in("id", parsed.data.appointment_ids);
 
   revalidatePath("/solicitacoes");
   revalidatePath("/atendimentos");

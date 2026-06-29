@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Users, PawPrint, Package, CalendarClock, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { PageHeader, StatCard, Card, EmptyState, Avatar } from "@mylivepet/ui";
+import { PageHeader, StatCard, Card, EmptyState } from "@mylivepet/ui";
 import { AppointmentStatusBadge } from "@/components/status-badge";
+import { RecentSolicitacoes } from "@/components/recent-solicitacoes";
+import { mapRecent } from "@/lib/solicitacoes";
 import type { AppointmentStatus } from "@mylivepet/types";
 
 function formatDate(v: string | null) {
@@ -68,27 +70,7 @@ export default async function DashboardPage() {
               Ver todas <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
-          <div className="space-y-3">
-            {(solicitacoes ?? []).map((a) => {
-              const pet = a.pet as unknown as { name: string } | null;
-              const service = a.service_type as unknown as { name: string } | null;
-              const tutor = a.tutor as unknown as { full_name: string } | null;
-              return (
-                <Card key={a.id} className="flex items-center gap-3 p-4">
-                  <Avatar name={tutor?.full_name ?? "Tutor"} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-graphite">
-                      {pet?.name ?? "Pet"} · {service?.name ?? "Serviço"}
-                    </p>
-                    <p className="text-xs text-gray-neutral">{formatDate(a.scheduled_at)}</p>
-                  </div>
-                </Card>
-              );
-            })}
-            {(solicitacoes ?? []).length === 0 && (
-              <EmptyState icon={<CalendarClock className="h-6 w-6" />} title="Nenhuma solicitação pendente" />
-            )}
-          </div>
+          <RecentSolicitacoes initial={mapRecent((solicitacoes ?? []) as never)} />
         </section>
 
         <section>

@@ -22,10 +22,12 @@ export const petInput = z.object({
 });
 export type PetInput = z.infer<typeof petInput>;
 
-// Solicitação de agendamento feita pelo tutor no MyLivePet
+// Solicitação de agendamento feita pelo tutor no MyLivePet.
+// Pode conter vários serviços — cada um vira um appointment compartilhando
+// o mesmo request_group_id (ver migração 0008).
 export const bookingRequest = z.object({
   pet_id: z.string().uuid(),
-  service_type_id: z.string().uuid(),
+  service_type_ids: z.array(z.string().uuid()).min(1, "Selecione ao menos um serviço"),
   scheduled_at: z.string().min(1, "Escolha data e horário"),
   notes: z.string().optional(),
 });
@@ -76,6 +78,12 @@ export type ReservationCancel = z.infer<typeof reservationCancel>;
 
 export const appointmentStatusUpdate = z.object({
   appointment_id: z.string().uuid(),
+  status: z.enum(APPOINTMENT_STATUSES),
+});
+
+// Atualização em lote: confirmar/recusar vários serviços de uma solicitação.
+export const appointmentStatusBatchUpdate = z.object({
+  appointment_ids: z.array(z.string().uuid()).min(1),
   status: z.enum(APPOINTMENT_STATUSES),
 });
 

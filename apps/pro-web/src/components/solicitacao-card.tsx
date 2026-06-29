@@ -4,7 +4,12 @@ import { useState } from "react";
 import { Check, X, Clock, CalendarClock, Package } from "lucide-react";
 import { Button, Card, Avatar, Dialog, StatusChip } from "@mylivepet/ui";
 import { ReservationStatusBadge } from "@/components/status-badge";
-import { updateAppointmentStatus, confirmReservation, rejectReservation } from "@/app/(app)/actions";
+import {
+  updateAppointmentStatus,
+  updateAppointmentsStatus,
+  confirmReservation,
+  rejectReservation,
+} from "@/app/(app)/actions";
 
 export type SolicitacaoAppointment = {
   id: string;
@@ -12,6 +17,7 @@ export type SolicitacaoAppointment = {
   notes: string | null;
   petName: string;
   serviceName: string;
+  requestGroupId: string | null;
 };
 
 export type SolicitacaoReservationItem = {
@@ -42,6 +48,29 @@ function formatDate(v: string | null) {
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+type ApptRequest = {
+  key: string;
+  scheduled_at: string | null;
+  petName: string;
+  items: SolicitacaoAppointment[];
+};
+
+// Agrupa os serviços de uma mesma solicitação (request_group_id). Agendamentos
+// antigos sem grupo (null) ficam cada um em seu próprio "pedido".
+function groupByRequest(appointments: SolicitacaoAppointment[]): ApptRequest[] {
+  const map = new Map<string, ApptRequest>();
+  for (const a of appointments) {
+    const key = a.requestGroupId ?? `solo-${a.id}`;
+    let req = map.get(key);
+    if (!req) {
+      req = { key, scheduled_at: a.scheduled_at, petName: a.petName, items: [] };
+      map.set(key, req);
+    }
+    req.items.push(a);
+  }
+  return [...map.values()];
 }
 
 export function SolicitacaoCard({ group }: { group: SolicitacaoGroup }) {
@@ -91,33 +120,69 @@ export function SolicitacaoCard({ group }: { group: SolicitacaoGroup }) {
           {apptCount > 0 && (
             <section className="space-y-3">
               <h3 className="font-heading text-sm font-semibold text-graphite">Agendamentos</h3>
-              {group.appointments.map((a) => (
-                <div key={a.id} className="rounded-xl border border-graphite/10 p-3">
-                  <p className="font-medium text-graphite">
-                    {a.petName} · {a.serviceName}
-                  </p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              {groupByRequest(group.appointments).map((req) => (
+                <div key={req.key} className="rounded-xl border border-graphite/10 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium text-graphite">{req.petName}</p>
                     <StatusChip tone="warning">
-                      <Clock className="h-3 w-3" /> {formatDate(a.scheduled_at)}
+                      <Clock className="h-3 w-3" /> {formatDate(req.scheduled_at)}
                     </StatusChip>
-                    {a.notes && <span className="text-sm italic text-gray-neutral">“{a.notes}”</span>}
                   </div>
-                  <div className="mt-3 flex gap-2">
-                    <form action={updateAppointmentStatus} onSubmit={() => setOpen(false)}>
-                      <input type="hidden" name="appointment_id" value={a.id} />
-                      <input type="hidden" name="status" value="CONFIRMED" />
-                      <Button size="sm" type="submit">
-                        <Check className="h-4 w-4" /> Confirmar
-                      </Button>
-                    </form>
-                    <form action={updateAppointmentStatus} onSubmit={() => setOpen(false)}>
-                      <input type="hidden" name="appointment_id" value={a.id} />
-                      <input type="hidden" name="status" value="REJECTED" />
-                      <Button size="sm" variant="secondary" type="submit">
-                        <X className="h-4 w-4" /> Recusar
-                      </Button>
-                    </form>
-                  </div>
+                  {req.items[0]?.notes && (
+                    <p className="mt-1.5 text-sm italic text-gray-neutral">“{req.items[0].notes}”</p>
+                  )}
+
+                  {/* Ações em lote: confirmar/recusar todos os serviços do pedido. */}
+                  {req.items.length > 1 && (
+                    <div className="mt-3 flex flex-wrap gap-2 border-b border-graphite/10 pb-3">
+                      <form action={updateAppointmentsStatus} onSubmit={() => setOpen(false)}>
+                        {req.items.map((a) => (
+                          <input key={a.id} type="hidden" name="appointment_ids" value={a.id} />
+                        ))}
+                        <input type="hidden" name="status" value="CONFIRMED" />
+                        <Button size="sm" type="submit">
+                          <Check className="h-4 w-4" /> Confirmar tudo
+                        </Button>
+                      </form>
+                      <form action={updateAppointmentsStatus} onSubmit={() => setOpen(false)}>
+                        {req.items.map((a) => (
+                          <input key={a.id} type="hidden" name="appointment_ids" value={a.id} />
+                        ))}
+                        <input type="hidden" name="status" value="REJECTED" />
+                        <Button size="sm" variant="secondary" type="submit">
+                          <X className="h-4 w-4" /> Recusar tudo
+                        </Button>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Cada serviço com confirmação/recusa individual. */}
+                  <ul className="mt-3 space-y-2">
+                    {req.items.map((a) => (
+                      <li
+                        key={a.id}
+                        className="flex flex-wrap items-center justify-between gap-2"
+                      >
+                        <span className="text-sm text-graphite">{a.serviceName}</span>
+                        <div className="flex gap-2">
+                          <form action={updateAppointmentStatus} onSubmit={() => setOpen(false)}>
+                            <input type="hidden" name="appointment_id" value={a.id} />
+                            <input type="hidden" name="status" value="CONFIRMED" />
+                            <Button size="sm" type="submit">
+                              <Check className="h-4 w-4" /> Confirmar
+                            </Button>
+                          </form>
+                          <form action={updateAppointmentStatus} onSubmit={() => setOpen(false)}>
+                            <input type="hidden" name="appointment_id" value={a.id} />
+                            <input type="hidden" name="status" value="REJECTED" />
+                            <Button size="sm" variant="secondary" type="submit">
+                              <X className="h-4 w-4" /> Recusar
+                            </Button>
+                          </form>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ))}
             </section>

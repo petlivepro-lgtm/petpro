@@ -18,11 +18,15 @@ export async function signOut() {
   redirect("/login");
 }
 
-/** Tutor solicita um agendamento → cria appointment REQUESTED (origin TUTOR). */
+/**
+ * Tutor solicita um agendamento → cria um appointment REQUESTED (origin TUTOR)
+ * por serviço escolhido, todos com o mesmo request_group_id para o petshop
+ * confirmar/recusar tudo de uma vez ou individualmente.
+ */
 export async function requestBooking(formData: FormData) {
   const parsed = bookingRequest.safeParse({
     pet_id: formData.get("pet_id"),
-    service_type_id: formData.get("service_type_id"),
+    service_type_ids: formData.getAll("service_type_id"),
     scheduled_at: formData.get("scheduled_at"),
     notes: formData.get("notes") ?? undefined,
   });
@@ -32,16 +36,21 @@ export async function requestBooking(formData: FormData) {
   const ctx = await getTutorContext(supabase);
   if (!ctx) redirect("/agendar?erro=1");
 
-  const { error } = await supabase.from("appointment").insert({
+  const requestGroupId = crypto.randomUUID();
+  const scheduledAt = new Date(parsed.data.scheduled_at).toISOString();
+  const rows = parsed.data.service_type_ids.map((service_type_id) => ({
     tenant_id: ctx.tenantId,
     tutor_id: ctx.tutorId,
     pet_id: parsed.data.pet_id,
-    service_type_id: parsed.data.service_type_id,
-    scheduled_at: new Date(parsed.data.scheduled_at).toISOString(),
+    service_type_id,
+    scheduled_at: scheduledAt,
     notes: parsed.data.notes,
-    origin: "TUTOR",
-    status: "REQUESTED",
-  });
+    origin: "TUTOR" as const,
+    status: "REQUESTED" as const,
+    request_group_id: requestGroupId,
+  }));
+
+  const { error } = await supabase.from("appointment").insert(rows);
   if (error) redirect("/agendar?erro=1");
 
   revalidatePath("/");
