@@ -44,8 +44,8 @@ export default function CadastrarPage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-sm">
-        <div className="mb-6">
-          <img src="/brand/logopet.svg" alt="Pet Live Pro" className="mb-3 h-20 w-auto" />
+        <div className="mb-6 text-center">
+          <img src="/brand/logopet.svg" alt="Pet Live Pro" className="mx-auto mb-3 h-20 w-auto" />
           <h1 className="font-heading text-2xl font-bold text-graphite">Cadastrar petshop</h1>
           <p className="mt-1 text-sm text-gray-neutral">
             Crie sua conta e comece a gerenciar o cuidado pet.
