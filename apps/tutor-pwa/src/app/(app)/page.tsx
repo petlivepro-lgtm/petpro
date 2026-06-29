@@ -20,12 +20,14 @@ const tone: Record<AppointmentStatus, React.ComponentProps<typeof Badge>["tone"]
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const { data: pets } = await supabase.from("pet").select("id, name, species, breed");
-  const { data: appts } = await supabase
-    .from("appointment")
-    .select("id, status, scheduled_at, pet(name), service_type(name)")
-    .order("scheduled_at", { ascending: false, nullsFirst: false })
-    .limit(10);
+  const [{ data: pets }, { data: appts }] = await Promise.all([
+    supabase.from("pet").select("id, name, species, breed"),
+    supabase
+      .from("appointment")
+      .select("id, status, scheduled_at, pet(name), service_type(name)")
+      .order("scheduled_at", { ascending: false, nullsFirst: false })
+      .limit(10),
+  ]);
 
   return (
     <div className="space-y-6">

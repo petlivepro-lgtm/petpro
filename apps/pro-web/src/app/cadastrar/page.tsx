@@ -31,14 +31,13 @@ export default function CadastrarPage() {
     const password = String(formData.get("password"));
     const supabase = createClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
     if (signInError) {
+      setLoading(false);
       // Conta criada, mas o login automático falhou — manda para o login.
       router.replace("/login");
       return;
     }
     router.replace("/");
-    router.refresh();
   }
 
   return (

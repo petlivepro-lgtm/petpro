@@ -18,13 +18,12 @@ export default function LoginPage() {
     setError(null);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       setError("E-mail ou senha inválidos.");
       return;
     }
     router.replace("/");
-    router.refresh();
   }
 
   return (

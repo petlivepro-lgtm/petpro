@@ -16,25 +16,29 @@ export default async function DashboardPage() {
   const countOf = async (table: "tutor" | "pet" | "product") =>
     (await supabase.from(table).select("*", { count: "exact", head: true })).count ?? 0;
 
-  const [tutores, pets, produtos] = await Promise.all([
+  const [
+    tutores,
+    pets,
+    produtos,
+    { data: solicitacoes },
+    { data: proximos },
+  ] = await Promise.all([
     countOf("tutor"),
     countOf("pet"),
     countOf("product"),
+    supabase
+      .from("appointment")
+      .select("id, scheduled_at, status, pet(id, name), service_type(name), tutor(full_name)")
+      .eq("status", "REQUESTED")
+      .order("created_at", { ascending: true })
+      .limit(5),
+    supabase
+      .from("appointment")
+      .select("id, scheduled_at, status, pet(id, name), service_type(name)")
+      .in("status", ["CONFIRMED", "CHECKED_IN", "IN_PROGRESS"])
+      .order("scheduled_at", { ascending: true, nullsFirst: false })
+      .limit(5),
   ]);
-
-  const { data: solicitacoes } = await supabase
-    .from("appointment")
-    .select("id, scheduled_at, status, pet(id, name), service_type(name), tutor(full_name)")
-    .eq("status", "REQUESTED")
-    .order("created_at", { ascending: true })
-    .limit(5);
-
-  const { data: proximos } = await supabase
-    .from("appointment")
-    .select("id, scheduled_at, status, pet(id, name), service_type(name)")
-    .in("status", ["CONFIRMED", "CHECKED_IN", "IN_PROGRESS"])
-    .order("scheduled_at", { ascending: true, nullsFirst: false })
-    .limit(5);
 
   const cards = [
     { label: "Tutores", value: tutores, hint: "cadastrados", icon: <Users className="h-5 w-5" />, accent: "#1D4E5F" },
