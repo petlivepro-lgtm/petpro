@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTutorContext } from "@/lib/tutor-context";
 import { EmptyState } from "@mylivepet/ui";
 import { type AppointmentStatus } from "@mylivepet/types";
 import { ClipboardList } from "lucide-react";
@@ -11,11 +12,15 @@ function fmt(v: string | null) {
 
 export default async function HistoricoPage() {
   const supabase = await createClient();
+  const ctx = await getTutorContext(supabase);
+  if (!ctx) return null;
+
   const { data } = await supabase
     .from("appointment")
     .select(
       "id, status, scheduled_at, finished_at, photos, pet:pet_id(name), service_type(name), feedback(direction, rating, comment), appointment_step(id, label, done_at, position)",
     )
+    .eq("tutor_id", ctx.tutorId)
     .order("scheduled_at", { ascending: false, nullsFirst: false })
     .limit(50);
 

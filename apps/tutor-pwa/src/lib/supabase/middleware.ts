@@ -34,20 +34,45 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthRoute = pathname.startsWith("/login");
   const isResetRoute = pathname.startsWith("/redefinir-senha");
+  const redirectWithSessionCookies = (url: URL) => {
+    const redirectResponse = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+    return redirectResponse;
+  };
 
   if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
-  if (user && isAuthRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
-
   // Primeiro acesso: tutor com senha temporária deve definir a própria senha.
   if (user) {
+    const [{ data: tutor }, { data: membership }] = await Promise.all([
+      supabase.from("tutor").select("id").eq("profile_id", user.id).limit(1).maybeSingle(),
+      supabase
+        .from("membership")
+        .select("profile_id")
+        .eq("profile_id", user.id)
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    if (!tutor || membership) {
+      await supabase.auth.signOut();
+      if (!isAuthRoute) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        url.searchParams.set("erro", "acesso");
+        return redirectWithSessionCookies(url);
+      }
+      return response;
+    }
+
+    if (isAuthRoute) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
+
     const mustReset = user.user_metadata?.must_reset_password === true;
     if (mustReset && !isResetRoute) {
       const url = request.nextUrl.clone();

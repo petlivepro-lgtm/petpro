@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTutorContext } from "@/lib/tutor-context";
 import { ReserveList } from "@/components/reserve-list";
 
 export default async function ProdutosPage({
@@ -8,9 +9,13 @@ export default async function ProdutosPage({
 }) {
   const { reservado } = await searchParams;
   const supabase = await createClient();
+  const ctx = await getTutorContext(supabase);
+  if (!ctx) return null;
+
   const { data: products } = await supabase
     .from("product")
     .select("id, name, description, price_cents, stock, photo_path, photos")
+    .eq("tenant_id", ctx.tenantId)
     .eq("active", true)
     .order("name");
 

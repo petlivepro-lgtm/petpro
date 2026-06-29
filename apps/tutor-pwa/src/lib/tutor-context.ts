@@ -14,10 +14,21 @@ export type TutorContext = {
  */
 export async function getTutorContext(
   supabase: SupabaseClient<Database>,
+  userId?: string,
 ): Promise<TutorContext | null> {
+  let profileId = userId;
+  if (!profileId) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    profileId = user?.id;
+  }
+  if (!profileId) return null;
+
   const { data, error } = await supabase
     .from("tutor")
     .select("id, full_name, tenant:tenant_id (id, name)")
+    .eq("profile_id", profileId)
     .limit(1)
     .maybeSingle();
 

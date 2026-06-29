@@ -11,8 +11,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const ctx = await getTutorContext(supabase);
-  const tenantName = ctx?.tenantName ?? "—";
+  const ctx = await getTutorContext(supabase, user.id);
+  const { data: membership } = await supabase
+    .from("membership")
+    .select("profile_id")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!ctx || membership) {
+    await supabase.auth.signOut();
+    redirect("/login?erro=acesso");
+  }
+  const tenantName = ctx.tenantName;
 
   return (
     <div className="min-h-screen bg-surface lg:bg-surface-muted">

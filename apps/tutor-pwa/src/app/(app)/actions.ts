@@ -87,6 +87,7 @@ export async function createReservation(formData: FormData) {
   const { data: products } = await supabase
     .from("product")
     .select("id, price_cents")
+    .eq("tenant_id", ctx.tenantId)
     .in("id", ids);
   const priceById = new Map((products ?? []).map((p) => [p.id, p.price_cents]));
 

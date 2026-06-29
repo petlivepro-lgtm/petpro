@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTutorContext } from "@/lib/tutor-context";
 import { Card, Badge } from "@mylivepet/ui";
 import { APPOINTMENT_STATUS_LABEL, type AppointmentStatus } from "@mylivepet/types";
 
@@ -19,12 +20,15 @@ const tone: Record<AppointmentStatus, React.ComponentProps<typeof Badge>["tone"]
 
 export default async function HomePage() {
   const supabase = await createClient();
+  const ctx = await getTutorContext(supabase);
+  if (!ctx) return null;
 
   const [{ data: pets }, { data: appts }] = await Promise.all([
-    supabase.from("pet").select("id, name, species, breed"),
+    supabase.from("pet").select("id, name, species, breed").eq("tutor_id", ctx.tutorId),
     supabase
       .from("appointment")
       .select("id, status, scheduled_at, pet(name), service_type(name)")
+      .eq("tutor_id", ctx.tutorId)
       .order("scheduled_at", { ascending: false, nullsFirst: false })
       .limit(10),
   ]);

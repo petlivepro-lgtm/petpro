@@ -1,13 +1,21 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTutorContext } from "@/lib/tutor-context";
 import { Button, Card, Label, Select, DatePicker } from "@mylivepet/ui";
 import { formatBRL } from "@mylivepet/types";
 import { requestBooking } from "../actions";
 
 export default async function AgendarPage() {
   const supabase = await createClient();
+  const ctx = await getTutorContext(supabase);
+  if (!ctx) return null;
+
   const [{ data: pets }, { data: services }] = await Promise.all([
-    supabase.from("pet").select("id, name"),
-    supabase.from("service_type").select("id, name, price_cents, duration_min").eq("active", true),
+    supabase.from("pet").select("id, name").eq("tutor_id", ctx.tutorId),
+    supabase
+      .from("service_type")
+      .select("id, name, price_cents, duration_min")
+      .eq("tenant_id", ctx.tenantId)
+      .eq("active", true),
   ]);
 
   return (

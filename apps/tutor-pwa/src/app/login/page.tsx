@@ -1,28 +1,58 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Input, Label } from "@mylivepet/ui";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const accessError =
+    searchParams.get("erro") === "acesso"
+      ? "Este acesso nao pertence ao app MyLivePet."
+      : null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setLoading(false);
       setError("E-mail ou senha inválidos.");
       return;
     }
+    const userId = data.user?.id;
+    const [{ data: tutor }, { data: membership }] = await Promise.all([
+      supabase.from("tutor").select("id").eq("profile_id", userId ?? "").limit(1).maybeSingle(),
+      supabase
+        .from("membership")
+        .select("profile_id")
+        .eq("profile_id", userId ?? "")
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    if (!userId || !tutor || membership) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      setError("Você não tem permissão para acessar.");
+      return;
+    }
+
     router.replace("/");
   }
 
@@ -58,7 +88,7 @@ export default function LoginPage() {
             required
           />
         </div>
-        {error && <p className="text-sm text-danger">{error}</p>}
+        {(error ?? accessError) && <p className="text-sm text-danger">{error ?? accessError}</p>}
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Entrando..." : "Entrar"}
         </Button>
