@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Package } from "lucide-react";
 import { Button, Card, Badge, Dialog, PhotoGallery } from "@mylivepet/ui";
 import { formatBRL } from "@mylivepet/types";
 import { createReservation } from "@/app/(app)/actions";
@@ -42,9 +43,9 @@ export function ReserveList({ products }: { products: Product[] }) {
 
   const opened = products.find((p) => p.id === openId) ?? null;
 
-  function Stepper({ p }: { p: Product }) {
+  function Stepper({ p, onClick }: { p: Product; onClick?: (e: React.MouseEvent) => void }) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" onClick={onClick}>
         <Button
           type="button"
           size="sm"
@@ -74,37 +75,52 @@ export function ReserveList({ products }: { products: Product[] }) {
     );
   }
 
+  const openedQty = opened ? (qty[opened.id] ?? 0) : 0;
+  const openedSubtotal = opened ? opened.price_cents * openedQty : 0;
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {products.map((p) => {
           const cover = photosOf(p)[0];
+          const selected = (qty[p.id] ?? 0) > 0;
           return (
             <Card
               key={p.id}
               onClick={() => setOpenId(p.id)}
-              className="flex cursor-pointer items-center justify-between gap-3 p-4 transition-shadow hover:shadow-card-hover"
+              className={`flex cursor-pointer flex-col gap-3 p-3 transition-shadow hover:shadow-card-hover ${
+                selected ? "ring-2 ring-orange/40" : ""
+              }`}
             >
-              <div className="flex min-w-0 items-center gap-3">
-                {cover && (
+              <div className="relative flex h-36 items-center justify-center overflow-hidden rounded-xl bg-surface-muted text-gray-neutral/40">
+                {cover ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={cover}
-                    alt={p.name}
-                    className="h-14 w-14 flex-shrink-0 rounded-xl object-cover"
-                  />
+                  <img src={cover} alt={p.name} className="h-full w-full object-cover" />
+                ) : (
+                  <Package className="h-9 w-9" />
                 )}
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-graphite">{p.name}</p>
-                  <p className="text-sm text-gray-neutral">{formatBRL(p.price_cents)}</p>
-                  {p.stock <= 0 && (
-                    <Badge tone="danger" className="mt-1">
-                      Sem estoque
-                    </Badge>
-                  )}
-                </div>
+                {p.stock <= 0 && (
+                  <span className="absolute right-2 top-2">
+                    <Badge tone="danger">Sem estoque</Badge>
+                  </span>
+                )}
               </div>
-              <Stepper p={p} />
+
+              <div className="flex min-h-[2.5rem] flex-col">
+                <p className="line-clamp-2 font-medium leading-tight text-graphite">{p.name}</p>
+                <p className="mt-1 font-heading text-base font-bold text-graphite">
+                  {formatBRL(p.price_cents)}
+                </p>
+              </div>
+
+              <div className="mt-auto flex items-center justify-between">
+                {p.stock > 0 ? (
+                  <span className="text-xs text-gray-neutral">{p.stock} em estoque</span>
+                ) : (
+                  <span className="text-xs text-danger">Indisponível</span>
+                )}
+                <Stepper p={p} onClick={(e) => e.stopPropagation()} />
+              </div>
             </Card>
           );
         })}
@@ -128,6 +144,7 @@ export function ReserveList({ products }: { products: Product[] }) {
         {opened && (
           <div className="space-y-4">
             <PhotoGallery photos={photosOf(opened)} alt={opened.name} />
+
             <div className="flex items-center justify-between gap-3">
               <span className="font-heading text-2xl font-bold text-graphite">
                 {formatBRL(opened.price_cents)}
@@ -138,13 +155,35 @@ export function ReserveList({ products }: { products: Product[] }) {
                 <Badge tone="danger">Sem estoque</Badge>
               )}
             </div>
+
             {opened.description && (
-              <p className="text-sm text-gray-neutral">{opened.description}</p>
+              <p className="text-sm leading-relaxed text-gray-neutral">{opened.description}</p>
             )}
-            <div className="flex items-center justify-between border-t border-graphite/5 pt-4">
-              <span className="text-sm font-medium text-graphite">Quantidade</span>
-              <Stepper p={opened} />
+
+            <div className="space-y-3 rounded-2xl bg-surface-muted p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-graphite">Quantidade</span>
+                <Stepper p={opened} />
+              </div>
+              <div className="flex items-center justify-between border-t border-graphite/5 pt-3">
+                <span className="text-sm text-gray-neutral">Subtotal</span>
+                <span className="font-heading text-lg font-bold text-graphite">
+                  {formatBRL(openedSubtotal)}
+                </span>
+              </div>
             </div>
+
+            <Button
+              type="button"
+              className="w-full"
+              disabled={opened.stock <= 0}
+              onClick={() => {
+                if (openedQty === 0) setQ(opened.id, 1, opened.stock);
+                setOpenId(null);
+              }}
+            >
+              Adicionar à reserva
+            </Button>
           </div>
         )}
       </Dialog>

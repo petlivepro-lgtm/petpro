@@ -772,6 +772,12 @@ export type Database = {
       }
       is_staff: { Args: { _tenant: string }; Returns: boolean }
       my_tutor_id: { Args: { _tenant: string }; Returns: string }
+      reserve_products: {
+        Args: { p_items: Json; p_note?: string | null; p_tenant_id: string }
+        Returns: string
+      }
+      cancel_reservation_item: { Args: { p_item_id: string }; Returns: undefined }
+      cancel_reservation: { Args: { p_reservation_id: string }; Returns: undefined }
     }
     Enums: {
       appointment_origin: "STAFF" | "TUTOR"

@@ -4,7 +4,13 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
-import { bookingRequest, tutorFeedbackInput, reservationInput } from "@mylivepet/types";
+import {
+  bookingRequest,
+  tutorFeedbackInput,
+  reservationInput,
+  reservationItemCancel,
+  reservationCancel,
+} from "@mylivepet/types";
 
 export async function signOut() {
   const supabase = await createClient();
@@ -82,38 +88,36 @@ export async function createReservation(formData: FormData) {
   const ctx = await getTutorContext(supabase);
   if (!ctx) redirect("/produtos?erro=1");
 
-  // snapshot dos preços atuais
-  const ids = parsed.data.items.map((i) => i.product_id);
-  const { data: products } = await supabase
-    .from("product")
-    .select("id, price_cents")
-    .eq("tenant_id", ctx.tenantId)
-    .in("id", ids);
-  const priceById = new Map((products ?? []).map((p) => [p.id, p.price_cents]));
-
-  const { data: reservation, error } = await supabase
-    .from("product_reservation")
-    .insert({
-      tenant_id: ctx.tenantId,
-      tutor_id: ctx.tutorId,
-      status: "RESERVED",
-      note: parsed.data.note,
-      expires_at: new Date(Date.now() + 1000 * 60 * 60 * 48).toISOString(), // 48h
-    })
-    .select("id")
-    .single();
-  if (error || !reservation) redirect("/produtos?erro=1");
-
-  await supabase.from("product_reservation_item").insert(
-    parsed.data.items.map((i) => ({
-      tenant_id: ctx.tenantId,
-      reservation_id: reservation.id,
-      product_id: i.product_id,
-      quantity: i.quantity,
-      price_cents: priceById.get(i.product_id) ?? 0,
-    })),
-  );
+  // debita o estoque e cria a reserva de forma atômica (evita corrida entre tutores)
+  const { error } = await supabase.rpc("reserve_products", {
+    p_tenant_id: ctx.tenantId,
+    p_items: parsed.data.items,
+    p_note: parsed.data.note ?? null,
+  });
+  if (error) redirect("/produtos?erro=estoque");
 
   revalidatePath("/produtos");
   redirect("/produtos?reservado=1");
+}
+
+/** Tutor cancela um item específico de uma reserva ativa; devolve o estoque. */
+export async function cancelReservationItem(formData: FormData) {
+  const parsed = reservationItemCancel.safeParse({ item_id: formData.get("item_id") });
+  if (!parsed.success) return;
+
+  const supabase = await createClient();
+  await supabase.rpc("cancel_reservation_item", { p_item_id: parsed.data.item_id });
+
+  revalidatePath("/produtos");
+}
+
+/** Tutor cancela uma reserva inteira; devolve o estoque de todos os itens. */
+export async function cancelReservation(formData: FormData) {
+  const parsed = reservationCancel.safeParse({ reservation_id: formData.get("reservation_id") });
+  if (!parsed.success) return;
+
+  const supabase = await createClient();
+  await supabase.rpc("cancel_reservation", { p_reservation_id: parsed.data.reservation_id });
+
+  revalidatePath("/produtos");
 }

@@ -3,6 +3,10 @@
 import * as React from "react";
 import { cn } from "./cn";
 
+// Lock de scroll seguro para diálogos aninhados: só restaura o overflow quando
+// o último diálogo aberto fecha (contador compartilhado em nível de módulo).
+let openDialogCount = 0;
+
 export function Dialog({
   open,
   onOpenChange,
@@ -22,10 +26,12 @@ export function Dialog({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onOpenChange(false);
     document.addEventListener("keydown", onKey);
+    openDialogCount += 1;
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      openDialogCount = Math.max(0, openDialogCount - 1);
+      if (openDialogCount === 0) document.body.style.overflow = "";
     };
   }, [open, onOpenChange]);
 

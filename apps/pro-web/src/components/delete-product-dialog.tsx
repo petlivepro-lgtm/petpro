@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
-import { Button, Dialog } from "@mylivepet/ui";
+import { ConfirmDialog } from "@mylivepet/ui";
 import { deleteProduct, type FormState } from "@/app/(app)/produtos/actions";
 
 export function DeleteProductDialog({
@@ -37,25 +37,21 @@ export function DeleteProductDialog({
         <Trash2 className="h-4 w-4" />
       </button>
 
-      <Dialog open={open} onOpenChange={setOpen} title="Excluir produto?" description={productName}>
-        <form action={formAction} className="space-y-4">
-          <input type="hidden" name="id" value={productId} />
-          <p className="text-sm text-graphite">
-            O produto será removido do catálogo. Esta ação não pode ser desfeita.
-          </p>
-
-          {state.error && <p className="text-sm text-danger">{state.error}</p>}
-
-          <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" variant="danger" disabled={pending}>
-              {pending ? "Excluindo..." : "Excluir"}
-            </Button>
-          </div>
-        </form>
-      </Dialog>
+      <form action={formAction}>
+        <input type="hidden" name="id" value={productId} />
+        <ConfirmDialog
+          open={open}
+          onOpenChange={setOpen}
+          title="Excluir produto?"
+          description={`"${productName}" será removido do catálogo. Esta ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          pendingLabel="Excluindo..."
+          confirmVariant="danger"
+          confirmType="submit"
+          pending={pending}
+          error={state.error}
+        />
+      </form>
     </>
   );
 }

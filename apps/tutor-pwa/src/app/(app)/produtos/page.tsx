@@ -1,13 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
-import { ReserveList } from "@/components/reserve-list";
+import { ProdutosView } from "@/components/produtos-view";
+import { type Reservation } from "@/components/my-reservations";
+
+const ERROR_MESSAGES: Record<string, string> = {
+  estoque: "Estoque insuficiente para um dos itens. Ajuste as quantidades e tente novamente.",
+  "1": "Não foi possível enviar sua reserva. Tente novamente.",
+};
 
 export default async function ProdutosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reservado?: string }>;
+  searchParams: Promise<{ reservado?: string; erro?: string }>;
 }) {
-  const { reservado } = await searchParams;
+  const { reservado, erro } = await searchParams;
   const supabase = await createClient();
   const ctx = await getTutorContext(supabase);
   if (!ctx) return null;
@@ -19,6 +25,15 @@ export default async function ProdutosPage({
     .eq("active", true)
     .order("name");
 
+  const { data: reservations } = await supabase
+    .from("product_reservation")
+    .select(
+      "id, note, expires_at, created_at, product_reservation_item(id, quantity, price_cents, product:product_id(name, photo_path))",
+    )
+    .eq("tutor_id", ctx.tutorId)
+    .eq("status", "RESERVED")
+    .order("created_at", { ascending: false });
+
   return (
     <div className="space-y-5">
       <header>
@@ -26,13 +41,19 @@ export default async function ProdutosPage({
         <p className="text-sm text-gray-neutral">Reserve e pague na loja ao retirar.</p>
       </header>
 
-      {reservado && (
-        <div className="rounded-2xl border border-success/30 bg-success/10 p-4 text-sm text-graphite">
-          Reserva enviada! O petshop vai separar seus produtos.
+      {erro && (
+        <div className="rounded-2xl border border-danger/30 bg-danger/10 p-4 text-sm text-graphite">
+          {ERROR_MESSAGES[erro] ?? ERROR_MESSAGES["1"]}
         </div>
       )}
 
-      <ReserveList products={products ?? []} />
+      <ProdutosView
+        initialProducts={products ?? []}
+        initialReservations={(reservations ?? []) as unknown as Reservation[]}
+        tenantId={ctx.tenantId}
+        tutorId={ctx.tutorId}
+        reservado={!!reservado}
+      />
     </div>
   );
 }

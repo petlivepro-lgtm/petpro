@@ -64,6 +64,16 @@ export const reservationInput = z.object({
 });
 export type ReservationInput = z.infer<typeof reservationInput>;
 
+export const reservationItemCancel = z.object({
+  item_id: z.string().uuid(),
+});
+export type ReservationItemCancel = z.infer<typeof reservationItemCancel>;
+
+export const reservationCancel = z.object({
+  reservation_id: z.string().uuid(),
+});
+export type ReservationCancel = z.infer<typeof reservationCancel>;
+
 export const appointmentStatusUpdate = z.object({
   appointment_id: z.string().uuid(),
   status: z.enum(APPOINTMENT_STATUSES),

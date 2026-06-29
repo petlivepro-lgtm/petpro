@@ -20,3 +20,4 @@ export { Tabs, type TabItem } from "./tabs";
 export { StatusChip } from "./status-chip";
 export { EmptyState } from "./empty-state";
 export { Dialog } from "./dialog";
+export { ConfirmDialog } from "./confirm-dialog";
