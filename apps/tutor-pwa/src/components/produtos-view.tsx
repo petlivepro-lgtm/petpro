@@ -12,13 +12,14 @@ type Product = {
   id: string;
   name: string;
   description?: string | null;
+  category?: string | null;
   price_cents: number;
   stock: number;
   photo_path?: string | null;
   photos?: string[];
 };
 
-const PRODUCT_SELECT = "id, name, description, price_cents, stock, photo_path, photos";
+const PRODUCT_SELECT = "id, name, description, category, price_cents, stock, photo_path, photos";
 const RESERVATION_SELECT =
   "id, note, expires_at, created_at, product_reservation_item(id, quantity, price_cents, product:product_id(name, photo_path))";
 

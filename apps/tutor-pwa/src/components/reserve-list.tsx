@@ -1,20 +1,31 @@
 "use client";
 
-import { useState } from "react";
-import { Package } from "lucide-react";
-import { Button, Card, Badge, Dialog, PhotoGallery } from "@mylivepet/ui";
-import { formatBRL } from "@mylivepet/types";
+import { useMemo, useState } from "react";
+import { Package, Search } from "lucide-react";
+import { Button, Card, Badge, Dialog, Input, PhotoGallery } from "@mylivepet/ui";
+import {
+  formatBRL,
+  PRODUCT_CATEGORIES,
+  PRODUCT_CATEGORY_LABEL,
+  type ProductCategory,
+} from "@mylivepet/types";
 import { createReservation } from "@/app/(app)/actions";
 
 type Product = {
   id: string;
   name: string;
   description?: string | null;
+  category?: string | null;
   price_cents: number;
   stock: number;
   photo_path?: string | null;
   photos?: string[];
 };
+
+function categoryLabel(category?: string | null): string {
+  if (!category) return "";
+  return PRODUCT_CATEGORY_LABEL[category as ProductCategory] ?? category;
+}
 
 function photosOf(p: Product): string[] {
   if (p.photos && p.photos.length > 0) return p.photos;
@@ -24,6 +35,27 @@ function photosOf(p: Product): string[] {
 export function ReserveList({ products }: { products: Product[] }) {
   const [qty, setQty] = useState<Record<string, number>>({});
   const [openId, setOpenId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<ProductCategory | null>(null);
+
+  // Categorias presentes no catálogo, na ordem predefinida.
+  const availableCategories = useMemo(() => {
+    const present = new Set(products.map((p) => p.category).filter(Boolean));
+    return PRODUCT_CATEGORIES.filter((c) => present.has(c));
+  }, [products]);
+
+  // Busca por nome do produto e categoria + filtro por categoria selecionada.
+  const filteredProducts = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return products.filter((p) => {
+      if (category && p.category !== category) return false;
+      if (!term) return true;
+      return (
+        p.name.toLowerCase().includes(term) ||
+        categoryLabel(p.category).toLowerCase().includes(term)
+      );
+    });
+  }, [products, search, category]);
 
   const items = Object.entries(qty)
     .filter(([, q]) => q > 0)
@@ -80,8 +112,57 @@ export function ReserveList({ products }: { products: Product[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((p) => {
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-neutral" />
+          <Input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome ou categoria"
+            className="pl-9"
+            aria-label="Buscar produtos"
+          />
+        </div>
+
+        {availableCategories.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setCategory(null)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                category === null
+                  ? "border-orange bg-orange text-white"
+                  : "border-graphite/15 bg-surface text-graphite hover:border-orange/40"
+              }`}
+            >
+              Todos
+            </button>
+            {availableCategories.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCategory(c)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  category === c
+                    ? "border-orange bg-orange text-white"
+                    : "border-graphite/15 bg-surface text-graphite hover:border-orange/40"
+                }`}
+              >
+                {PRODUCT_CATEGORY_LABEL[c]}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {filteredProducts.length === 0 ? (
+        <p className="py-8 text-center text-sm text-gray-neutral">
+          Nenhum produto encontrado.
+        </p>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredProducts.map((p) => {
           const cover = photosOf(p)[0];
           const selected = (qty[p.id] ?? 0) > 0;
           return (
@@ -108,6 +189,9 @@ export function ReserveList({ products }: { products: Product[] }) {
 
               <div className="flex min-h-[2.5rem] flex-col">
                 <p className="line-clamp-2 font-medium leading-tight text-graphite">{p.name}</p>
+                {p.category && (
+                  <span className="mt-1 text-xs text-gray-neutral">{categoryLabel(p.category)}</span>
+                )}
                 <p className="mt-1 font-heading text-base font-bold text-graphite">
                   {formatBRL(p.price_cents)}
                 </p>
@@ -123,8 +207,9 @@ export function ReserveList({ products }: { products: Product[] }) {
               </div>
             </Card>
           );
-        })}
-      </div>
+          })}
+        </div>
+      )}
 
       <form action={createReservation} className="space-y-3">
         <input type="hidden" name="items" value={JSON.stringify(items)} />

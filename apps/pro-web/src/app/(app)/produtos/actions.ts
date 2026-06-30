@@ -76,6 +76,7 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
   const parsed = productInput.safeParse({
     name: str(formData.get("name")),
     description: str(formData.get("description")),
+    category: str(formData.get("category")),
     price_cents: toCents(formData.get("price")),
     stock: toInt(formData.get("stock")),
     active: formData.get("active") === "on",
@@ -94,6 +95,7 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
       tenant_id: tenant.tenantId,
       name: parsed.data.name,
       description: parsed.data.description ?? null,
+      category: parsed.data.category,
       price_cents: parsed.data.price_cents,
       stock: parsed.data.stock,
       active: parsed.data.active ?? true,
@@ -121,6 +123,7 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
   const parsed = productInput.safeParse({
     name: str(formData.get("name")),
     description: str(formData.get("description")),
+    category: str(formData.get("category")),
     price_cents: toCents(formData.get("price")),
     stock: toInt(formData.get("stock")),
     active: formData.get("active") === "on",
@@ -137,6 +140,7 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
   const update: Record<string, unknown> = {
     name: parsed.data.name,
     description: parsed.data.description ?? null,
+    category: parsed.data.category,
     price_cents: parsed.data.price_cents,
     stock: parsed.data.stock,
     active: parsed.data.active ?? true,

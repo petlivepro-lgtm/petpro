@@ -3,13 +3,14 @@
 import { useCallback } from "react";
 import { Package } from "lucide-react";
 import { Card, StatusChip } from "@mylivepet/ui";
-import { formatBRL } from "@mylivepet/types";
+import { formatBRL, PRODUCT_CATEGORY_LABEL, type ProductCategory } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeList } from "@/lib/use-realtime-list";
 import { ProductDialog, type ProductRow } from "@/components/product-dialog";
 import { DeleteProductDialog } from "@/components/delete-product-dialog";
 
-const PRODUCT_SELECT = "id, name, description, price_cents, stock, active, photo_path, photos";
+const PRODUCT_SELECT =
+  "id, name, description, category, price_cents, stock, active, photo_path, photos";
 
 export function ProdutosGrid({ initialProducts }: { initialProducts: ProductRow[] }) {
   const fetchProducts = useCallback(async (): Promise<ProductRow[]> => {
@@ -43,6 +44,11 @@ export function ProdutosGrid({ initialProducts }: { initialProducts: ProductRow[
               {p.stock > 0 ? `${p.stock} un.` : "Esgotado"}
             </StatusChip>
           </div>
+          {p.category && (
+            <p className="mt-1 text-xs text-gray-neutral">
+              {PRODUCT_CATEGORY_LABEL[p.category as ProductCategory] ?? p.category}
+            </p>
+          )}
           <p className="mt-2 font-heading text-xl font-bold text-graphite">
             {formatBRL(p.price_cents)}
           </p>

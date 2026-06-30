@@ -3,7 +3,8 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
-import { Button, CurrencyInput, Dialog, Input, Label, PhotoGalleryInput } from "@mylivepet/ui";
+import { Button, CurrencyInput, Dialog, Input, Label, PhotoGalleryInput, Select } from "@mylivepet/ui";
+import { PRODUCT_CATEGORIES, PRODUCT_CATEGORY_LABEL } from "@mylivepet/types";
 import {
   createProduct,
   updateProduct,
@@ -14,6 +15,7 @@ export type ProductRow = {
   id: string;
   name: string;
   description: string | null;
+  category: string | null;
   price_cents: number;
   stock: number;
   active: boolean;
@@ -76,6 +78,20 @@ export function ProductDialog({ product }: { product?: ProductRow }) {
               defaultValue={product?.description ?? ""}
               placeholder="Opcional"
             />
+          </div>
+
+          <div>
+            <Label htmlFor="category">Categoria *</Label>
+            <Select id="category" name="category" required defaultValue={product?.category ?? ""}>
+              <option value="" disabled>
+                Selecione uma categoria
+              </option>
+              {PRODUCT_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {PRODUCT_CATEGORY_LABEL[c]}
+                </option>
+              ))}
+            </Select>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

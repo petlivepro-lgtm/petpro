@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { APPOINTMENT_STATUSES } from "./enums";
+import { APPOINTMENT_STATUSES, PRODUCT_CATEGORIES } from "./enums";
 
 // DTOs de validação compartilhados entre os apps (formulários, server actions).
 
@@ -121,6 +121,7 @@ export type TenantSettingsInput = z.infer<typeof tenantSettingsInput>;
 export const productInput = z.object({
   name: z.string().min(1, "Informe o nome"),
   description: z.string().optional(),
+  category: z.enum(PRODUCT_CATEGORIES, { message: "Selecione uma categoria" }),
   price_cents: z.number().int().min(0),
   stock: z.number().int().min(0),
   active: z.boolean().optional(),

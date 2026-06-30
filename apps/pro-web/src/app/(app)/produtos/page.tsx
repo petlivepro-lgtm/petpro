@@ -8,7 +8,7 @@ export default async function ProdutosPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("product")
-    .select("id, name, description, price_cents, stock, active, photo_path, photos")
+    .select("id, name, description, category, price_cents, stock, active, photo_path, photos")
     .order("name");
 
   const list = (data ?? []) as ProductRow[];

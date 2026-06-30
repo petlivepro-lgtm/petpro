@@ -31,6 +31,29 @@ export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
 // Opções de espécie de pet (campo de texto livre no banco; centralizado para a UI).
 export const SPECIES_OPTIONS = ["Cão", "Gato"] as const;
 
+// Categorias de produto (campo de texto livre no banco; valores predefinidos para a UI).
+// O slug é salvo no banco; o rótulo é exibido no CRM e no app do tutor.
+export const PRODUCT_CATEGORIES = [
+  "racao",
+  "petisco",
+  "brinquedo",
+  "higiene",
+  "medicamento",
+  "acessorio",
+  "outro",
+] as const;
+export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
+
+export const PRODUCT_CATEGORY_LABEL: Record<ProductCategory, string> = {
+  racao: "Ração",
+  petisco: "Petisco",
+  brinquedo: "Brinquedo",
+  higiene: "Higiene",
+  medicamento: "Medicamento",
+  acessorio: "Acessório",
+  outro: "Outro",
+};
+
 // Rótulos em pt-BR para UI
 export const APPOINTMENT_STATUS_LABEL: Record<AppointmentStatus, string> = {
   REQUESTED: "Solicitado",
