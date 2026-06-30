@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button, Dialog, Input, Label, Select, PhoneInput, DatePicker } from "@mylivepet/ui";
 import { SPECIES_OPTIONS } from "@mylivepet/types";
 import { createTutor, type FormState } from "@/app/(app)/tutores/actions";
@@ -14,13 +14,10 @@ export function NewTutorDialog({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [createAccess, setCreateAccess] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [state, formAction, pending] = useActionState<FormState, FormData>(createTutor, { ok: false });
 
   useEffect(() => {
-    // Quando um acesso é criado, mantém o diálogo aberto para mostrar a senha.
-    if (state.ok && !state.access) {
+    if (state.ok) {
       setOpen(false);
       router.refresh();
     }
@@ -28,8 +25,6 @@ export function NewTutorDialog({
 
   function close() {
     setOpen(false);
-    setCreateAccess(false);
-    setCopied(false);
     router.refresh();
   }
 
@@ -51,41 +46,6 @@ export function NewTutorDialog({
         title="Novo tutor"
         description="Cadastre o cliente e, se quiser, já o primeiro pet."
       >
-        {state.access ? (
-          <div className="space-y-4">
-            <p className="text-sm text-graphite">
-              Acesso ao app <span className="font-semibold">MyLivePet</span> criado. Compartilhe os
-              dados abaixo com o tutor — ele definirá a própria senha no primeiro acesso.
-            </p>
-            <div className="rounded-xl border border-graphite/15 bg-surface p-4 text-sm">
-              <p className="text-gray-neutral">E-mail</p>
-              <p className="font-medium text-graphite">{state.access.email}</p>
-              <p className="mt-3 text-gray-neutral">Senha temporária</p>
-              <div className="flex items-center justify-between gap-2">
-                <code className="font-mono text-base font-semibold text-graphite">
-                  {state.access.password}
-                </code>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    navigator.clipboard.writeText(state.access!.password);
-                    setCopied(true);
-                  }}
-                >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  {copied ? "Copiado" : "Copiar"}
-                </Button>
-              </div>
-            </div>
-            <div className="flex justify-end pt-1">
-              <Button type="button" onClick={close}>
-                Concluir
-              </Button>
-            </div>
-          </div>
-        ) : (
         <form action={formAction} className="space-y-4">
           <div>
             <Label htmlFor="full_name">Nome do tutor *</Label>
@@ -97,32 +57,13 @@ export function NewTutorDialog({
               <PhoneInput id="phone" name="phone" />
             </div>
             <div>
-              <Label htmlFor="email">E-mail{createAccess ? " *" : ""}</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="email@exemplo.com"
-                required={createAccess}
-              />
+              <Label htmlFor="email">E-mail</Label>
+              <Input id="email" name="email" type="email" placeholder="email@exemplo.com" />
             </div>
           </div>
-          {/* valor enviado reflete o estado do React (não depende da serialização do checkbox) */}
-          <input type="hidden" name="create_access" value={createAccess ? "on" : ""} />
-          <label className="flex items-start gap-2 rounded-xl border border-graphite/15 bg-surface p-3 text-sm">
-            <input
-              type="checkbox"
-              checked={createAccess}
-              onChange={(e) => setCreateAccess(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-orange"
-            />
-            <span>
-              <span className="font-medium text-graphite">Criar acesso ao app MyLivePet</span>
-              <span className="block text-gray-neutral">
-                Gera uma senha temporária para o tutor. Exige e-mail.
-              </span>
-            </span>
-          </label>
+          <p className="text-sm text-gray-neutral">
+            Com e-mail cadastrado, o tutor cria a própria senha no primeiro acesso ao app MyLivePet.
+          </p>
           <div>
             <Label htmlFor="notes">Observações</Label>
             <Input id="notes" name="notes" placeholder="Opcional" />
@@ -181,7 +122,6 @@ export function NewTutorDialog({
             </Button>
           </div>
         </form>
-        )}
       </Dialog>
     </>
   );

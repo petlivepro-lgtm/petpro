@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, PawPrint, Phone, Mail } from "lucide-react";
+import { Users, PawPrint, Phone, Mail, Smartphone } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, PageHeader, Avatar, EmptyState } from "@mylivepet/ui";
 import { NewTutorDialog } from "@/components/new-tutor-dialog";
@@ -39,7 +39,14 @@ export default async function TutoresPage() {
                 <div className="flex items-start gap-3">
                   <Avatar name={t.full_name} size="lg" />
                   <div className="min-w-0 flex-1">
-                    <p className="font-heading text-base font-semibold text-graphite">{t.full_name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-heading text-base font-semibold text-graphite">{t.full_name}</p>
+                      {t.profile_id && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-orange/10 px-2 py-0.5 text-xs font-medium text-orange">
+                          <Smartphone className="h-3 w-3" /> App ativo
+                        </span>
+                      )}
+                    </div>
                     <div className="mt-1 space-y-0.5 text-sm text-gray-neutral">
                       {t.phone && (
                         <p className="flex items-center gap-1.5">

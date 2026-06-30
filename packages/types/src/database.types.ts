@@ -782,6 +782,8 @@ export type Database = {
       cancel_reservation_item: { Args: { p_item_id: string }; Returns: undefined }
       cancel_reservation: { Args: { p_reservation_id: string }; Returns: undefined }
       staff_cancel_reservation: { Args: { p_reservation_id: string }; Returns: undefined }
+      tutor_access_status: { Args: { p_email: string }; Returns: string }
+      claim_tutor_access: { Args: Record<PropertyKey, never>; Returns: undefined }
     }
     Enums: {
       appointment_origin: "STAFF" | "TUTOR"

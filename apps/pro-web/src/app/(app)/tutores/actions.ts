@@ -1,6 +1,5 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -10,7 +9,6 @@ import { tutorInput, petInput } from "@mylivepet/types";
 export type FormState = {
   ok: boolean;
   error?: string;
-  access?: { email: string; password: string };
 };
 
 function str(v: FormDataEntryValue | null): string | undefined {
@@ -18,18 +16,11 @@ function str(v: FormDataEntryValue | null): string | undefined {
   return s === "" ? undefined : s;
 }
 
-/** Gera uma senha temporária legível, ex.: "Pet-7k29xQ4m". */
-function generateTempPassword(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-  const bytes = randomBytes(8);
-  let out = "";
-  for (let i = 0; i < bytes.length; i++) {
-    out += alphabet[bytes[i] % alphabet.length];
-  }
-  return `Pet-${out}`;
-}
-
-/** Cria um tutor e, opcionalmente, o primeiro pet (na mesma submissão). */
+/**
+ * Cria um tutor e, opcionalmente, o primeiro pet (na mesma submissão).
+ * Não gera login/senha: o próprio tutor ativa o acesso no app MyLivePet no
+ * primeiro acesso (confirma o e-mail por código e define a senha).
+ */
 export async function createTutor(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = tutorInput.safeParse({
     full_name: formData.get("full_name"),
@@ -39,11 +30,6 @@ export async function createTutor(_prev: FormState, formData: FormData): Promise
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
-  }
-
-  const createAccess = formData.get("create_access") === "on";
-  if (createAccess && !parsed.data.email) {
-    return { ok: false, error: "Informe um e-mail para criar o acesso ao app." };
   }
 
   const supabase = await createClient();
@@ -87,52 +73,8 @@ export async function createTutor(_prev: FormState, formData: FormData): Promise
     }
   }
 
-  // Acesso ao app MyLivePet (opcional): cria usuário de auth com senha temporária
-  // e vincula tutor.profile_id. Exige service role (cria auth user + profile).
-  let access: FormState["access"];
-  if (createAccess && parsed.data.email) {
-    try {
-      const admin = createAdminClient();
-      const tempPassword = generateTempPassword();
-
-      const { data: created, error: authError } = await admin.auth.admin.createUser({
-        email: parsed.data.email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: { full_name: parsed.data.full_name, must_reset_password: true },
-      });
-      if (authError || !created?.user) {
-        const dup = authError?.message?.toLowerCase().includes("already");
-        return {
-          ok: false,
-          error: dup
-            ? "Já existe acesso para este e-mail."
-            : authError?.message ?? "Falha ao criar acesso ao app.",
-        };
-      }
-
-      const userId = created.user.id;
-      const { error: profileError } = await admin.from("profile").insert({
-        id: userId,
-        full_name: parsed.data.full_name,
-        phone: parsed.data.phone ?? null,
-      });
-      if (profileError) {
-        await admin.auth.admin.deleteUser(userId); // evita usuário órfão
-        return { ok: false, error: profileError.message };
-      }
-
-      await admin.from("tutor").update({ profile_id: userId }).eq("id", tutor.id);
-      access = { email: parsed.data.email, password: tempPassword };
-    } catch (e) {
-      // Tutor já foi criado; só o acesso falhou — mostra o motivo em vez de quebrar.
-      const msg = e instanceof Error ? e.message : "erro desconhecido";
-      return { ok: false, error: "Tutor salvo, mas falha ao criar o acesso: " + msg };
-    }
-  }
-
   revalidatePath("/tutores");
-  return { ok: true, access };
+  return { ok: true };
 }
 
 /** Adiciona um pet a um tutor existente. */
