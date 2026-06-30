@@ -1,7 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
 import { EmptyState } from "@mylivepet/ui";
-import { type AppointmentStatus } from "@mylivepet/types";
+import {
+  feedbackConfigSchema,
+  type AppointmentStatus,
+  type FeedbackField,
+  type FeedbackResponse,
+} from "@mylivepet/types";
 import { ClipboardList } from "lucide-react";
 import { AppointmentHistoryCard } from "@/components/appointment-history-card";
 
@@ -18,13 +23,24 @@ export default async function HistoricoPage() {
   const { data } = await supabase
     .from("appointment")
     .select(
-      "id, status, scheduled_at, finished_at, photos, pet:pet_id(name), service_type(name), feedback(direction, rating, comment), appointment_step(id, label, done_at, position)",
+      "id, status, scheduled_at, finished_at, photos, pet:pet_id(name), service_type(name), feedback(direction, rating, comment, responses), appointment_step(id, label, done_at, position)",
     )
     .eq("tutor_id", ctx.tutorId)
     .order("scheduled_at", { ascending: false, nullsFirst: false })
     .limit(50);
 
   const rows = data ?? [];
+
+  // Formulário de avaliação configurado pelo petshop (vazio → padrão no card).
+  const { data: tenantRow } = await supabase
+    .from("tenant")
+    .select("settings")
+    .eq("id", ctx.tenantId)
+    .maybeSingle();
+  const fbConfig = feedbackConfigSchema.safeParse(
+    (tenantRow?.settings as { feedback?: unknown } | null)?.feedback,
+  );
+  const feedbackFields: FeedbackField[] = fbConfig.success ? fbConfig.data.fields : [];
 
   return (
     <div className="space-y-5">
@@ -41,7 +57,7 @@ export default async function HistoricoPage() {
             const pet = a.pet as unknown as { name: string } | null;
             const service = a.service_type as unknown as { name: string } | null;
             const status = a.status as AppointmentStatus;
-            const fbs = (a.feedback as unknown as { direction: string; rating: number | null; comment: string | null }[]) ?? [];
+            const fbs = (a.feedback as unknown as { direction: string; rating: number | null; comment: string | null; responses: FeedbackResponse[] | null }[]) ?? [];
             const behavior = fbs.find((f) => f.direction === "STAFF_TO_TUTOR");
             const tutorFb = fbs.find((f) => f.direction === "TUTOR_TO_PETSHOP");
             const steps = ((a.appointment_step as unknown as { id: string; label: string; done_at: string | null; position: number }[]) ?? [])
@@ -61,7 +77,12 @@ export default async function HistoricoPage() {
                 steps={steps}
                 behaviorComment={behavior?.comment ?? null}
                 photos={photos}
-                tutorFb={tutorFb ? { rating: tutorFb.rating, comment: tutorFb.comment } : null}
+                feedbackFields={feedbackFields}
+                tutorFb={
+                  tutorFb
+                    ? { rating: tutorFb.rating, comment: tutorFb.comment, responses: tutorFb.responses }
+                    : null
+                }
               />
             );
           })}

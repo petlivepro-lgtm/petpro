@@ -1,7 +1,9 @@
 import { PageHeader } from "@mylivepet/ui";
+import { feedbackConfigSchema, type FeedbackField } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { SettingsForm, type TenantSettings } from "./settings-form";
+import { FeedbackSettingsForm } from "./feedback-settings-form";
 
 export default async function ConfiguracoesPage() {
   const supabase = await createClient();
@@ -19,6 +21,7 @@ export default async function ConfiguracoesPage() {
     phone?: string | null;
     email?: string | null;
     address?: string | null;
+    feedback?: unknown;
   };
 
   const initial: TenantSettings = {
@@ -29,13 +32,19 @@ export default async function ConfiguracoesPage() {
     address: settings.address ?? "",
   };
 
+  const feedbackParsed = feedbackConfigSchema.safeParse(settings.feedback);
+  const feedbackFields: FeedbackField[] = feedbackParsed.success ? feedbackParsed.data.fields : [];
+
   return (
     <>
       <PageHeader
         title="Configurações"
         subtitle="Edite o nome, os dados de contato e a logo do seu petshop."
       />
-      <SettingsForm tenant={initial} />
+      <div className="space-y-6">
+        <SettingsForm tenant={initial} />
+        <FeedbackSettingsForm fields={feedbackFields} />
+      </div>
     </>
   );
 }

@@ -20,11 +20,12 @@ import {
   TimelineItem,
   PhotoGallery,
   RatingStars,
+  ScaleSelector,
 } from "@mylivepet/ui";
 import { AppointmentStatusBadge } from "@/components/status-badge";
 import { FinishAppointmentDialog } from "@/components/finish-appointment-dialog";
 import { AppointmentChecklist } from "@/components/appointment-checklist";
-import type { AppointmentStatus } from "@mylivepet/types";
+import type { AppointmentStatus, FeedbackResponse } from "@mylivepet/types";
 import { startAppointment } from "./actions";
 
 function fmt(v: string | null) {
@@ -59,11 +60,12 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
 
   const { data: feedbacks } = await supabase
     .from("feedback")
-    .select("direction, rating, comment, created_at")
+    .select("direction, rating, comment, responses, created_at")
     .eq("appointment_id", id);
 
   const behavior = (feedbacks ?? []).find((f) => f.direction === "STAFF_TO_TUTOR");
   const tutorFb = (feedbacks ?? []).find((f) => f.direction === "TUTOR_TO_PETSHOP");
+  const tutorResponses = (tutorFb?.responses as FeedbackResponse[] | null) ?? [];
 
   const photos = appt.photos ?? [];
 
@@ -139,8 +141,31 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
                 <Star className="h-4 w-4 text-orange" />
                 <h2 className="font-heading text-lg font-semibold">Avaliação do tutor</h2>
               </div>
-              {typeof tutorFb.rating === "number" && <RatingStars value={tutorFb.rating} />}
-              {tutorFb.comment && <p className="mt-2 text-sm text-gray-neutral">{tutorFb.comment}</p>}
+              {tutorResponses.length > 0 ? (
+                <div className="space-y-3">
+                  {tutorResponses.map((r, i) => (
+                    <div key={`${r.field_id}-${i}`}>
+                      <p className="mb-1 text-sm text-graphite">{r.label}</p>
+                      {r.type === "STARS" && typeof r.value === "number" && (
+                        <RatingStars value={r.value} />
+                      )}
+                      {r.type === "SCALE_10" && typeof r.value === "number" && (
+                        <ScaleSelector value={r.value} />
+                      )}
+                      {r.type === "TEXT" && (
+                        <p className="text-sm text-gray-neutral">{String(r.value)}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  {typeof tutorFb.rating === "number" && <RatingStars value={tutorFb.rating} />}
+                  {tutorFb.comment && (
+                    <p className="mt-2 text-sm text-gray-neutral">{tutorFb.comment}</p>
+                  )}
+                </>
+              )}
             </Card>
           )}
         </div>

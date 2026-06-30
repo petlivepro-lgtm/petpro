@@ -293,6 +293,7 @@ export type Database = {
           direction: Database["public"]["Enums"]["feedback_direction"]
           id: string
           rating: number | null
+          responses: Json | null
           tenant_id: string
         }
         Insert: {
@@ -303,6 +304,7 @@ export type Database = {
           direction: Database["public"]["Enums"]["feedback_direction"]
           id?: string
           rating?: number | null
+          responses?: Json | null
           tenant_id: string
         }
         Update: {
@@ -313,6 +315,7 @@ export type Database = {
           direction?: Database["public"]["Enums"]["feedback_direction"]
           id?: string
           rating?: number | null
+          responses?: Json | null
           tenant_id?: string
         }
         Relationships: [

@@ -10,6 +10,7 @@ export { FileInput } from "./file-input";
 export { PhotoGalleryInput } from "./photo-gallery-input";
 export { PhotoGallery } from "./photo-gallery";
 export { RatingStars } from "./rating-stars";
+export { ScaleSelector } from "./scale-selector";
 export { DatePicker } from "./date-picker";
 export { Avatar } from "./avatar";
 export { PageHeader } from "./page-header";

@@ -59,10 +59,16 @@ export async function requestBooking(formData: FormData) {
 
 /** Tutor avalia um atendimento finalizado (feedback TUTOR_TO_PETSHOP). */
 export async function submitTutorFeedback(formData: FormData) {
+  const raw = formData.get("responses");
+  let responses: unknown = [];
+  try {
+    responses = JSON.parse(typeof raw === "string" ? raw : "[]");
+  } catch {
+    return;
+  }
   const parsed = tutorFeedbackInput.safeParse({
     appointment_id: formData.get("appointment_id"),
-    rating: Number(formData.get("rating")),
-    comment: formData.get("comment") ?? undefined,
+    responses,
   });
   if (!parsed.success) return;
 
@@ -70,12 +76,17 @@ export async function submitTutorFeedback(formData: FormData) {
   const ctx = await getTutorContext(supabase);
   if (!ctx) return;
 
+  // Compatibilidade: mantém rating/comment a partir do 1º campo de cada tipo.
+  const firstStars = parsed.data.responses.find((r) => r.type === "STARS");
+  const firstText = parsed.data.responses.find((r) => r.type === "TEXT");
+
   await supabase.from("feedback").insert({
     tenant_id: ctx.tenantId,
     appointment_id: parsed.data.appointment_id,
     direction: "TUTOR_TO_PETSHOP",
-    rating: parsed.data.rating,
-    comment: parsed.data.comment,
+    responses: parsed.data.responses,
+    rating: typeof firstStars?.value === "number" ? firstStars.value : null,
+    comment: typeof firstText?.value === "string" ? firstText.value : null,
   });
   revalidatePath("/");
   revalidatePath("/atendimentos");

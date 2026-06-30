@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { APPOINTMENT_STATUSES, PRODUCT_CATEGORIES } from "./enums";
+import { APPOINTMENT_STATUSES, FEEDBACK_FIELD_TYPES, PRODUCT_CATEGORIES } from "./enums";
 
 // DTOs de validação compartilhados entre os apps (formulários, server actions).
 
@@ -33,11 +33,54 @@ export const bookingRequest = z.object({
 });
 export type BookingRequest = z.infer<typeof bookingRequest>;
 
+// --- Formulário de avaliação configurável pelo petshop ---
+// O petshop monta, nas configurações, uma lista de campos. Cada campo tem um
+// tipo (estrelas / 0 a 10 / texto), uma pergunta (label) e se é obrigatório.
+export const feedbackFieldSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum(FEEDBACK_FIELD_TYPES),
+  label: z.string().min(1, "Informe a pergunta"),
+  required: z.boolean(),
+});
+export type FeedbackField = z.infer<typeof feedbackFieldSchema>;
+
+export const feedbackConfigSchema = z.object({
+  fields: z.array(feedbackFieldSchema).max(10, "No máximo 10 campos"),
+});
+export type FeedbackConfig = z.infer<typeof feedbackConfigSchema>;
+
+// Resposta de um campo, com snapshot de tipo/label para preservar leitura
+// histórica caso o petshop edite a configuração depois.
+export const feedbackResponseSchema = z
+  .object({
+    field_id: z.string().min(1),
+    type: z.enum(FEEDBACK_FIELD_TYPES),
+    label: z.string().min(1),
+    value: z.union([z.number(), z.string()]),
+  })
+  .superRefine((r, ctx) => {
+    if (r.type === "TEXT") {
+      if (typeof r.value !== "string") {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Resposta inválida" });
+      }
+      return;
+    }
+    if (typeof r.value !== "number" || !Number.isInteger(r.value)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Nota inválida" });
+      return;
+    }
+    const max = r.type === "STARS" ? 5 : 10;
+    const min = r.type === "STARS" ? 1 : 0;
+    if (r.value < min || r.value > max) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Nota fora da faixa" });
+    }
+  });
+export type FeedbackResponse = z.infer<typeof feedbackResponseSchema>;
+
 // Avaliação do tutor sobre o atendimento (TUTOR_TO_PETSHOP)
 export const tutorFeedbackInput = z.object({
   appointment_id: z.string().uuid(),
-  rating: z.number().int().min(1).max(5),
-  comment: z.string().optional(),
+  responses: z.array(feedbackResponseSchema).min(1, "Responda ao menos um campo"),
 });
 export type TutorFeedbackInput = z.infer<typeof tutorFeedbackInput>;
 
