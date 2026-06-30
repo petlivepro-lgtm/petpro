@@ -34,19 +34,25 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthRoute = pathname.startsWith("/login");
   const isResetRoute = pathname.startsWith("/redefinir-senha");
+  // 1º acesso via link mágico: a ficha de tutor ainda pode não estar vinculada
+  // (o vínculo acontece no client, depois que o link autentica).
+  const isFirstAccessRoute = pathname.startsWith("/criar-senha");
   const redirectWithSessionCookies = (url: URL) => {
     const redirectResponse = NextResponse.redirect(url);
     response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
     return redirectResponse;
   };
 
-  if (!user && !isAuthRoute) {
+  if (!user && !isAuthRoute && !isFirstAccessRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
-  // Primeiro acesso: tutor com senha temporária deve definir a própria senha.
   if (user) {
+    // Deixa a página de criar senha passar mesmo sem vínculo de tutor ainda:
+    // o client roda claim_tutor_access logo após o link autenticar.
+    if (isFirstAccessRoute) return response;
+
     const [{ data: tutor }, { data: membership }] = await Promise.all([
       supabase.from("tutor").select("id").eq("profile_id", user.id).limit(1).maybeSingle(),
       supabase

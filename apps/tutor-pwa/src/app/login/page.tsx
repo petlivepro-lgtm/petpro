@@ -13,8 +13,8 @@ export default function LoginPage() {
   );
 }
 
-/** email: digita o e-mail | login: já tem senha | code: confirma OTP | password: cria senha */
-type Step = "email" | "login" | "code" | "password";
+/** email: digita o e-mail | login: já tem senha | sent: link enviado por e-mail */
+type Step = "email" | "login" | "sent";
 
 function LoginForm() {
   const router = useRouter();
@@ -24,22 +24,13 @@ function LoginForm() {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const accessError =
     searchParams.get("erro") === "acesso"
       ? "Este acesso nao pertence ao app MyLivePet."
       : null;
-
-  function resetTo(next: Step) {
-    setError(null);
-    setInfo(null);
-    setStep(next);
-  }
 
   /** Garante que o usuário logado é um tutor (e não staff). Desloga se não for. */
   async function ensureTutorOrSignOut(userId: string | undefined): Promise<boolean> {
@@ -57,6 +48,25 @@ function LoginForm() {
       return false;
     }
     return true;
+  }
+
+  // Envia o link mágico que leva à página de criação de senha.
+  async function sendLink(createUser: boolean) {
+    setLoading(true);
+    setError(null);
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: email.trim().toLowerCase(),
+      options: {
+        shouldCreateUser: createUser,
+        emailRedirectTo: `${window.location.origin}/criar-senha`,
+      },
+    });
+    setLoading(false);
+    if (otpError) {
+      setError("Não foi possível enviar o e-mail. Tente novamente em instantes.");
+      return;
+    }
+    setStep("sent");
   }
 
   // Passo 1: identifica o estado do e-mail e direciona o fluxo.
@@ -80,31 +90,15 @@ function LoginForm() {
     }
     if (status === "existing") {
       setLoading(false);
-      resetTo("login");
+      setError(null);
+      setStep("login");
       return;
     }
-    // first_access → envia código por e-mail e pede confirmação
-    await sendCode(true);
+    // first_access → envia o link para criar a senha
+    await sendLink(true);
   }
 
-  // Envia/reenvia o código OTP. shouldCreateUser=true só no primeiro acesso.
-  async function sendCode(createUser: boolean) {
-    setLoading(true);
-    setError(null);
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
-      options: { shouldCreateUser: createUser },
-    });
-    setLoading(false);
-    if (otpError) {
-      setError("Não foi possível enviar o código. Tente novamente em instantes.");
-      return;
-    }
-    setInfo("Enviamos um código para o seu e-mail.");
-    setStep("code");
-  }
-
-  // Passo 2b: login de quem já tem senha.
+  // Passo 2 (existing): login de quem já tem senha.
   async function onSubmitLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -127,62 +121,10 @@ function LoginForm() {
     router.replace("/");
   }
 
-  // Passo 2a (1/2): confirma o código → cria sessão → vincula o tutor.
-  async function onSubmitCode(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
-      token: code.trim(),
-      type: "email",
-    });
-    if (verifyError) {
-      setLoading(false);
-      setError("Código inválido ou expirado.");
-      return;
-    }
-    // Vincula a ficha de tutor ao usuário recém-autenticado (RPC SECURITY DEFINER).
-    const { error: claimError } = await supabase.rpc("claim_tutor_access");
-    setLoading(false);
-    if (claimError) {
-      setError("Não foi possível ativar o acesso. Procure o petshop.");
-      return;
-    }
-    resetTo("password");
-  }
-
-  // Passo 2a (2/2): tutor define a própria senha.
-  async function onSubmitPassword(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (password.length < 8) {
-      setError("A senha deve ter pelo menos 8 caracteres.");
-      return;
-    }
-    if (password !== confirm) {
-      setError("As senhas não coincidem.");
-      return;
-    }
-    setLoading(true);
-    const { error: updateError } = await supabase.auth.updateUser({
-      password,
-      data: { must_reset_password: false },
-    });
-    setLoading(false);
-    if (updateError) {
-      setError("Não foi possível salvar a senha. Tente novamente.");
-      return;
-    }
-    router.replace("/");
-    router.refresh();
-  }
-
   const headings: Record<Step, { title: string; subtitle: string }> = {
     email: { title: "Bem-vindo", subtitle: "Informe seu e-mail para acessar o app." },
     login: { title: "Bem-vindo de volta", subtitle: "Digite sua senha para entrar." },
-    code: { title: "Confirme seu e-mail", subtitle: "Digite o código que enviamos para você." },
-    password: { title: "Crie sua senha", subtitle: "Defina uma senha para os próximos acessos." },
+    sent: { title: "Verifique seu e-mail", subtitle: "Enviamos um link de acesso para você." },
   };
 
   return (
@@ -240,90 +182,53 @@ function LoginForm() {
             <button
               type="button"
               className="text-gray-neutral underline"
-              onClick={() => resetTo("email")}
+              onClick={() => {
+                setError(null);
+                setStep("email");
+              }}
             >
               Trocar e-mail
             </button>
             <button
               type="button"
               className="text-orange underline"
-              onClick={() => sendCode(false)}
+              onClick={() => sendLink(false)}
               disabled={loading}
             >
-              Entrar com código por e-mail
+              Esqueci a senha (receber link)
             </button>
           </div>
         </form>
       )}
 
-      {step === "code" && (
-        <form onSubmit={onSubmitCode} className="space-y-4">
-          <div>
-            <Label htmlFor="code">Código de verificação</Label>
-            <Input
-              id="code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="000000"
-              required
-            />
-          </div>
-          {info && <p className="text-sm text-gray-neutral">{info}</p>}
+      {step === "sent" && (
+        <div className="space-y-4 text-center">
+          <p className="text-sm text-gray-neutral">
+            Enviamos um link para <span className="font-medium text-graphite">{email}</span>. Abra o
+            e-mail e clique no link para criar sua senha e entrar.
+          </p>
           {error && <p className="text-sm text-danger">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Confirmando..." : "Confirmar código"}
-          </Button>
-          <div className="flex items-center justify-between text-sm">
+          <button
+            type="button"
+            className="text-sm text-orange underline"
+            onClick={() => sendLink(true)}
+            disabled={loading}
+          >
+            {loading ? "Reenviando..." : "Reenviar link"}
+          </button>
+          <div>
             <button
               type="button"
-              className="text-gray-neutral underline"
-              onClick={() => resetTo("email")}
+              className="text-sm text-gray-neutral underline"
+              onClick={() => {
+                setError(null);
+                setStep("email");
+              }}
             >
               Trocar e-mail
             </button>
-            <button
-              type="button"
-              className="text-orange underline"
-              onClick={() => sendCode(false)}
-              disabled={loading}
-            >
-              Reenviar código
-            </button>
           </div>
-        </form>
-      )}
-
-      {step === "password" && (
-        <form onSubmit={onSubmitPassword} className="space-y-4">
-          <div>
-            <Label htmlFor="new-password">Nova senha</Label>
-            <Input
-              id="new-password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="confirm">Confirmar senha</Label>
-            <Input
-              id="confirm"
-              type="password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              required
-            />
-          </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Salvando..." : "Salvar senha e entrar"}
-          </Button>
-        </form>
+        </div>
       )}
     </main>
   );
