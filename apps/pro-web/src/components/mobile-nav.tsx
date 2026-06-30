@@ -34,22 +34,8 @@ export function MobileNav({
 
   return (
     <>
-      {/* Barra superior (apenas mobile) */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-graphite/10 bg-surface px-4 py-3 md:hidden">
-        <div className="min-w-0">
-          <img
-            src="/brand/logopet.svg"
-            alt="Pet Live Pro"
-            className="h-12 max-w-[160px] object-contain"
-          />
-          <div className="flex items-center gap-1.5">
-            {logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="" className="h-5 w-5 shrink-0 rounded object-cover" />
-            )}
-            <p className="truncate text-[11px] text-gray-neutral">{tenantName}</p>
-          </div>
-        </div>
+      {/* Barra superior (apenas mobile): só o botão do menu, à esquerda. */}
+      <header className="sticky top-0 z-30 flex items-center border-b border-graphite/10 bg-surface px-4 py-3 md:hidden">
         <button
           type="button"
           aria-label="Abrir menu"
