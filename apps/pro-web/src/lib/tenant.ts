@@ -5,6 +5,7 @@ export type ActiveTenant = {
   tenantId: string;
   tenantName: string;
   role: StaffRole;
+  logoUrl: string | null;
 };
 
 /**
@@ -16,12 +17,20 @@ export async function getActiveTenant(
 ): Promise<ActiveTenant | null> {
   const { data, error } = await supabase
     .from("membership")
-    .select("role, tenant:tenant_id (id, name)")
+    .select("role, tenant:tenant_id (id, name, settings)")
     .limit(1)
     .maybeSingle();
 
   if (error || !data || !data.tenant) return null;
 
-  const tenant = data.tenant as unknown as { id: string; name: string };
-  return { tenantId: tenant.id, tenantName: tenant.name, role: data.role };
+  const tenant = data.tenant as unknown as {
+    id: string;
+    name: string;
+    settings: { logo_path?: string | null } | null;
+  };
+  const logoUrl =
+    tenant.settings && typeof tenant.settings.logo_path === "string"
+      ? tenant.settings.logo_path
+      : null;
+  return { tenantId: tenant.id, tenantName: tenant.name, role: data.role, logoUrl };
 }

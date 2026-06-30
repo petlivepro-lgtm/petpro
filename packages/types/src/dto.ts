@@ -108,6 +108,15 @@ export const serviceTypeInput = z.object({
 });
 export type ServiceTypeInput = z.infer<typeof serviceTypeInput>;
 
+// Configurações do petshop (nome + dados de contato; logo sobe à parte)
+export const tenantSettingsInput = z.object({
+  name: z.string().min(2, "Informe o nome do petshop"),
+  phone: z.string().optional(),
+  email: z.string().email("E-mail inválido").optional().or(z.literal("")),
+  address: z.string().optional(),
+});
+export type TenantSettingsInput = z.infer<typeof tenantSettingsInput>;
+
 // Produto do catálogo (cadastro/edição no CRM)
 export const productInput = z.object({
   name: z.string().min(1, "Informe o nome"),

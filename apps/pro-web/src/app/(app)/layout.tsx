@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LogOut, Building2 } from "lucide-react";
+import { LogOut, Building2, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { Nav } from "@/components/nav";
@@ -15,7 +16,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect("/login");
 
   const tenant = await getActiveTenant(supabase);
-  const email = user.email ?? "Usuário";
+  const fullName = (user.user_metadata?.full_name as string | undefined)?.trim();
+  const userName = fullName || user.email || "Usuário";
 
   return (
     <div className="flex min-h-screen bg-surface-muted">
@@ -27,18 +29,35 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               alt="Pet Live Pro"
               className="h-20 w-auto"
             />
-            <p className="mt-0.5 text-xs text-gray-neutral">{tenant?.tenantName ?? "—"}</p>
+            <div className="mt-4 flex items-center gap-2">
+              {tenant?.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={tenant.logoUrl}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-lg object-cover"
+                />
+              )}
+              <p className="truncate text-sm font-medium text-graphite">{tenant?.tenantName ?? "—"}</p>
+            </div>
           </div>
           <Nav />
         </div>
         <div className="border-t border-graphite/10 pt-3">
           <div className="mb-2 flex items-center gap-3 px-2">
-            <Avatar name={email} size="sm" />
+            <Avatar name={userName} size="sm" />
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-graphite">{email}</p>
+              <p className="truncate text-sm font-medium text-graphite">{userName}</p>
               {tenant && <p className="text-xs capitalize text-gray-neutral">{tenant.role.toLowerCase()}</p>}
             </div>
           </div>
+          <Link
+            href="/configuracoes"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-graphite/70 transition-colors hover:bg-surface-muted"
+          >
+            <Settings className="h-4 w-4" />
+            Configurações
+          </Link>
           <form action={signOut}>
             <Button
               variant="ghost"
@@ -53,7 +72,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </aside>
 
       <div className="flex min-h-screen flex-1 flex-col md:ml-64">
-        <MobileNav tenantName={tenant?.tenantName ?? "—"} email={email} role={tenant?.role} />
+        <MobileNav
+          tenantName={tenant?.tenantName ?? "—"}
+          logoUrl={tenant?.logoUrl ?? null}
+          userName={userName}
+          role={tenant?.role}
+        />
         <main className="flex-1 p-5 md:p-8">
           <div className="mx-auto max-w-6xl">
             {tenant ? (
