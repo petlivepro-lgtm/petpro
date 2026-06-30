@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
 import { BottomNav } from "@/components/bottom-nav";
@@ -39,6 +41,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             />
             {ctx && <p className="truncate text-xs text-gray-neutral">{ctx.tenantName}</p>}
           </div>
+          <Link
+            href="/configuracoes"
+            aria-label="Configurações"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-graphite hover:bg-surface-muted"
+          >
+            <Settings className="h-5 w-5" />
+          </Link>
         </header>
 
         <main className="px-5 pb-24 pt-4 lg:px-8 lg:pb-10 lg:pt-8">

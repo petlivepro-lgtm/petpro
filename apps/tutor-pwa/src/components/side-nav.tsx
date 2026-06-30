@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 import { cn, Button } from "@mylivepet/ui";
 import { navItems } from "./nav-items";
 import { signOut } from "@/app/(app)/actions";
@@ -36,11 +36,24 @@ export function SideNav({ tenantName }: { tenantName: string }) {
           })}
         </nav>
       </div>
-      <form action={signOut}>
-        <Button variant="ghost" className="w-full justify-start" type="submit">
-          <LogOut className="h-4 w-4" /> Sair
-        </Button>
-      </form>
+      <div>
+        <Link
+          href="/configuracoes"
+          className={cn(
+            "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+            pathname.startsWith("/configuracoes")
+              ? "bg-orange/10 text-orange"
+              : "text-graphite/70 hover:bg-surface-muted",
+          )}
+        >
+          <Settings className="h-[18px] w-[18px]" /> Configurações
+        </Link>
+        <form action={signOut}>
+          <Button variant="ghost" className="w-full justify-start" type="submit">
+            <LogOut className="h-4 w-4" /> Sair
+          </Button>
+        </form>
+      </div>
     </aside>
   );
 }
