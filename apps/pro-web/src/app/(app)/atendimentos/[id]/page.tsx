@@ -40,14 +40,14 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
   const { data: appt } = await supabase
     .from("appointment")
     .select(
-      "id, status, scheduled_at, started_at, finished_at, notes, photos, pet:pet_id(id, name), tutor:tutor_id(full_name), service_type(name)",
+      "id, status, scheduled_at, started_at, finished_at, notes, photos, pet:pet_id(id, name, photo_path), tutor:tutor_id(full_name), service_type(name)",
     )
     .eq("id", id)
     .maybeSingle();
 
   if (!appt) notFound();
 
-  const pet = appt.pet as unknown as { id: string; name: string } | null;
+  const pet = appt.pet as unknown as { id: string; name: string; photo_path: string | null } | null;
   const tutor = appt.tutor as unknown as { full_name: string } | null;
   const service = appt.service_type as unknown as { name: string } | null;
   const status = appt.status as AppointmentStatus;
@@ -174,7 +174,7 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
         <div className="space-y-4">
           <Card>
             <div className="mb-3 flex items-center gap-3">
-              <Avatar name={pet?.name ?? "Pet"} size="sm" />
+              <Avatar name={pet?.name ?? "Pet"} src={pet?.photo_path} size="sm" />
               <div className="min-w-0">
                 {pet ? (
                   <Link href={`/pets/${pet.id}`} className="font-medium text-graphite hover:text-orange">

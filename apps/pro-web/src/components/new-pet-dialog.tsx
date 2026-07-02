@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { Dialog, Input, Label, Button, Select, DatePicker } from "@mylivepet/ui";
+import { Dialog, FileInput, Input, Label, Button, Select, DatePicker } from "@mylivepet/ui";
 import { SPECIES_OPTIONS } from "@mylivepet/types";
 import { createPet, type FormState } from "@/app/(app)/tutores/actions";
 
@@ -67,6 +67,10 @@ export function NewPetDialog({ tutorId, tutorName }: { tutorId: string; tutorNam
           <div>
             <Label htmlFor="birth_date">Nascimento</Label>
             <DatePicker id="birth_date" name="birth_date" mode="date" />
+          </div>
+          <div>
+            <Label htmlFor="photo">Foto</Label>
+            <FileInput id="photo" name="photo" />
           </div>
 
           {state.error && <p className="text-sm text-danger">{state.error}</p>}

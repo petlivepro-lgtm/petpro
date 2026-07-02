@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveTenant } from "@/lib/tenant";
+import { uploadPetPhoto } from "@/lib/pet-photo";
 import { tutorInput, petInput } from "@mylivepet/types";
 
 export type FormState = {
@@ -61,6 +62,11 @@ export async function createTutor(_prev: FormState, formData: FormData): Promise
       birth_date: str(formData.get("pet_birth_date")),
     });
     if (petParsed.success) {
+      let photoPath: string | null = null;
+      const photo = formData.get("pet_photo");
+      if (photo instanceof File && photo.size > 0) {
+        photoPath = await uploadPetPhoto(tenant.tenantId, photo);
+      }
       await supabase.from("pet").insert({
         tenant_id: tenant.tenantId,
         tutor_id: tutor.id,
@@ -69,6 +75,7 @@ export async function createTutor(_prev: FormState, formData: FormData): Promise
         breed: petParsed.data.breed ?? null,
         size: petParsed.data.size ?? null,
         birth_date: petParsed.data.birth_date || null,
+        photo_path: photoPath,
       });
     }
   }
@@ -95,6 +102,13 @@ export async function createPet(_prev: FormState, formData: FormData): Promise<F
   const tenant = await getActiveTenant(supabase);
   if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
 
+  let photoPath: string | null = null;
+  const photo = formData.get("photo");
+  if (photo instanceof File && photo.size > 0) {
+    photoPath = await uploadPetPhoto(tenant.tenantId, photo);
+    if (!photoPath) return { ok: false, error: "Falha ao enviar a foto" };
+  }
+
   const { error } = await supabase.from("pet").insert({
     tenant_id: tenant.tenantId,
     tutor_id: parsed.data.tutor_id,
@@ -103,6 +117,7 @@ export async function createPet(_prev: FormState, formData: FormData): Promise<F
     breed: parsed.data.breed ?? null,
     size: parsed.data.size ?? null,
     birth_date: parsed.data.birth_date || null,
+    photo_path: photoPath,
   });
   if (error) return { ok: false, error: error.message };
 

@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
-import { Button, Dialog, Input, Label, Select, DatePicker } from "@mylivepet/ui";
+import { Button, Dialog, FileInput, Input, Label, Select, DatePicker } from "@mylivepet/ui";
 import { SPECIES_OPTIONS } from "@mylivepet/types";
 import { createPet, updatePet, type FormState } from "@/app/(app)/meus-pets/actions";
 
@@ -15,6 +15,7 @@ export type PetRow = {
   size: string | null;
   birth_date: string | null;
   notes: string | null;
+  photo_path: string | null;
 };
 
 export function PetDialog({ pet }: { pet?: PetRow }) {
@@ -58,6 +59,11 @@ export function PetDialog({ pet }: { pet?: PetRow }) {
       >
         <form action={formAction} className="space-y-4">
           {isEdit && <input type="hidden" name="id" value={pet!.id} />}
+
+          <div>
+            <Label htmlFor="photo">Foto</Label>
+            <FileInput id="photo" name="photo" previewSrc={pet?.photo_path} />
+          </div>
 
           <div>
             <Label htmlFor="name">Nome *</Label>

@@ -33,6 +33,7 @@ import {
   type ReservationStatus,
 } from "@mylivepet/types";
 import { PetTabs } from "@/components/pet-tabs";
+import { PetPhotoDialog } from "@/components/pet-photo-dialog";
 import { AppointmentStatusBadge } from "@/components/status-badge";
 import { createStaffAppointment } from "./actions";
 
@@ -187,7 +188,10 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
       {/* Cabeçalho da ficha */}
       <Card className="mb-6">
         <div className="flex flex-wrap items-start gap-4">
-          <Avatar name={pet.name} src={pet.photo_path} size="xl" />
+          <div className="flex flex-col items-center gap-1.5">
+            <Avatar name={pet.name} src={pet.photo_path} size="xl" />
+            <PetPhotoDialog petId={pet.id} petName={pet.name} photoPath={pet.photo_path} />
+          </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-heading text-2xl font-bold text-graphite">{pet.name}</h1>

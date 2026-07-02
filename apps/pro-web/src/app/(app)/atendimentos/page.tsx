@@ -14,7 +14,7 @@ export default async function AtendimentosPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("appointment")
-    .select("id, status, origin, scheduled_at, pet(id, name), service_type(name)")
+    .select("id, status, origin, scheduled_at, pet(id, name, photo_path), service_type(name)")
     .order("scheduled_at", { ascending: false, nullsFirst: false })
     .limit(50);
 
@@ -31,11 +31,11 @@ export default async function AtendimentosPage() {
         {/* Mobile: cards */}
         <div className="space-y-3 md:hidden">
           {rows.map((a) => {
-            const pet = a.pet as unknown as { id: string; name: string } | null;
+            const pet = a.pet as unknown as { id: string; name: string; photo_path: string | null } | null;
             const service = a.service_type as unknown as { name: string } | null;
             const inner = (
               <Card className="flex items-center gap-3 p-4">
-                <Avatar name={pet?.name ?? "Pet"} size="sm" />
+                <Avatar name={pet?.name ?? "Pet"} src={pet?.photo_path} size="sm" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-graphite">{pet?.name ?? "—"}</p>
                   <p className="truncate text-xs text-gray-neutral">
@@ -69,7 +69,7 @@ export default async function AtendimentosPage() {
             </thead>
             <tbody>
               {rows.map((a) => {
-                const pet = a.pet as unknown as { id: string; name: string } | null;
+                const pet = a.pet as unknown as { id: string; name: string; photo_path: string | null } | null;
                 const service = a.service_type as unknown as { name: string } | null;
                 return (
                   <tr key={a.id} className="border-t border-graphite/5 transition-colors hover:bg-surface-muted/60">

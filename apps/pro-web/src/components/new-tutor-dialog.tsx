@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { Button, Dialog, Input, Label, Select, PhoneInput, DatePicker } from "@mylivepet/ui";
+import { Button, Dialog, FileInput, Input, Label, Select, PhoneInput, DatePicker } from "@mylivepet/ui";
 import { SPECIES_OPTIONS } from "@mylivepet/types";
 import { createTutor, type FormState } from "@/app/(app)/tutores/actions";
 
@@ -107,6 +107,10 @@ export function NewTutorDialog({
               <div>
                 <Label htmlFor="pet_birth_date">Nascimento</Label>
                 <DatePicker id="pet_birth_date" name="pet_birth_date" mode="date" />
+              </div>
+              <div>
+                <Label htmlFor="pet_photo">Foto</Label>
+                <FileInput id="pet_photo" name="pet_photo" />
               </div>
             </div>
           </div>

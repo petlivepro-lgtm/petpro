@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
-import { Card } from "@mylivepet/ui";
+import { Avatar, Card } from "@mylivepet/ui";
 import { PetDialog, type PetRow } from "@/components/pet-dialog";
 
 const SIZE_LABEL: Record<string, string> = {
@@ -16,7 +16,7 @@ export default async function MeusPetsPage() {
 
   const { data: pets } = await supabase
     .from("pet")
-    .select("id, name, species, breed, size, birth_date, notes")
+    .select("id, name, species, breed, size, birth_date, notes, photo_path")
     .eq("tutor_id", ctx.tutorId)
     .order("name");
 
@@ -38,7 +38,7 @@ export default async function MeusPetsPage() {
         {list.map((p) => (
           <Card key={p.id} className="flex items-start justify-between gap-3 p-4">
             <div className="min-w-0">
-              <div className="text-2xl">🐾</div>
+              <Avatar name={p.name} src={p.photo_path} />
               <p className="mt-1 font-heading font-semibold text-graphite">{p.name}</p>
               <p className="text-xs text-gray-neutral">
                 {[p.species, p.breed, p.size ? SIZE_LABEL[p.size] : null]
