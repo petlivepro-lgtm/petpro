@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { APPOINTMENT_STATUSES, FEEDBACK_FIELD_TYPES, PRODUCT_CATEGORIES } from "./enums";
+import {
+  APPOINTMENT_STATUSES,
+  FEEDBACK_FIELD_TYPES,
+  FINANCE_ENTRY_TYPES,
+  PRODUCT_CATEGORIES,
+  STOCK_MOVEMENT_TYPES,
+} from "./enums";
 
 // DTOs de validação compartilhados entre os apps (formulários, server actions).
 
@@ -167,6 +173,26 @@ export const productInput = z.object({
   category: z.enum(PRODUCT_CATEGORIES, { message: "Selecione uma categoria" }),
   price_cents: z.number().int().min(0),
   stock: z.number().int().min(0),
+  min_stock: z.number().int().min(0).default(0),
   active: z.boolean().optional(),
 });
 export type ProductInput = z.infer<typeof productInput>;
+
+// Lançamento financeiro manual (receita ou despesa)
+export const financeEntryInput = z.object({
+  type: z.enum(FINANCE_ENTRY_TYPES),
+  description: z.string().min(2, "Descreva o lançamento"),
+  category: z.string().optional(),
+  amount_cents: z.number().int().positive("Informe o valor"),
+  occurred_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+});
+export type FinanceEntryInput = z.infer<typeof financeEntryInput>;
+
+// Movimentação manual de estoque (entrada/saída)
+export const stockMovementInput = z.object({
+  product_id: z.string().uuid("Selecione um produto"),
+  type: z.enum(STOCK_MOVEMENT_TYPES),
+  quantity: z.number().int().positive("Quantidade inválida"),
+  note: z.string().optional(),
+});
+export type StockMovementInput = z.infer<typeof stockMovementInput>;

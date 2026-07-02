@@ -18,6 +18,7 @@ export type ProductRow = {
   category: string | null;
   price_cents: number;
   stock: number;
+  min_stock: number;
   active: boolean;
   photo_path: string | null;
   photos: string[];
@@ -112,6 +113,19 @@ export function ProductDialog({ product }: { product?: ProductRow }) {
                 placeholder="0"
               />
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="min_stock">Estoque mínimo (alerta)</Label>
+            <Input
+              id="min_stock"
+              name="min_stock"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={product ? String(product.min_stock) : "0"}
+              placeholder="0"
+            />
           </div>
 
           <div>

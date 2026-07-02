@@ -79,6 +79,7 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
     category: str(formData.get("category")),
     price_cents: toCents(formData.get("price")),
     stock: toInt(formData.get("stock")),
+    min_stock: toInt(formData.get("min_stock")),
     active: formData.get("active") === "on",
   });
   if (!parsed.success) {
@@ -98,6 +99,7 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
       category: parsed.data.category,
       price_cents: parsed.data.price_cents,
       stock: parsed.data.stock,
+      min_stock: parsed.data.min_stock,
       active: parsed.data.active ?? true,
     })
     .select("id")
@@ -126,6 +128,7 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
     category: str(formData.get("category")),
     price_cents: toCents(formData.get("price")),
     stock: toInt(formData.get("stock")),
+    min_stock: toInt(formData.get("min_stock")),
     active: formData.get("active") === "on",
   });
   if (!parsed.success) {
@@ -143,6 +146,7 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
     category: parsed.data.category,
     price_cents: parsed.data.price_cents,
     stock: parsed.data.stock,
+    min_stock: parsed.data.min_stock,
     active: parsed.data.active ?? true,
     photos,
     photo_path: photos[0] ?? null,

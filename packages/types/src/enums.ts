@@ -65,6 +65,46 @@ export const PRODUCT_CATEGORY_LABEL: Record<ProductCategory, string> = {
   outro: "Outro",
 };
 
+// Lançamentos financeiros (supabase/migrations/0012_finance_stock.sql)
+export const FINANCE_ENTRY_TYPES = ["INCOME", "EXPENSE"] as const;
+export type FinanceEntryType = (typeof FINANCE_ENTRY_TYPES)[number];
+
+export const FINANCE_ENTRY_TYPE_LABEL: Record<FinanceEntryType, string> = {
+  INCOME: "Receita",
+  EXPENSE: "Despesa",
+};
+
+export const FINANCE_SOURCES = ["MANUAL", "APPOINTMENT", "RESERVATION"] as const;
+export type FinanceSource = (typeof FINANCE_SOURCES)[number];
+
+// Categorias de lançamento (campo de texto livre no banco; valores predefinidos para a UI).
+export const FINANCE_CATEGORIES = [
+  "servico",
+  "produto",
+  "salario",
+  "aluguel",
+  "insumo",
+  "outro",
+] as const;
+export type FinanceCategory = (typeof FINANCE_CATEGORIES)[number];
+
+export const FINANCE_CATEGORY_LABEL: Record<FinanceCategory, string> = {
+  servico: "Serviço",
+  produto: "Produto",
+  salario: "Salário",
+  aluguel: "Aluguel",
+  insumo: "Insumo",
+  outro: "Outro",
+};
+
+export const STOCK_MOVEMENT_TYPES = ["IN", "OUT"] as const;
+export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number];
+
+export const STOCK_MOVEMENT_TYPE_LABEL: Record<StockMovementType, string> = {
+  IN: "Entrada",
+  OUT: "Saída",
+};
+
 // Rótulos em pt-BR para UI
 export const APPOINTMENT_STATUS_LABEL: Record<AppointmentStatus, string> = {
   REQUESTED: "Solicitado",

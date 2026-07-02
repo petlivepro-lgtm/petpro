@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, CalendarClock, ClipboardList, Users, Package, Scissors } from "lucide-react";
+import { LayoutDashboard, CalendarClock, ClipboardList, Users, Package, Scissors, Wallet } from "lucide-react";
 import { cn } from "@mylivepet/ui";
 
 const items = [
@@ -12,6 +12,7 @@ const items = [
   { href: "/tutores", label: "Tutores & Pets", icon: Users },
   { href: "/servicos", label: "Serviços", icon: Scissors },
   { href: "/produtos", label: "Produtos", icon: Package },
+  { href: "/financeiro", label: "Financeiro", icon: Wallet },
 ];
 
 export function Nav({ onNavigate }: { onNavigate?: () => void }) {

@@ -112,7 +112,7 @@ export async function createReservation(formData: FormData) {
   const { error } = await supabase.rpc("reserve_products", {
     p_tenant_id: ctx.tenantId,
     p_items: parsed.data.items,
-    p_note: parsed.data.note ?? null,
+    p_note: parsed.data.note ?? undefined,
   });
   if (error) redirect("/produtos?erro=estoque");
 

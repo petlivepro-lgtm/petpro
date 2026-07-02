@@ -10,7 +10,7 @@ import { ProductDialog, type ProductRow } from "@/components/product-dialog";
 import { DeleteProductDialog } from "@/components/delete-product-dialog";
 
 const PRODUCT_SELECT =
-  "id, name, description, category, price_cents, stock, active, photo_path, photos";
+  "id, name, description, category, price_cents, stock, min_stock, active, photo_path, photos";
 
 export function ProdutosGrid({ initialProducts }: { initialProducts: ProductRow[] }) {
   const fetchProducts = useCallback(async (): Promise<ProductRow[]> => {
@@ -40,8 +40,20 @@ export function ProdutosGrid({ initialProducts }: { initialProducts: ProductRow[
           </div>
           <div className="flex items-start justify-between gap-2">
             <p className="font-heading font-semibold text-graphite">{p.name}</p>
-            <StatusChip tone={p.stock > 0 ? "success" : "danger"}>
-              {p.stock > 0 ? `${p.stock} un.` : "Esgotado"}
+            <StatusChip
+              tone={
+                p.stock <= 0
+                  ? "danger"
+                  : p.min_stock > 0 && p.stock <= p.min_stock
+                    ? "warning"
+                    : "success"
+              }
+            >
+              {p.stock <= 0
+                ? "Esgotado"
+                : p.min_stock > 0 && p.stock <= p.min_stock
+                  ? `${p.stock} un. · baixo`
+                  : `${p.stock} un.`}
             </StatusChip>
           </div>
           {p.category && (
