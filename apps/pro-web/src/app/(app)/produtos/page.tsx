@@ -8,7 +8,7 @@ export default async function ProdutosPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("product")
-    .select("id, name, description, category, price_cents, stock, min_stock, active, photo_path, photos")
+    .select("id, name, description, category, price_cents, stock, min_stock, active, for_sale, photo_path, photos")
     .order("name");
 
   const list = (data ?? []) as ProductRow[];
@@ -17,7 +17,7 @@ export default async function ProdutosPage() {
     <div>
       <PageHeader
         title="Produtos"
-        subtitle="Catálogo disponível para reserva no MyLivePet (pagamento na loja)."
+        subtitle="Itens à venda no MyLivePet e de uso interno do petshop (estoque)."
         actions={<ProductDialog />}
       />
 

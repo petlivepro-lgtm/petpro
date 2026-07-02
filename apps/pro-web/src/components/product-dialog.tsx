@@ -20,6 +20,7 @@ export type ProductRow = {
   stock: number;
   min_stock: number;
   active: boolean;
+  for_sale: boolean;
   photo_path: string | null;
   photos: string[];
 };
@@ -28,6 +29,7 @@ export function ProductDialog({ product }: { product?: ProductRow }) {
   const router = useRouter();
   const isEdit = !!product;
   const [open, setOpen] = useState(false);
+  const [forSale, setForSale] = useState(product?.for_sale ?? true);
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     isEdit ? updateProduct : createProduct,
     { ok: false },
@@ -61,7 +63,7 @@ export function ProductDialog({ product }: { product?: ProductRow }) {
         open={open}
         onOpenChange={setOpen}
         title={isEdit ? "Editar produto" : "Novo produto"}
-        description="Disponível para reserva no MyLivePet (pagamento na loja)."
+        description="À venda no MyLivePet ou de uso interno do petshop (estoque)."
       >
         <form action={formAction} className="space-y-4">
           {isEdit && <input type="hidden" name="id" value={product!.id} />}
@@ -97,8 +99,8 @@ export function ProductDialog({ product }: { product?: ProductRow }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label htmlFor="price">Preço *</Label>
-              <CurrencyInput id="price" name="price" required defaultCents={product?.price_cents} />
+              <Label htmlFor="price">Preço {forSale ? "*" : "(opcional)"}</Label>
+              <CurrencyInput id="price" name="price" required={forSale} defaultCents={product?.price_cents} />
             </div>
             <div>
               <Label htmlFor="stock">Estoque (un.) *</Label>
@@ -133,15 +135,34 @@ export function ProductDialog({ product }: { product?: ProductRow }) {
             <PhotoGalleryInput name="photos" defaultUrls={product?.photos ?? []} max={5} />
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-graphite">
-            <input
-              type="checkbox"
-              name="active"
-              defaultChecked={product ? product.active : true}
-              className="h-4 w-4 accent-orange"
-            />
-            Ativo (visível no app)
-          </label>
+          <div className="space-y-3 rounded-xl border border-graphite/10 p-3">
+            <label className="flex items-start gap-2 text-sm text-graphite">
+              <input
+                type="checkbox"
+                name="for_sale"
+                checked={forSale}
+                onChange={(e) => setForSale(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-orange"
+              />
+              <span>
+                Disponível para venda no app dos tutores
+                <span className="mt-0.5 block text-xs text-gray-neutral">
+                  Desmarque para itens de uso interno (limpeza, shampoo próprio, insumos): entram
+                  só no controle de estoque.
+                </span>
+              </span>
+            </label>
+
+            <label className="flex items-center gap-2 text-sm text-graphite">
+              <input
+                type="checkbox"
+                name="active"
+                defaultChecked={product ? product.active : true}
+                className="h-4 w-4 accent-orange"
+              />
+              Ativo
+            </label>
+          </div>
 
           {state.error && <p className="text-sm text-danger">{state.error}</p>}
 

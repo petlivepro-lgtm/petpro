@@ -23,6 +23,7 @@ export default async function ProdutosPage({
     .select("id, name, description, category, price_cents, stock, photo_path, photos")
     .eq("tenant_id", ctx.tenantId)
     .eq("active", true)
+    .eq("for_sale", true)
     .order("name");
 
   const { data: reservations } = await supabase

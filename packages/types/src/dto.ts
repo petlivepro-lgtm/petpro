@@ -175,6 +175,8 @@ export const productInput = z.object({
   stock: z.number().int().min(0),
   min_stock: z.number().int().min(0).default(0),
   active: z.boolean().optional(),
+  // false = item de uso interno do petshop (não aparece no app dos tutores)
+  for_sale: z.boolean().optional(),
 });
 export type ProductInput = z.infer<typeof productInput>;
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Package } from "lucide-react";
-import { Card, StatusChip } from "@mylivepet/ui";
+import { Card, StatusChip, Tabs, type TabItem } from "@mylivepet/ui";
 import { formatBRL, PRODUCT_CATEGORY_LABEL, type ProductCategory } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeList } from "@/lib/use-realtime-list";
@@ -10,7 +10,7 @@ import { ProductDialog, type ProductRow } from "@/components/product-dialog";
 import { DeleteProductDialog } from "@/components/delete-product-dialog";
 
 const PRODUCT_SELECT =
-  "id, name, description, category, price_cents, stock, min_stock, active, photo_path, photos";
+  "id, name, description, category, price_cents, stock, min_stock, active, for_sale, photo_path, photos";
 
 export function ProdutosGrid({ initialProducts }: { initialProducts: ProductRow[] }) {
   const fetchProducts = useCallback(async (): Promise<ProductRow[]> => {
@@ -26,9 +26,31 @@ export function ProdutosGrid({ initialProducts }: { initialProducts: ProductRow[
     "produtos-estoque",
   );
 
+  const [filter, setFilter] = useState<"venda" | "interno" | "todos">("venda");
+  const tabs: TabItem[] = useMemo(() => {
+    const venda = list.filter((p) => p.for_sale).length;
+    const interno = list.length - venda;
+    return [
+      { id: "venda", label: `À venda (${venda})` },
+      { id: "interno", label: `Uso interno (${interno})` },
+      { id: "todos", label: `Todos (${list.length})` },
+    ];
+  }, [list]);
+
+  const visible = list.filter((p) =>
+    filter === "todos" ? true : filter === "venda" ? p.for_sale : !p.for_sale,
+  );
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {list.map((p) => (
+    <div>
+      <Tabs
+        tabs={tabs}
+        active={filter}
+        onChange={(id) => setFilter(id as typeof filter)}
+        className="mb-4"
+      />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {visible.map((p) => (
         <Card key={p.id} className="flex flex-col">
           <div className="mb-3 flex h-28 items-center justify-center overflow-hidden rounded-xl bg-surface-muted text-gray-neutral/50">
             {p.photo_path ? (
@@ -56,16 +78,19 @@ export function ProdutosGrid({ initialProducts }: { initialProducts: ProductRow[
                   : `${p.stock} un.`}
             </StatusChip>
           </div>
-          {p.category && (
-            <p className="mt-1 text-xs text-gray-neutral">
-              {PRODUCT_CATEGORY_LABEL[p.category as ProductCategory] ?? p.category}
-            </p>
-          )}
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {p.category && (
+              <span className="text-xs text-gray-neutral">
+                {PRODUCT_CATEGORY_LABEL[p.category as ProductCategory] ?? p.category}
+              </span>
+            )}
+            {!p.for_sale && <StatusChip tone="info">Uso interno</StatusChip>}
+          </div>
           <p className="mt-2 font-heading text-xl font-bold text-graphite">
-            {formatBRL(p.price_cents)}
+            {p.for_sale ? formatBRL(p.price_cents) : "—"}
           </p>
           <div className="mt-3 flex items-center justify-between border-t border-graphite/5 pt-3">
-            {!p.active && <span className="text-xs text-gray-neutral">Inativo (oculto no app)</span>}
+            {!p.active && <span className="text-xs text-gray-neutral">Inativo</span>}
             <div className="ml-auto flex items-center gap-1">
               <ProductDialog product={p} />
               <DeleteProductDialog productId={p.id} productName={p.name} />
@@ -73,6 +98,7 @@ export function ProdutosGrid({ initialProducts }: { initialProducts: ProductRow[
           </div>
         </Card>
       ))}
+      </div>
     </div>
   );
 }

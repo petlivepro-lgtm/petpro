@@ -81,6 +81,7 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
     stock: toInt(formData.get("stock")),
     min_stock: toInt(formData.get("min_stock")),
     active: formData.get("active") === "on",
+    for_sale: formData.get("for_sale") === "on",
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
@@ -101,6 +102,7 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
       stock: parsed.data.stock,
       min_stock: parsed.data.min_stock,
       active: parsed.data.active ?? true,
+      for_sale: parsed.data.for_sale ?? true,
     })
     .select("id")
     .single();
@@ -130,6 +132,7 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
     stock: toInt(formData.get("stock")),
     min_stock: toInt(formData.get("min_stock")),
     active: formData.get("active") === "on",
+    for_sale: formData.get("for_sale") === "on",
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
@@ -148,6 +151,7 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
     stock: parsed.data.stock,
     min_stock: parsed.data.min_stock,
     active: parsed.data.active ?? true,
+    for_sale: parsed.data.for_sale ?? true,
     photos,
     photo_path: photos[0] ?? null,
   };

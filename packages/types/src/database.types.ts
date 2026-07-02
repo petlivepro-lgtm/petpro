@@ -518,6 +518,7 @@ export type Database = {
           category: string | null
           created_at: string
           description: string | null
+          for_sale: boolean
           id: string
           min_stock: number
           name: string
@@ -532,6 +533,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           description?: string | null
+          for_sale?: boolean
           id?: string
           min_stock?: number
           name: string
@@ -546,6 +548,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           description?: string | null
+          for_sale?: boolean
           id?: string
           min_stock?: number
           name?: string

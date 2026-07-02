@@ -45,6 +45,7 @@ export function ProdutosView({
       .select(PRODUCT_SELECT)
       .eq("tenant_id", tenantId)
       .eq("active", true)
+      .eq("for_sale", true)
       .order("name");
     return (data ?? []) as Product[];
   }, [tenantId]);

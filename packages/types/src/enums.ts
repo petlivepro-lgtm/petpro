@@ -51,6 +51,8 @@ export const PRODUCT_CATEGORIES = [
   "higiene",
   "medicamento",
   "acessorio",
+  "limpeza",
+  "insumo",
   "outro",
 ] as const;
 export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
@@ -62,6 +64,8 @@ export const PRODUCT_CATEGORY_LABEL: Record<ProductCategory, string> = {
   higiene: "Higiene",
   medicamento: "Medicamento",
   acessorio: "Acessório",
+  limpeza: "Limpeza",
+  insumo: "Insumo",
   outro: "Outro",
 };
 
