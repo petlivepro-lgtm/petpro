@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus, X } from "lucide-react";
-import { Button, CurrencyInput, Dialog, Input, Label } from "@mylivepet/ui";
+import { Button, Checkbox, CurrencyInput, Dialog, Input, Label } from "@mylivepet/ui";
 import {
   createServiceType,
   updateServiceType,
@@ -103,15 +103,11 @@ export function ServiceDialog({ service }: { service?: ServiceRow }) {
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-graphite">
-            <input
-              type="checkbox"
-              name="active"
-              defaultChecked={service ? service.active : true}
-              className="h-4 w-4 accent-orange"
-            />
-            Ativo (visível no app)
-          </label>
+          <Checkbox
+            name="active"
+            defaultChecked={service ? service.active : true}
+            label="Ativo (visível no app)"
+          />
 
           <div>
             <Label>Passo a passo do atendimento</Label>

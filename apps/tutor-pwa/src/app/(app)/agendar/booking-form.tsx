@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, Clock, ChevronDown, X } from "lucide-react";
-import { Button, Card, Label, Select, DatePicker } from "@mylivepet/ui";
+import { Button, Card, Label, Select, DatePicker, Textarea } from "@mylivepet/ui";
 import { formatBRL } from "@mylivepet/types";
 import { requestBooking } from "../actions";
 
@@ -57,11 +57,10 @@ export function BookingForm({ pets, services }: { pets: Pet[]; services: Service
 
         <div>
           <Label htmlFor="notes">Observações (opcional)</Label>
-          <textarea
+          <Textarea
             id="notes"
             name="notes"
             rows={3}
-            className="w-full rounded-xl border border-graphite/15 bg-surface p-3 text-sm"
             placeholder="Ex.: meu pet fica ansioso com secador."
           />
         </div>

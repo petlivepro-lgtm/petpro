@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
-import { Button, Dialog, Label, PhotoGalleryInput } from "@mylivepet/ui";
+import { Button, Dialog, Label, PhotoGalleryInput, Textarea } from "@mylivepet/ui";
 import { finishAppointment } from "@/app/(app)/atendimentos/[id]/actions";
 
 export function FinishAppointmentDialog({ appointmentId }: { appointmentId: string }) {
@@ -30,11 +30,10 @@ export function FinishAppointmentDialog({ appointmentId }: { appointmentId: stri
 
           <div>
             <Label htmlFor="behavior">Como o pet se comportou?</Label>
-            <textarea
+            <Textarea
               id="behavior"
               name="behavior"
               rows={3}
-              className="w-full rounded-xl border border-graphite/15 bg-surface p-3 text-sm text-graphite placeholder:text-gray-neutral/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
               placeholder="Ex.: comportou-se muito bem, ficou tranquilo no banho."
             />
           </div>

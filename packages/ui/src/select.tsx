@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "./cn";
 
 type OptionItem = { value: string; label: React.ReactNode; disabled: boolean };
@@ -62,10 +63,42 @@ export const Select = React.forwardRef<
   const selectable = options.filter((o) => !o.disabled);
   const placeholder = options.find((o) => o.disabled && o.value === "")?.label ?? "Selecione";
 
+  // Posição da lista (portal com position: fixed, não é cortada por overflow).
+  const [pos, setPos] = React.useState<{ top: number; left: number; width: number } | null>(null);
+
+  const updatePos = React.useCallback(() => {
+    const anchor = buttonRef.current;
+    const list = listRef.current;
+    if (!anchor || !list) return;
+    const r = anchor.getBoundingClientRect();
+    const margin = 8;
+    const left = Math.max(margin, Math.min(r.left, window.innerWidth - r.width - margin));
+    let top = r.bottom + margin;
+    // vira para cima quando não cabe abaixo e há espaço acima
+    if (top + list.offsetHeight > window.innerHeight - margin && r.top - list.offsetHeight - margin > 0) {
+      top = r.top - list.offsetHeight - margin;
+    }
+    top = Math.max(margin, Math.min(top, window.innerHeight - list.offsetHeight - margin));
+    setPos({ top, left, width: r.width });
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (!open) return;
+    updatePos();
+    window.addEventListener("resize", updatePos);
+    window.addEventListener("scroll", updatePos, true);
+    return () => {
+      window.removeEventListener("resize", updatePos);
+      window.removeEventListener("scroll", updatePos, true);
+    };
+  }, [open, updatePos]);
+
   React.useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (rootRef.current?.contains(t) || listRef.current?.contains(t)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
@@ -83,6 +116,7 @@ export const Select = React.forwardRef<
     if (disabled) return;
     const idx = selectable.findIndex((o) => o.value === current);
     setHighlight(idx >= 0 ? idx : 0);
+    setPos(null);
     setOpen(true);
   }
 
@@ -194,13 +228,20 @@ export const Select = React.forwardRef<
         </svg>
       </button>
 
-      {open && (
-        <div
-          ref={listRef}
-          id={listboxId}
-          role="listbox"
-          className="absolute z-50 mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border border-graphite/10 bg-surface p-1.5 shadow-card-hover"
-        >
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={listRef}
+            id={listboxId}
+            role="listbox"
+            style={
+              pos
+                ? { position: "fixed", top: pos.top, left: pos.left, width: pos.width }
+                : { position: "fixed", top: 0, left: 0, visibility: "hidden" }
+            }
+            className="z-[100] max-h-64 overflow-y-auto rounded-2xl border border-graphite/10 bg-surface p-1.5 shadow-card-hover"
+          >
           {selectable.map((o, i) => {
             const isSelected = o.value === current;
             return (
@@ -234,8 +275,9 @@ export const Select = React.forwardRef<
               </div>
             );
           })}
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 });

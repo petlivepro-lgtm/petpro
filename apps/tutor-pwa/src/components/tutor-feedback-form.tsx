@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Button, RatingStars, ScaleSelector } from "@mylivepet/ui";
+import { Button, RatingStars, ScaleSelector, Textarea } from "@mylivepet/ui";
 import type { FeedbackField, FeedbackResponse } from "@mylivepet/types";
 import { submitTutorFeedback } from "@/app/(app)/actions";
 
@@ -72,11 +72,10 @@ export function TutorFeedbackForm({
             />
           )}
           {f.type === "TEXT" && (
-            <textarea
+            <Textarea
               rows={2}
               value={typeof values[f.id] === "string" ? (values[f.id] as string) : ""}
               onChange={(e) => set(f.id, e.target.value)}
-              className="w-full rounded-xl border border-graphite/15 bg-surface p-3 text-sm text-graphite placeholder:text-gray-neutral/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
               placeholder={f.required ? "" : "Opcional."}
             />
           )}

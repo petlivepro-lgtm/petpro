@@ -3,6 +3,8 @@ export { Button, type ButtonProps } from "./button";
 export { Card, CardTitle, CardDescription } from "./card";
 export { Badge } from "./badge";
 export { Input, Label } from "./input";
+export { Textarea } from "./textarea";
+export { Checkbox } from "./checkbox";
 export { Select } from "./select";
 export { CurrencyInput } from "./currency-input";
 export { PhoneInput } from "./phone-input";

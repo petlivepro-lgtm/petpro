@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
-import { Button, CurrencyInput, Dialog, Input, Label, PhotoGalleryInput, Select } from "@mylivepet/ui";
+import { Button, Checkbox, CurrencyInput, Dialog, Input, Label, PhotoGalleryInput, Select } from "@mylivepet/ui";
 import { PRODUCT_CATEGORIES, PRODUCT_CATEGORY_LABEL } from "@mylivepet/types";
 import {
   createProduct,
@@ -136,32 +136,27 @@ export function ProductDialog({ product }: { product?: ProductRow }) {
           </div>
 
           <div className="space-y-3 rounded-xl border border-graphite/10 p-3">
-            <label className="flex items-start gap-2 text-sm text-graphite">
-              <input
-                type="checkbox"
-                name="for_sale"
-                checked={forSale}
-                onChange={(e) => setForSale(e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-orange"
-              />
-              <span>
-                Disponível para venda no app dos tutores
-                <span className="mt-0.5 block text-xs text-gray-neutral">
-                  Desmarque para itens de uso interno (limpeza, shampoo próprio, insumos): entram
-                  só no controle de estoque.
-                </span>
-              </span>
-            </label>
+            <Checkbox
+              name="for_sale"
+              checked={forSale}
+              onChange={(e) => setForSale(e.target.checked)}
+              className="flex items-start [&>span:first-of-type]:mt-0.5"
+              label={
+                <>
+                  Disponível para venda no app dos tutores
+                  <span className="mt-0.5 block text-xs text-gray-neutral">
+                    Desmarque para itens de uso interno (limpeza, shampoo próprio, insumos): entram
+                    só no controle de estoque.
+                  </span>
+                </>
+              }
+            />
 
-            <label className="flex items-center gap-2 text-sm text-graphite">
-              <input
-                type="checkbox"
-                name="active"
-                defaultChecked={product ? product.active : true}
-                className="h-4 w-4 accent-orange"
-              />
-              Ativo
-            </label>
+            <Checkbox
+              name="active"
+              defaultChecked={product ? product.active : true}
+              label="Ativo"
+            />
           </div>
 
           {state.error && <p className="text-sm text-danger">{state.error}</p>}

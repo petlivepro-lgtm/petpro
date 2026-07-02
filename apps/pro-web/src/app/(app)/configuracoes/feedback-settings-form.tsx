@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Input, Label, Select } from "@mylivepet/ui";
+import { Button, Card, Checkbox, Input, Label, Select } from "@mylivepet/ui";
 import {
   FEEDBACK_FIELD_TYPES,
   FEEDBACK_FIELD_TYPE_LABEL,
@@ -136,15 +136,12 @@ export function FeedbackSettingsForm({ fields: initial }: { fields: FeedbackFiel
                 </div>
               </div>
 
-              <label className="mt-3 flex items-center gap-2 text-sm text-graphite">
-                <input
-                  type="checkbox"
-                  checked={f.required}
-                  onChange={(e) => update(f.id, { required: e.target.checked })}
-                  className="h-4 w-4 rounded border-graphite/30 text-orange focus-visible:ring-orange"
-                />
-                Resposta obrigatória
-              </label>
+              <Checkbox
+                checked={f.required}
+                onChange={(e) => update(f.id, { required: e.target.checked })}
+                className="mt-3"
+                label="Resposta obrigatória"
+              />
             </div>
           ))}
         </div>

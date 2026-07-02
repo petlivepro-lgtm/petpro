@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
 import { Card, Badge } from "@mylivepet/ui";
-import { APPOINTMENT_STATUS_LABEL, type AppointmentStatus } from "@mylivepet/types";
+import { type AppointmentStatus } from "@mylivepet/types";
+import { TUTOR_APPOINTMENT_STATUS_LABEL } from "@/lib/status-labels";
 
 function formatDate(v: string | null) {
   if (!v) return "—";
@@ -66,7 +67,7 @@ export default async function HomePage() {
                   <p className="text-xs text-gray-neutral">{formatDate(a.scheduled_at)}</p>
                 </div>
                 <Badge tone={tone[a.status as AppointmentStatus]}>
-                  {APPOINTMENT_STATUS_LABEL[a.status as AppointmentStatus]}
+                  {TUTOR_APPOINTMENT_STATUS_LABEL[a.status as AppointmentStatus]}
                 </Badge>
               </Card>
             );

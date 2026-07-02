@@ -4,12 +4,12 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Card, Badge, PhotoGallery, RatingStars, ScaleSelector } from "@mylivepet/ui";
 import {
-  APPOINTMENT_STATUS_LABEL,
   type AppointmentStatus,
   type FeedbackField,
   type FeedbackResponse,
 } from "@mylivepet/types";
 import { TutorFeedbackForm } from "@/components/tutor-feedback-form";
+import { TUTOR_APPOINTMENT_STATUS_LABEL } from "@/lib/status-labels";
 
 const tone: Record<AppointmentStatus, React.ComponentProps<typeof Badge>["tone"]> = {
   REQUESTED: "warning",
@@ -75,7 +75,7 @@ export function AppointmentHistoryCard({
               Avaliar
             </span>
           )}
-          <Badge tone={tone[status]}>{APPOINTMENT_STATUS_LABEL[status]}</Badge>
+          <Badge tone={tone[status]}>{TUTOR_APPOINTMENT_STATUS_LABEL[status]}</Badge>
           <ChevronDown
             className={`h-5 w-5 text-gray-neutral transition-transform ${open ? "rotate-180" : ""}`}
             aria-hidden
