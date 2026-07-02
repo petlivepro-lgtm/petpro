@@ -23,6 +23,7 @@
   "devDependencies": {
     "@mylivepet/config": "workspace:*",
     "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.2.3",
     "typescript": "^5.7.3"
   }
 }

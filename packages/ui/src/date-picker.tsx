@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "./cn";
 
 const timeSelectClass =
@@ -41,40 +42,97 @@ function sameDay(a: Date, b: Date) {
   );
 }
 
+function formatValue(d: Date, withTime: boolean, hour: number, minute: number) {
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    (withTime ? `T${pad(hour)}:${pad(minute)}` : "")
+  );
+}
+
 type Props = {
-  name: string;
+  /** Nome do campo no formulário (gera input hidden). Opcional no modo controlado. */
+  name?: string;
   mode?: "date" | "datetime";
+  /** Modo controlado: valor "YYYY-MM-DD[THH:mm]" ("" = vazio). */
+  value?: string | null;
+  /** Modo controlado: chamado com "YYYY-MM-DD[THH:mm]" ou "" ao limpar. */
+  onChange?: (value: string) => void;
   defaultValue?: string | null;
+  /** Data mínima/máxima selecionável ("YYYY-MM-DD"). */
+  min?: string;
+  max?: string;
   required?: boolean;
   placeholder?: string;
   id?: string;
   className?: string;
 };
 
-/** Campo de data (e hora) com popover/calendário próprio, estilizado com a marca. */
+/**
+ * Campo de data (e hora) com popover/calendário próprio, estilizado com a marca.
+ * Padrão do projeto para TODO campo de data — nunca usar input type="date" nativo.
+ * O popover é renderizado em portal (position: fixed), então nunca é cortado por
+ * contêineres com overflow (cards, dialogs) e vira para cima quando falta espaço.
+ */
 export function DatePicker({
   name,
   mode = "datetime",
+  value,
+  onChange,
   defaultValue,
+  min,
+  max,
   required,
   placeholder,
   id,
   className,
 }: Props) {
   const withTime = mode === "datetime";
-  const initial = parseValue(defaultValue);
+  const isControlled = value !== undefined;
+  const initial = parseValue(isControlled ? value : defaultValue);
 
   const [open, setOpen] = React.useState(false);
-  const [selected, setSelected] = React.useState<Date | null>(initial);
+  const [internal, setInternal] = React.useState<Date | null>(initial);
+  const selected = isControlled ? parseValue(value) : internal;
   const [view, setView] = React.useState(() => initial ?? new Date());
   const [hour, setHour] = React.useState(initial ? initial.getHours() : 9);
   const [minute, setMinute] = React.useState(initial ? initial.getMinutes() : 0);
-  const ref = React.useRef<HTMLDivElement>(null);
+  const anchorRef = React.useRef<HTMLDivElement>(null);
+  const popRef = React.useRef<HTMLDivElement>(null);
+  const [pos, setPos] = React.useState<{ top: number; left: number } | null>(null);
+
+  const updatePos = React.useCallback(() => {
+    const anchor = anchorRef.current;
+    const pop = popRef.current;
+    if (!anchor || !pop) return;
+    const r = anchor.getBoundingClientRect();
+    const margin = 8;
+    const left = Math.max(margin, Math.min(r.left, window.innerWidth - pop.offsetWidth - margin));
+    let top = r.bottom + margin;
+    // vira para cima quando não cabe abaixo e há espaço acima
+    if (top + pop.offsetHeight > window.innerHeight - margin && r.top - pop.offsetHeight - margin > 0) {
+      top = r.top - pop.offsetHeight - margin;
+    }
+    top = Math.max(margin, Math.min(top, window.innerHeight - pop.offsetHeight - margin));
+    setPos({ top, left });
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (!open) return;
+    updatePos();
+    window.addEventListener("resize", updatePos);
+    window.addEventListener("scroll", updatePos, true);
+    return () => {
+      window.removeEventListener("resize", updatePos);
+      window.removeEventListener("scroll", updatePos, true);
+    };
+  }, [open, updatePos]);
 
   React.useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (anchorRef.current?.contains(t) || popRef.current?.contains(t)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onDown);
@@ -85,11 +143,23 @@ export function DatePicker({
     };
   }, [open]);
 
+  function toggle() {
+    setOpen((o) => {
+      if (!o) {
+        setPos(null);
+        setView(selected ?? new Date());
+      }
+      return !o;
+    });
+  }
+
+  function commit(next: Date | null, h = hour, m = minute) {
+    if (!isControlled) setInternal(next);
+    onChange?.(next ? formatValue(next, withTime, h, m) : "");
+  }
+
   // valor enviado ao formulário: YYYY-MM-DD[THH:mm]
-  const fieldValue = selected
-    ? `${selected.getFullYear()}-${pad(selected.getMonth() + 1)}-${pad(selected.getDate())}` +
-      (withTime ? `T${pad(hour)}:${pad(minute)}` : "")
-    : "";
+  const fieldValue = selected ? formatValue(selected, withTime, hour, minute) : "";
 
   // texto exibido no botão
   const display = selected
@@ -107,27 +177,30 @@ export function DatePicker({
     return d;
   });
   const today = new Date();
+  const minDate = parseValue(min);
+  const maxDate = parseValue(max);
+  const isDisabled = (d: Date) =>
+    Boolean((minDate && d < minDate) || (maxDate && d > maxDate));
 
   function pickDay(d: Date) {
-    const next = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, minute);
-    setSelected(next);
+    commit(new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, minute));
     if (!withTime) setOpen(false);
   }
 
   function setNow() {
     const now = new Date();
-    setSelected(now);
     setView(now);
     setHour(now.getHours());
     setMinute(now.getMinutes());
+    commit(now, now.getHours(), now.getMinutes());
   }
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={anchorRef}>
       <button
         type="button"
         id={id}
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         className={cn(
           "flex h-11 w-full items-center justify-between rounded-xl border border-graphite/15 bg-surface px-3 text-sm",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange",
@@ -147,121 +220,144 @@ export function DatePicker({
         </svg>
       </button>
 
-      <input type="hidden" name={name} value={fieldValue} required={required} />
+      {name && <input type="hidden" name={name} value={fieldValue} required={required} />}
 
-      {open && (
-        <div className="absolute z-50 mt-2 w-72 rounded-2xl border border-graphite/10 bg-surface p-3 shadow-card-hover">
-          {/* cabeçalho do mês */}
-          <div className="mb-2 flex items-center justify-between">
-            <button
-              type="button"
-              aria-label="Mês anterior"
-              onClick={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))}
-              className="rounded-lg p-1.5 text-gray-neutral hover:bg-surface-muted hover:text-graphite"
-            >
-              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-                <path d="m15 18-6-6 6-6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            <span className="text-sm font-semibold capitalize text-graphite">
-              {MONTHS[view.getMonth()]} de {view.getFullYear()}
-            </span>
-            <button
-              type="button"
-              aria-label="Próximo mês"
-              onClick={() => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))}
-              className="rounded-lg p-1.5 text-gray-neutral hover:bg-surface-muted hover:text-graphite"
-            >
-              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-                <path d="m9 18 6-6-6-6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </div>
-
-          {/* dias da semana */}
-          <div className="grid grid-cols-7 text-center text-xs font-medium text-gray-neutral">
-            {WEEKDAYS.map((w, i) => (
-              <span key={i} className="py-1">
-                {w}
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={popRef}
+            style={
+              pos
+                ? { position: "fixed", top: pos.top, left: pos.left }
+                : { position: "fixed", top: 0, left: 0, visibility: "hidden" }
+            }
+            className="z-[100] w-72 rounded-2xl border border-graphite/10 bg-surface p-3 shadow-card-hover"
+          >
+            {/* cabeçalho do mês */}
+            <div className="mb-2 flex items-center justify-between">
+              <button
+                type="button"
+                aria-label="Mês anterior"
+                onClick={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))}
+                className="rounded-lg p-1.5 text-gray-neutral hover:bg-surface-muted hover:text-graphite"
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                  <path d="m15 18-6-6 6-6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              <span className="text-sm font-semibold capitalize text-graphite">
+                {MONTHS[view.getMonth()]} de {view.getFullYear()}
               </span>
-            ))}
-          </div>
-
-          {/* grade de dias */}
-          <div className="grid grid-cols-7 gap-0.5">
-            {days.map((d, i) => {
-              const inMonth = d.getMonth() === view.getMonth();
-              const isSelected = selected && sameDay(d, selected);
-              const isToday = sameDay(d, today);
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => pickDay(d)}
-                  className={cn(
-                    "flex h-8 items-center justify-center rounded-lg text-sm transition-colors",
-                    isSelected
-                      ? "bg-orange font-semibold text-white"
-                      : isToday
-                        ? "font-semibold text-orange hover:bg-orange/10"
-                        : inMonth
-                          ? "text-graphite hover:bg-surface-muted"
-                          : "text-gray-neutral/40 hover:bg-surface-muted",
-                  )}
-                >
-                  {d.getDate()}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* hora (somente datetime) */}
-          {withTime && (
-            <div className="mt-3 flex items-center gap-2 border-t border-graphite/5 pt-3">
-              <span className="text-sm text-gray-neutral">Hora</span>
-              <select
-                aria-label="Hora"
-                value={hour}
-                onChange={(e) => setHour(Number(e.target.value))}
-                className={timeSelectClass}
+              <button
+                type="button"
+                aria-label="Próximo mês"
+                onClick={() => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))}
+                className="rounded-lg p-1.5 text-gray-neutral hover:bg-surface-muted hover:text-graphite"
               >
-                {Array.from({ length: 24 }, (_, h) => (
-                  <option key={h} value={h}>
-                    {pad(h)}
-                  </option>
-                ))}
-              </select>
-              <span className="text-gray-neutral">:</span>
-              <select
-                aria-label="Minuto"
-                value={minute}
-                onChange={(e) => setMinute(Number(e.target.value))}
-                className={timeSelectClass}
-              >
-                {Array.from({ length: 60 }, (_, m) => (
-                  <option key={m} value={m}>
-                    {pad(m)}
-                  </option>
-                ))}
-              </select>
+                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                  <path d="m9 18 6-6-6-6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
             </div>
-          )}
 
-          {/* ações */}
-          <div className="mt-3 flex items-center justify-between text-sm font-medium">
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              className="text-gray-neutral hover:text-graphite"
-            >
-              Limpar
-            </button>
-            <button type="button" onClick={setNow} className="text-orange hover:underline">
-              {withTime ? "Agora" : "Hoje"}
-            </button>
-          </div>
-        </div>
-      )}
+            {/* dias da semana */}
+            <div className="grid grid-cols-7 text-center text-xs font-medium text-gray-neutral">
+              {WEEKDAYS.map((w, i) => (
+                <span key={i} className="py-1">
+                  {w}
+                </span>
+              ))}
+            </div>
+
+            {/* grade de dias */}
+            <div className="grid grid-cols-7 gap-0.5">
+              {days.map((d, i) => {
+                const inMonth = d.getMonth() === view.getMonth();
+                const isSelected = selected && sameDay(d, selected);
+                const isToday = sameDay(d, today);
+                const dayDisabled = isDisabled(d);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    disabled={dayDisabled}
+                    onClick={() => pickDay(d)}
+                    className={cn(
+                      "flex h-8 items-center justify-center rounded-lg text-sm transition-colors",
+                      dayDisabled
+                        ? "cursor-not-allowed text-gray-neutral/25"
+                        : isSelected
+                          ? "bg-orange font-semibold text-white"
+                          : isToday
+                            ? "font-semibold text-orange hover:bg-orange/10"
+                            : inMonth
+                              ? "text-graphite hover:bg-surface-muted"
+                              : "text-gray-neutral/40 hover:bg-surface-muted",
+                    )}
+                  >
+                    {d.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* hora (somente datetime) */}
+            {withTime && (
+              <div className="mt-3 flex items-center gap-2 border-t border-graphite/5 pt-3">
+                <span className="text-sm text-gray-neutral">Hora</span>
+                <select
+                  aria-label="Hora"
+                  value={hour}
+                  onChange={(e) => {
+                    const h = Number(e.target.value);
+                    setHour(h);
+                    if (selected) commit(selected, h, minute);
+                  }}
+                  className={timeSelectClass}
+                >
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <option key={h} value={h}>
+                      {pad(h)}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-gray-neutral">:</span>
+                <select
+                  aria-label="Minuto"
+                  value={minute}
+                  onChange={(e) => {
+                    const m = Number(e.target.value);
+                    setMinute(m);
+                    if (selected) commit(selected, hour, m);
+                  }}
+                  className={timeSelectClass}
+                >
+                  {Array.from({ length: 60 }, (_, m) => (
+                    <option key={m} value={m}>
+                      {pad(m)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* ações */}
+            <div className="mt-3 flex items-center justify-between text-sm font-medium">
+              <button
+                type="button"
+                onClick={() => commit(null)}
+                className="text-gray-neutral hover:text-graphite"
+              >
+                Limpar
+              </button>
+              <button type="button" onClick={setNow} className="text-orange hover:underline">
+                {withTime ? "Agora" : "Hoje"}
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

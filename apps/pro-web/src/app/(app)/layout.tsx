@@ -48,7 +48,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Avatar name={userName} size="sm" />
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-graphite">{userName}</p>
-              {tenant && <p className="text-xs capitalize text-gray-neutral">{tenant.role.toLowerCase()}</p>}
             </div>
           </div>
           <Link
@@ -76,7 +75,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           tenantName={tenant?.tenantName ?? "—"}
           logoUrl={tenant?.logoUrl ?? null}
           userName={userName}
-          role={tenant?.role}
         />
         <main className="flex-1 p-5 md:p-8">
           <div className="mx-auto max-w-6xl">

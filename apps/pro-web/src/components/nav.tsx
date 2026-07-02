@@ -12,7 +12,7 @@ const items = [
   { href: "/tutores", label: "Tutores & Pets", icon: Users },
   { href: "/servicos", label: "Serviços", icon: Scissors },
   { href: "/produtos", label: "Produtos", icon: Package },
-  { href: "/financeiro", label: "Financeiro", icon: Wallet },
+  { href: "/financeiro", label: "Gestão", icon: Wallet },
 ];
 
 export function Nav({ onNavigate }: { onNavigate?: () => void }) {

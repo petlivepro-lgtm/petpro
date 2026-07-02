@@ -9,27 +9,45 @@ import {
 } from "@mylivepet/types";
 import { ClipboardList } from "lucide-react";
 import { AppointmentHistoryCard } from "@/components/appointment-history-card";
+import { AppointmentsDateFilter } from "@/components/appointments-date-filter";
 
 function fmt(v: string | null) {
   if (!v) return "—";
   return new Date(v).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
-export default async function HistoricoPage() {
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+export default async function HistoricoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
+  const { from, to } = await searchParams;
+  const fromDate = from && ISO_DATE.test(from) ? from : undefined;
+  const toDate = to && ISO_DATE.test(to) ? to : undefined;
+
   const supabase = await createClient();
   const ctx = await getTutorContext(supabase);
   if (!ctx) return null;
 
-  const { data } = await supabase
+  let query = supabase
     .from("appointment")
     .select(
       "id, status, scheduled_at, finished_at, photos, pet:pet_id(name), service_type(name), feedback(direction, rating, comment, responses), appointment_step(id, label, done_at, position)",
     )
-    .eq("tutor_id", ctx.tutorId)
+    .eq("tutor_id", ctx.tutorId);
+
+  // Filtra pela data do agendamento (scheduled_at); "Até" cobre o dia inteiro.
+  if (fromDate) query = query.gte("scheduled_at", fromDate);
+  if (toDate) query = query.lte("scheduled_at", `${toDate}T23:59:59`);
+
+  const { data } = await query
     .order("scheduled_at", { ascending: false, nullsFirst: false })
     .limit(50);
 
   const rows = data ?? [];
+  const hasFilter = Boolean(fromDate || toDate);
 
   // Formulário de avaliação configurado pelo petshop (vazio → padrão no card).
   const { data: tenantRow } = await supabase
@@ -49,8 +67,13 @@ export default async function HistoricoPage() {
         <p className="text-sm text-gray-neutral">Histórico dos serviços do seu pet.</p>
       </header>
 
+      <AppointmentsDateFilter from={fromDate} to={toDate} />
+
       {rows.length === 0 ? (
-        <EmptyState icon={<ClipboardList className="h-6 w-6" />} title="Nenhum atendimento ainda" />
+        <EmptyState
+          icon={<ClipboardList className="h-6 w-6" />}
+          title={hasFilter ? "Nenhum atendimento no período" : "Nenhum atendimento ainda"}
+        />
       ) : (
         <div className="space-y-4">
           {rows.map((a) => {
