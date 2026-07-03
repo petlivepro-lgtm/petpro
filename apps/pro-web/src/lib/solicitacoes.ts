@@ -3,7 +3,7 @@ import type { SolicitacaoGroup } from "@/components/solicitacao-card";
 // Colunas das consultas de Solicitações — reutilizadas no render inicial (server)
 // e no refetch em tempo real (client), garantindo o mesmo shape nos dois lados.
 export const SOLICITACAO_APPOINTMENT_SELECT =
-  "id, scheduled_at, notes, tutor_id, request_group_id, pet(name), service_type(name), tutor(full_name)";
+  "id, scheduled_at, notes, tutor_id, request_group_id, pet(name), service_type(name), tutor(full_name), collaborator(full_name)";
 export const SOLICITACAO_RESERVATION_SELECT =
   "id, note, expires_at, created_at, tutor_id, tutor(full_name), product_reservation_item(id, quantity, price_cents, product(name))";
 
@@ -16,6 +16,7 @@ type RawAppointment = {
   pet: { name: string } | null;
   service_type: { name: string } | null;
   tutor: { full_name: string } | null;
+  collaborator: { full_name: string } | null;
 };
 
 type RawReservation = {
@@ -88,6 +89,7 @@ export function buildSolicitacaoGroups(
       notes: a.notes,
       petName: a.pet?.name ?? "Pet",
       serviceName: a.service_type?.name ?? "Serviço",
+      collaboratorName: a.collaborator?.full_name ?? null,
       requestGroupId: a.request_group_id,
     });
   }

@@ -27,6 +27,7 @@ export async function requestBooking(formData: FormData) {
   const parsed = bookingRequest.safeParse({
     pet_id: formData.get("pet_id"),
     service_type_ids: formData.getAll("service_type_id"),
+    collaborator_id: formData.get("collaborator_id"),
     scheduled_at: formData.get("scheduled_at"),
     notes: formData.get("notes") ?? undefined,
   });
@@ -43,6 +44,7 @@ export async function requestBooking(formData: FormData) {
     tutor_id: ctx.tutorId,
     pet_id: parsed.data.pet_id,
     service_type_id,
+    collaborator_id: parsed.data.collaborator_id,
     scheduled_at: scheduledAt,
     notes: parsed.data.notes,
     origin: "TUTOR" as const,
@@ -51,7 +53,11 @@ export async function requestBooking(formData: FormData) {
   }));
 
   const { error } = await supabase.from("appointment").insert(rows);
-  if (error) redirect("/agendar?erro=1");
+  // SLOT_TAKEN vem do trigger appointment_slot_guard (0014): outro tutor
+  // reservou o mesmo colaborador+horário entre a escolha e o envio.
+  if (error) {
+    redirect(error.message.includes("SLOT_TAKEN") ? "/agendar?erro=horario" : "/agendar?erro=1");
+  }
 
   revalidatePath("/");
   redirect("/?agendado=1");

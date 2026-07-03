@@ -109,6 +109,31 @@ export const STOCK_MOVEMENT_TYPE_LABEL: Record<StockMovementType, string> = {
   OUT: "Saída",
 };
 
+// Status que ocupam o horário do colaborador (bloqueiam o slot na agenda).
+// REJECTED/CANCELLED liberam o horário (ver 0014_collaborators.sql).
+export const BUSY_APPOINTMENT_STATUSES = [
+  "REQUESTED",
+  "CONFIRMED",
+  "CHECKED_IN",
+  "IN_PROGRESS",
+  "COMPLETED",
+] as const satisfies readonly AppointmentStatus[];
+
+// Dias da semana na convenção de Date.getDay(): 0=domingo .. 6=sábado
+// (mesma usada em collaborator_schedule.weekday).
+export const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
+export type Weekday = (typeof WEEKDAYS)[number];
+
+export const WEEKDAY_LABEL: Record<Weekday, string> = {
+  0: "Domingo",
+  1: "Segunda",
+  2: "Terça",
+  3: "Quarta",
+  4: "Quinta",
+  5: "Sexta",
+  6: "Sábado",
+};
+
 // Rótulos em pt-BR para UI
 export const APPOINTMENT_STATUS_LABEL: Record<AppointmentStatus, string> = {
   REQUESTED: "Solicitado",

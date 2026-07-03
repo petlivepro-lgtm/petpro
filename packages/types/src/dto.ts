@@ -34,10 +34,32 @@ export type PetInput = z.infer<typeof petInput>;
 export const bookingRequest = z.object({
   pet_id: z.string().uuid(),
   service_type_ids: z.array(z.string().uuid()).min(1, "Selecione ao menos um serviço"),
+  collaborator_id: z.string().uuid("Escolha um profissional"),
   scheduled_at: z.string().min(1, "Escolha data e horário"),
   notes: z.string().optional(),
 });
 export type BookingRequest = z.infer<typeof bookingRequest>;
+
+// --- Colaboradores (profissionais do petshop, sem login) ---
+// Janela de trabalho semanal; weekday na convenção de Date.getDay() (0=domingo).
+export const collaboratorScheduleInput = z
+  .object({
+    weekday: z.number().int().min(0).max(6),
+    start_time: z.string().regex(/^\d{2}:\d{2}$/, "Horário inválido"),
+    end_time: z.string().regex(/^\d{2}:\d{2}$/, "Horário inválido"),
+  })
+  .refine((s) => s.start_time < s.end_time, {
+    message: "Horário final deve ser após o inicial",
+  });
+export type CollaboratorScheduleInput = z.infer<typeof collaboratorScheduleInput>;
+
+export const collaboratorInput = z.object({
+  full_name: z.string().min(2, "Informe o nome"),
+  role_title: z.string().optional(),
+  active: z.boolean().optional(),
+  schedules: z.array(collaboratorScheduleInput),
+});
+export type CollaboratorInput = z.infer<typeof collaboratorInput>;
 
 // --- Formulário de avaliação configurável pelo petshop ---
 // O petshop monta, nas configurações, uma lista de campos. Cada campo tem um

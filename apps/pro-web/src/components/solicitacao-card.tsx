@@ -17,6 +17,7 @@ export type SolicitacaoAppointment = {
   notes: string | null;
   petName: string;
   serviceName: string;
+  collaboratorName: string | null;
   requestGroupId: string | null;
 };
 
@@ -54,6 +55,7 @@ type ApptRequest = {
   key: string;
   scheduled_at: string | null;
   petName: string;
+  collaboratorName: string | null;
   items: SolicitacaoAppointment[];
 };
 
@@ -65,7 +67,13 @@ function groupByRequest(appointments: SolicitacaoAppointment[]): ApptRequest[] {
     const key = a.requestGroupId ?? `solo-${a.id}`;
     let req = map.get(key);
     if (!req) {
-      req = { key, scheduled_at: a.scheduled_at, petName: a.petName, items: [] };
+      req = {
+        key,
+        scheduled_at: a.scheduled_at,
+        petName: a.petName,
+        collaboratorName: a.collaboratorName,
+        items: [],
+      };
       map.set(key, req);
     }
     req.items.push(a);
@@ -128,6 +136,9 @@ export function SolicitacaoCard({ group }: { group: SolicitacaoGroup }) {
                       <Clock className="h-3 w-3" /> {formatDate(req.scheduled_at)}
                     </StatusChip>
                   </div>
+                  {req.collaboratorName && (
+                    <p className="mt-1 text-sm text-gray-neutral">com {req.collaboratorName}</p>
+                  )}
                   {req.items[0]?.notes && (
                     <p className="mt-1.5 text-sm italic text-gray-neutral">“{req.items[0].notes}”</p>
                   )}

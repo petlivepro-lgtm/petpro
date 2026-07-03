@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, CalendarClock, ClipboardList, Users, Package, Scissors, Wallet } from "lucide-react";
+import { LayoutDashboard, CalendarClock, ClipboardList, Users, UsersRound, Package, Scissors, Wallet } from "lucide-react";
 import { cn } from "@mylivepet/ui";
 
 const items = [
@@ -10,6 +10,7 @@ const items = [
   { href: "/solicitacoes", label: "Solicitações", icon: CalendarClock },
   { href: "/atendimentos", label: "Atendimentos", icon: ClipboardList },
   { href: "/tutores", label: "Tutores & Pets", icon: Users },
+  { href: "/colaboradores", label: "Colaboradores", icon: UsersRound },
   { href: "/servicos", label: "Serviços", icon: Scissors },
   { href: "/produtos", label: "Produtos", icon: Package },
   { href: "/financeiro", label: "Gestão", icon: Wallet },

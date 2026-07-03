@@ -14,7 +14,7 @@ export default async function AtendimentosPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("appointment")
-    .select("id, status, origin, scheduled_at, pet(id, name, photo_path), service_type(name)")
+    .select("id, status, origin, scheduled_at, pet(id, name, photo_path), service_type(name), collaborator(full_name)")
     .order("scheduled_at", { ascending: false, nullsFirst: false })
     .limit(50);
 
@@ -33,6 +33,7 @@ export default async function AtendimentosPage() {
           {rows.map((a) => {
             const pet = a.pet as unknown as { id: string; name: string; photo_path: string | null } | null;
             const service = a.service_type as unknown as { name: string } | null;
+            const collaborator = a.collaborator as unknown as { full_name: string } | null;
             const inner = (
               <Card className="flex items-center gap-3 p-4">
                 <Avatar name={pet?.name ?? "Pet"} src={pet?.photo_path} size="sm" />
@@ -40,6 +41,7 @@ export default async function AtendimentosPage() {
                   <p className="truncate font-medium text-graphite">{pet?.name ?? "—"}</p>
                   <p className="truncate text-xs text-gray-neutral">
                     {service?.name ?? "—"} · {formatDate(a.scheduled_at)}
+                    {collaborator && ` · com ${collaborator.full_name}`}
                   </p>
                   <div className="mt-1.5">
                     <AppointmentStatusBadge status={a.status as AppointmentStatus} />
@@ -62,6 +64,7 @@ export default async function AtendimentosPage() {
               <tr>
                 <th className="px-5 py-3 font-medium">Pet</th>
                 <th className="px-5 py-3 font-medium">Serviço</th>
+                <th className="px-5 py-3 font-medium">Profissional</th>
                 <th className="px-5 py-3 font-medium">Quando</th>
                 <th className="px-5 py-3 font-medium">Origem</th>
                 <th className="px-5 py-3 font-medium">Status</th>
@@ -71,6 +74,7 @@ export default async function AtendimentosPage() {
               {rows.map((a) => {
                 const pet = a.pet as unknown as { id: string; name: string; photo_path: string | null } | null;
                 const service = a.service_type as unknown as { name: string } | null;
+                const collaborator = a.collaborator as unknown as { full_name: string } | null;
                 return (
                   <tr key={a.id} className="border-t border-graphite/5 transition-colors hover:bg-surface-muted/60">
                     <td className="px-5 py-3 font-medium text-graphite">
@@ -79,6 +83,7 @@ export default async function AtendimentosPage() {
                       </Link>
                     </td>
                     <td className="px-5 py-3 text-gray-neutral">{service?.name ?? "—"}</td>
+                    <td className="px-5 py-3 text-gray-neutral">{collaborator?.full_name ?? "—"}</td>
                     <td className="px-5 py-3 text-gray-neutral">{formatDate(a.scheduled_at)}</td>
                     <td className="px-5 py-3 text-gray-neutral">
                       {a.origin === "TUTOR" ? "Tutor" : "Petshop"}

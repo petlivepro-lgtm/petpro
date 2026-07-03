@@ -17,6 +17,7 @@ export type Database = {
       appointment: {
         Row: {
           camera_id: string | null
+          collaborator_id: string | null
           created_at: string
           finished_at: string | null
           id: string
@@ -35,6 +36,7 @@ export type Database = {
         }
         Insert: {
           camera_id?: string | null
+          collaborator_id?: string | null
           created_at?: string
           finished_at?: string | null
           id?: string
@@ -53,6 +55,7 @@ export type Database = {
         }
         Update: {
           camera_id?: string | null
+          collaborator_id?: string | null
           created_at?: string
           finished_at?: string | null
           id?: string
@@ -75,6 +78,13 @@ export type Database = {
             columns: ["camera_id"]
             isOneToOne: false
             referencedRelation: "camera"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "collaborator"
             referencedColumns: ["id"]
           },
           {
@@ -232,6 +242,83 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "camera_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collaborator: {
+        Row: {
+          active: boolean
+          created_at: string
+          full_name: string
+          id: string
+          role_title: string | null
+          tenant_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          full_name: string
+          id?: string
+          role_title?: string | null
+          tenant_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          full_name?: string
+          id?: string
+          role_title?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collaborator_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collaborator_schedule: {
+        Row: {
+          collaborator_id: string
+          end_time: string
+          id: string
+          start_time: string
+          tenant_id: string
+          weekday: number
+        }
+        Insert: {
+          collaborator_id: string
+          end_time: string
+          id?: string
+          start_time: string
+          tenant_id: string
+          weekday: number
+        }
+        Update: {
+          collaborator_id?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+          tenant_id?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collaborator_schedule_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "collaborator"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborator_schedule_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenant"
@@ -919,6 +1006,15 @@ export type Database = {
         Returns: undefined
       }
       claim_tutor_access: { Args: never; Returns: undefined }
+      get_busy_slots: {
+        Args: {
+          p_collaborator_id: string
+          p_from: string
+          p_tenant_id: string
+          p_to: string
+        }
+        Returns: string[]
+      }
       has_staff_role: {
         Args: {
           _roles: Database["public"]["Enums"]["staff_role"][]

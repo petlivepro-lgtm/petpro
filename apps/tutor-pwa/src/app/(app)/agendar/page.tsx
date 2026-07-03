@@ -2,12 +2,22 @@ import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
 import { BookingForm } from "./booking-form";
 
-export default async function AgendarPage() {
+const ERROR_MESSAGES: Record<string, string> = {
+  horario: "Esse horário acabou de ser reservado por outro tutor. Escolha outro horário.",
+  "1": "Não foi possível enviar a solicitação. Confira os dados e tente novamente.",
+};
+
+export default async function AgendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ erro?: string }>;
+}) {
+  const { erro } = await searchParams;
   const supabase = await createClient();
   const ctx = await getTutorContext(supabase);
   if (!ctx) return null;
 
-  const [{ data: pets }, { data: services }] = await Promise.all([
+  const [{ data: pets }, { data: services }, { data: collaborators }] = await Promise.all([
     supabase.from("pet").select("id, name").eq("tutor_id", ctx.tutorId),
     supabase
       .from("service_type")
@@ -15,6 +25,12 @@ export default async function AgendarPage() {
       .eq("tenant_id", ctx.tenantId)
       .eq("active", true)
       .order("name"),
+    supabase
+      .from("collaborator")
+      .select("id, full_name, role_title, collaborator_schedule(weekday, start_time, end_time)")
+      .eq("tenant_id", ctx.tenantId)
+      .eq("active", true)
+      .order("full_name"),
   ]);
 
   return (
@@ -26,7 +42,18 @@ export default async function AgendarPage() {
         </p>
       </header>
 
-      <BookingForm pets={pets ?? []} services={services ?? []} />
+      {erro && (
+        <div className="rounded-2xl border border-danger/30 bg-danger/10 p-4 text-sm text-graphite">
+          {ERROR_MESSAGES[erro] ?? ERROR_MESSAGES["1"]}
+        </div>
+      )}
+
+      <BookingForm
+        pets={pets ?? []}
+        services={services ?? []}
+        collaborators={collaborators ?? []}
+        tenantId={ctx.tenantId}
+      />
     </div>
   );
 }
