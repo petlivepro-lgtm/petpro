@@ -69,6 +69,26 @@ export async function confirmReservation(formData: FormData) {
   revalidatePath("/produtos");
 }
 
+/**
+ * Staff conclui a retirada/pagamento de uma reserva já separada (PICKED → COMPLETED).
+ * O trigger reservation_finance lança a receita automática (source RESERVATION).
+ */
+export async function completeReservation(formData: FormData) {
+  const parsed = reservationCancel.safeParse({ reservation_id: formData.get("reservation_id") });
+  if (!parsed.success) return;
+
+  const supabase = await createClient();
+  await supabase
+    .from("product_reservation")
+    .update({ status: "COMPLETED" })
+    .eq("id", parsed.data.reservation_id)
+    .eq("status", "PICKED");
+
+  revalidatePath("/solicitacoes");
+  revalidatePath("/produtos");
+  revalidatePath("/financeiro");
+}
+
 /** Staff recusa uma reserva: cancela e devolve o estoque (RPC com privilégio). */
 export async function rejectReservation(formData: FormData) {
   const parsed = reservationCancel.safeParse({ reservation_id: formData.get("reservation_id") });

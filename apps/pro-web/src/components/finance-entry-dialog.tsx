@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import {
   Button,
   ConfirmDialog,
@@ -22,6 +22,7 @@ import {
 import {
   createFinanceEntry,
   deleteFinanceEntry,
+  refundReservation,
   type FormState,
 } from "@/app/(app)/financeiro/actions";
 
@@ -163,6 +164,56 @@ export function FinanceEntryDeleteButton({
           confirmType="submit"
           pending={pending}
           pendingLabel="Excluindo..."
+          error={state.error}
+        />
+      </form>
+    </>
+  );
+}
+
+export function FinanceReservationRefundButton({
+  reservationId,
+  description,
+}: {
+  reservationId: string;
+  description: string;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [state, formAction, pending] = useActionState<FormState, FormData>(refundReservation, {
+    ok: false,
+  });
+
+  useEffect(() => {
+    if (state.ok) {
+      setOpen(false);
+      router.refresh();
+    }
+  }, [state, router]);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={`Estornar ${description}`}
+        className="rounded-lg p-2 text-gray-neutral transition-colors hover:bg-danger/10 hover:text-danger"
+      >
+        <RotateCcw className="h-4 w-4" />
+      </button>
+
+      <form action={formAction}>
+        <input type="hidden" name="reservation_id" value={reservationId} />
+        <ConfirmDialog
+          open={open}
+          onOpenChange={setOpen}
+          title="Estornar venda"
+          description={`Estornar "${description}"? O valor será devolvido (despesa de estorno) e os produtos voltam ao estoque.`}
+          confirmLabel="Estornar"
+          confirmVariant="danger"
+          confirmType="submit"
+          pending={pending}
+          pendingLabel="Estornando..."
           error={state.error}
         />
       </form>

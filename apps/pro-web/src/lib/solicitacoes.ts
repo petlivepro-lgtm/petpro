@@ -1,3 +1,4 @@
+import type { ReservationStatus } from "@mylivepet/types";
 import type { SolicitacaoGroup } from "@/components/solicitacao-card";
 
 // Colunas das consultas de Solicitações — reutilizadas no render inicial (server)
@@ -5,7 +6,7 @@ import type { SolicitacaoGroup } from "@/components/solicitacao-card";
 export const SOLICITACAO_APPOINTMENT_SELECT =
   "id, scheduled_at, notes, tutor_id, request_group_id, pet(name), service_type(name), tutor(full_name), collaborator(full_name)";
 export const SOLICITACAO_RESERVATION_SELECT =
-  "id, note, expires_at, created_at, tutor_id, tutor(full_name), product_reservation_item(id, quantity, price_cents, product(name))";
+  "id, status, note, expires_at, created_at, tutor_id, tutor(full_name), product_reservation_item(id, quantity, price_cents, product(name))";
 
 type RawAppointment = {
   id: string;
@@ -21,6 +22,7 @@ type RawAppointment = {
 
 type RawReservation = {
   id: string;
+  status: ReservationStatus;
   note: string | null;
   expires_at: string | null;
   tutor_id: string;
@@ -98,6 +100,7 @@ export function buildSolicitacaoGroups(
     const items = r.product_reservation_item ?? [];
     ensure(r.tutor_id, r.tutor?.full_name ?? "Tutor").reservations.push({
       id: r.id,
+      status: r.status,
       note: r.note,
       expires_at: r.expires_at,
       items: items.map((i) => ({

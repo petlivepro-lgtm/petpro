@@ -85,6 +85,24 @@ export async function deleteFinanceEntry(
   return { ok: true };
 }
 
+export async function refundReservation(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const id = str(formData.get("reservation_id"));
+  if (!id) return { ok: false, error: "Reserva inválida" };
+
+  const supabase = await createClient();
+  // Devolve estoque + lança a despesa de estorno atomicamente (RPC com privilégio).
+  const { error } = await supabase.rpc("refund_reservation", { p_reservation_id: id });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/financeiro");
+  revalidatePath("/produtos");
+  revalidatePath("/");
+  return { ok: true };
+}
+
 export async function registerStockMovement(
   _prev: FormState,
   formData: FormData,

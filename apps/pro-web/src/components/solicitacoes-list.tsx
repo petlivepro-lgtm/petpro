@@ -24,7 +24,7 @@ export function SolicitacoesList({ initialGroups }: { initialGroups: Solicitacao
       supabase
         .from("product_reservation")
         .select(SOLICITACAO_RESERVATION_SELECT)
-        .eq("status", "RESERVED")
+        .in("status", ["RESERVED", "PICKED"])
         .order("created_at", { ascending: true }),
     ]);
     return buildSolicitacaoGroups(

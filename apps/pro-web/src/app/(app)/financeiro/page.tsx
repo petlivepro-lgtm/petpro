@@ -17,6 +17,7 @@ import { FinanceiroTabs } from "@/components/financeiro-tabs";
 import {
   FinanceEntryDeleteButton,
   FinanceEntryDialog,
+  FinanceReservationRefundButton,
 } from "@/components/finance-entry-dialog";
 import {
   StockMovementDialog,
@@ -52,6 +53,8 @@ type EntryRow = {
   category: string | null;
   amount_cents: number;
   occurred_on: string;
+  reservation_id: string | null;
+  reservation: { status: string } | null;
 };
 
 type MovementRow = {
@@ -80,7 +83,9 @@ export default async function FinanceiroPage({
   const [{ data: entries }, { data: products }, { data: movements }] = await Promise.all([
     supabase
       .from("finance_entry")
-      .select("id, type, source, description, category, amount_cents, occurred_on")
+      .select(
+        "id, type, source, description, category, amount_cents, occurred_on, reservation_id, reservation:reservation_id(status)",
+      )
       .order("occurred_on", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(50),
@@ -96,7 +101,7 @@ export default async function FinanceiroPage({
       .limit(20),
   ]);
 
-  const list = (entries ?? []) as EntryRow[];
+  const list = (entries ?? []) as unknown as EntryRow[];
   const monthEntries = list.filter((e) => e.occurred_on >= monthStartIso);
   const income = monthEntries
     .filter((e) => e.type === "INCOME")
@@ -183,6 +188,15 @@ export default async function FinanceiroPage({
                     {e.source === "MANUAL" && (
                       <FinanceEntryDeleteButton id={e.id} description={e.description} />
                     )}
+                    {e.type === "INCOME" &&
+                      e.source === "RESERVATION" &&
+                      e.reservation_id &&
+                      e.reservation?.status === "COMPLETED" && (
+                        <FinanceReservationRefundButton
+                          reservationId={e.reservation_id}
+                          description={e.description}
+                        />
+                      )}
                   </div>
                 </Card>
               ))}

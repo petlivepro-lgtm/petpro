@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X, Clock, CalendarClock, Package } from "lucide-react";
+import { Check, X, Clock, CalendarClock, Package, HandCoins } from "lucide-react";
 import { Button, Card, Avatar, Dialog, StatusChip } from "@mylivepet/ui";
+import type { ReservationStatus } from "@mylivepet/types";
 import { ReservationStatusBadge } from "@/components/status-badge";
 import {
   updateAppointmentStatus,
   updateAppointmentsStatus,
   confirmReservation,
+  completeReservation,
   rejectReservation,
 } from "@/app/(app)/actions";
 
@@ -30,6 +32,7 @@ export type SolicitacaoReservationItem = {
 
 export type SolicitacaoReservation = {
   id: string;
+  status: ReservationStatus;
   note: string | null;
   expires_at: string | null;
   items: SolicitacaoReservationItem[];
@@ -207,8 +210,8 @@ export function SolicitacaoCard({ group }: { group: SolicitacaoGroup }) {
                 return (
                   <div key={r.id} className="rounded-xl border border-graphite/10 p-3">
                     <div className="mb-2 flex items-center justify-between">
-                      <ReservationStatusBadge status="RESERVED" />
-                      {r.expires_at && (
+                      <ReservationStatusBadge status={r.status} />
+                      {r.status === "RESERVED" && r.expires_at && (
                         <span className="text-xs text-gray-neutral">
                           expira {formatDate(r.expires_at)}
                         </span>
@@ -230,18 +233,29 @@ export function SolicitacaoCard({ group }: { group: SolicitacaoGroup }) {
                     </div>
                     {r.note && <p className="mt-2 text-sm italic text-gray-neutral">“{r.note}”</p>}
                     <div className="mt-3 flex gap-2">
-                      <form action={confirmReservation} onSubmit={() => setOpen(false)}>
-                        <input type="hidden" name="reservation_id" value={r.id} />
-                        <Button size="sm" type="submit">
-                          <Check className="h-4 w-4" /> Confirmar reserva
-                        </Button>
-                      </form>
-                      <form action={rejectReservation} onSubmit={() => setOpen(false)}>
-                        <input type="hidden" name="reservation_id" value={r.id} />
-                        <Button size="sm" variant="secondary" type="submit">
-                          <X className="h-4 w-4" /> Recusar
-                        </Button>
-                      </form>
+                      {r.status === "RESERVED" ? (
+                        <>
+                          <form action={confirmReservation} onSubmit={() => setOpen(false)}>
+                            <input type="hidden" name="reservation_id" value={r.id} />
+                            <Button size="sm" type="submit">
+                              <Check className="h-4 w-4" /> Confirmar reserva
+                            </Button>
+                          </form>
+                          <form action={rejectReservation} onSubmit={() => setOpen(false)}>
+                            <input type="hidden" name="reservation_id" value={r.id} />
+                            <Button size="sm" variant="secondary" type="submit">
+                              <X className="h-4 w-4" /> Recusar
+                            </Button>
+                          </form>
+                        </>
+                      ) : (
+                        <form action={completeReservation} onSubmit={() => setOpen(false)}>
+                          <input type="hidden" name="reservation_id" value={r.id} />
+                          <Button size="sm" type="submit">
+                            <HandCoins className="h-4 w-4" /> Retirado/Pago
+                          </Button>
+                        </form>
+                      )}
                     </div>
                   </div>
                 );

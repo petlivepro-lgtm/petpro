@@ -1024,6 +1024,10 @@ export type Database = {
       }
       is_staff: { Args: { _tenant: string }; Returns: boolean }
       my_tutor_id: { Args: { _tenant: string }; Returns: string }
+      refund_reservation: {
+        Args: { p_reservation_id: string }
+        Returns: undefined
+      }
       register_stock_movement: {
         Args: {
           p_note?: string

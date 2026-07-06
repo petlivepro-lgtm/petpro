@@ -19,7 +19,7 @@ export default async function SolicitacoesPage() {
     supabase
       .from("product_reservation")
       .select(SOLICITACAO_RESERVATION_SELECT)
-      .eq("status", "RESERVED")
+      .in("status", ["RESERVED", "PICKED"])
       .order("created_at", { ascending: true }),
   ]);
 
@@ -32,7 +32,7 @@ export default async function SolicitacoesPage() {
     <div>
       <PageHeader
         title="Solicitações"
-        subtitle="Agendamentos e produtos reservados pelos tutores no MyLivePet, aguardando confirmação."
+        subtitle="Agendamentos e produtos reservados pelos tutores no MyLivePet, aguardando confirmação ou retirada."
       />
 
       <SolicitacoesList initialGroups={groups} />
