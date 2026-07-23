@@ -13,6 +13,8 @@
     "@mylivepet/ui": "workspace:*",
     "@supabase/ssr": "0.5.2",
     "@supabase/supabase-js": "2.45.4",
+    "hls.js": "^1.5.20",
+    "jose": "^5.9.6",
     "lucide-react": "^0.469.0",
     "next": "^15.1.4",
     "react": "^19.0.0",

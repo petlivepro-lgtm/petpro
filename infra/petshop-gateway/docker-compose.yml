@@ -1,0 +1,37 @@
+# Gateway de câmeras do petshop (roda num PC/mini-PC na rede local).
+# 3 serviços:
+#   * mediamtx    — conecta nas câmeras (RTSP), serve WebRTC/HLS e grava
+#   * cloudflared — expõe o MediaMTX na internet via Cloudflare Tunnel
+#   * uploader    — sobe as gravações para o app (Supabase Storage)
+# Instalação: ver INSTALL.md. Depois de preencher o .env: docker compose up -d
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:1.12.0
+    restart: unless-stopped
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
+      - ./recordings:/recordings
+    environment:
+      # Valida os tokens emitidos pelo app (JWKS público do pro-web).
+      MTX_AUTHJWTJWKS: ${APP_URL}/api/camera/jwks
+    ports:
+      - "8888:8888" # HLS
+      - "8889:8889" # WebRTC (WHEP)
+      - "8189:8189/udp" # mídia WebRTC (acesso na rede local)
+      - "9997:9997" # API de controle (usada pelo app via tunnel)
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+
+  uploader:
+    image: node:22-alpine
+    restart: unless-stopped
+    command: node /app/index.mjs
+    volumes:
+      - ./uploader:/app:ro
+      - ./recordings:/recordings
+    environment:
+      APP_URL: ${APP_URL}
+      GATEWAY_UPLOAD_TOKEN: ${GATEWAY_UPLOAD_TOKEN}

@@ -58,6 +58,9 @@ supabase/.branches/
 supabase/.temp/
 supabase/.env
 
+# gateway de câmeras (rodando localmente: segmentos de vídeo antes do upload)
+infra/petshop-gateway/recordings/
+
 # npm / auth
 .npmrc.local
 .yarnrc.local
@@ -99,3 +102,6 @@ nota.txt
 .claude
 .codex
 CLAUDE.md 
+CAMERAS.md
+INSTALL.md
+PLANO-CAMERA-CLOUD.md

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { behaviorFeedbackInput } from "@mylivepet/types";
+import { startCameraStream, stopCameraStream } from "@/lib/camera/mediamtx";
 
 const BUCKET = "appointment-photos";
 
@@ -76,10 +77,25 @@ export async function startAppointment(formData: FormData) {
     }
   }
 
+  // Câmera da sala escolhida no dialog de início (opcional).
+  const cameraId = str(formData.get("camera_id"));
+
   await supabase
     .from("appointment")
-    .update({ status: "IN_PROGRESS", started_at: new Date().toISOString() })
+    .update({
+      status: "IN_PROGRESS",
+      started_at: new Date().toISOString(),
+      camera_id: cameraId ?? null,
+    })
     .eq("id", id);
+
+  // Liga stream + gravação no gateway. Best-effort: gateway offline não pode
+  // impedir o atendimento de começar — o tutor apenas fica sem o ao vivo.
+  if (cameraId && appt) {
+    const result = await startCameraStream(appt.tenant_id, cameraId);
+    if (!result.ok) console.warn(`[camera] falha ao ligar stream: ${result.error}`);
+  }
+
   revalidatePath(`/atendimentos/${id}`);
 }
 
@@ -106,7 +122,7 @@ export async function finishAppointment(formData: FormData) {
   const supabase = await createClient();
   const { data: appt } = await supabase
     .from("appointment")
-    .select("tenant_id")
+    .select("tenant_id, camera_id")
     .eq("id", id)
     .single();
   if (!appt) return;
@@ -137,6 +153,13 @@ export async function finishAppointment(formData: FormData) {
       direction: "STAFF_TO_TUTOR",
       comment: behavior.data.comment,
     });
+  }
+
+  // Encerra stream + gravação no gateway (best-effort; o path também é
+  // sobrescrito no próximo atendimento que usar a mesma câmera).
+  if (appt.camera_id) {
+    const result = await stopCameraStream(appt.tenant_id, appt.camera_id);
+    if (!result.ok) console.warn(`[camera] falha ao encerrar stream: ${result.error}`);
   }
 
   revalidatePath(`/atendimentos/${id}`);

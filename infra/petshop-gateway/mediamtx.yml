@@ -1,0 +1,46 @@
+# Configuração do MediaMTX do gateway MyLivePet.
+# Os paths das câmeras NÃO ficam aqui: o app cria/remove `cam-<id>` pela API
+# a cada atendimento (o stream só existe enquanto o serviço está em andamento).
+
+###############################################
+# Autenticação: JWT assinado pelo app (RS256).
+# A URL do JWKS vem por env (MTX_AUTHJWTJWKS, ver docker-compose.yml).
+authMethod: jwt
+authJWTJWKS: https://example.invalid/api/camera/jwks # sobrescrito pelo env
+authJWTClaimKey: mediamtx_permissions
+
+###############################################
+# API de controle (o app chama via tunnel; exige token com action "api").
+api: yes
+apiAddress: :9997
+
+###############################################
+# Saídas para o navegador do tutor.
+hls: yes
+hlsAddress: :8888
+hlsVariant: lowLatency # ~3-5s de atraso
+
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+# A mídia WebRTC é UDP e não passa pelo Cloudflare Tunnel (que é só HTTP).
+# Para o tutor assistir com ~1s de atraso fora da rede do petshop, configure
+# um TURN (ex.: Cloudflare Realtime TURN) e descomente abaixo — as credenciais
+# são repassadas ao navegador na resposta WHEP. Sem TURN, o player cai
+# automaticamente para HLS, que funciona em qualquer rede.
+# webrtcICEServers2:
+#   - url: turn:turn.exemplo.com:3478
+#     username: usuario
+#     password: senha
+
+###############################################
+# Gravação: segmentos fMP4 de 10 min em ./recordings/<path>/.
+# O uploader envia cada segmento ao app e apaga o arquivo local; o
+# recordDeleteAfter é só uma rede de segurança para o disco não encher.
+pathDefaults:
+  recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S-%f
+  recordFormat: fmp4
+  recordSegmentDuration: 10m
+  recordDeleteAfter: 24h
+
+paths: {}

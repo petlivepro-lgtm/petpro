@@ -202,6 +202,37 @@ export const productInput = z.object({
 });
 export type ProductInput = z.infer<typeof productInput>;
 
+// --- Câmeras (transmissão ao vivo do atendimento) ---
+// Credencial é a "Conta da Câmera" criada no app Tapo (Configurações do
+// Dispositivo → Configurações Avançadas → Conta da Câmera): 6–32 caracteres,
+// diferente da conta TP-Link. stream1 = 1080p, stream2 = ~360p (internet fraca).
+export const CAMERA_STREAM_PATHS = ["stream1", "stream2"] as const;
+export const cameraInput = z.object({
+  room_label: z.string().min(1, "Informe o nome da sala"),
+  host: z.string().min(1, "Informe o IP da câmera na rede local"),
+  port: z.number().int().min(1).max(65535),
+  stream_path: z.enum(CAMERA_STREAM_PATHS),
+  username: z
+    .string()
+    .min(6, "Usuário da Conta da Câmera tem 6 a 32 caracteres")
+    .max(32, "Usuário da Conta da Câmera tem 6 a 32 caracteres"),
+  // Opcional na edição: vazio mantém a senha já cadastrada.
+  password: z
+    .string()
+    .min(6, "Senha da Conta da Câmera tem 6 a 32 caracteres")
+    .max(32, "Senha da Conta da Câmera tem 6 a 32 caracteres")
+    .optional(),
+  active: z.boolean().optional(),
+});
+export type CameraInput = z.infer<typeof cameraInput>;
+
+// Dias que as gravações ficam disponíveis para o tutor antes da limpeza.
+export const RECORDING_RETENTION_OPTIONS = [7, 15, 30] as const;
+export const DEFAULT_RECORDING_RETENTION_DAYS = 7;
+
+// Finalidade LGPD registrada em `consent` para a câmera ao vivo + gravação.
+export const CAMERA_CONSENT_PURPOSE = "transmissão e gravação do atendimento";
+
 // Lançamento financeiro manual (receita ou despesa)
 export const financeEntryInput = z.object({
   type: z.enum(FINANCE_ENTRY_TYPES),

@@ -218,32 +218,112 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          host: string | null
           id: string
+          port: number
           room_label: string
-          rtsp_secret: string | null
+          stream_path: string
           tenant_id: string
+          username: string | null
         }
         Insert: {
           active?: boolean
           created_at?: string
+          host?: string | null
           id?: string
+          port?: number
           room_label: string
-          rtsp_secret?: string | null
+          stream_path?: string
           tenant_id: string
+          username?: string | null
         }
         Update: {
           active?: boolean
           created_at?: string
+          host?: string | null
           id?: string
+          port?: number
           room_label?: string
-          rtsp_secret?: string | null
+          stream_path?: string
           tenant_id?: string
+          username?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "camera_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      camera_credential: {
+        Row: {
+          camera_id: string
+          password_enc: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          camera_id: string
+          password_enc: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          camera_id?: string
+          password_enc?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "camera_credential_camera_id_fkey"
+            columns: ["camera_id"]
+            isOneToOne: true
+            referencedRelation: "camera"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "camera_credential_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      camera_gateway: {
+        Row: {
+          api_tunnel_url: string
+          created_at: string
+          last_seen_at: string | null
+          tenant_id: string
+          tunnel_url: string
+          upload_token_hash: string
+        }
+        Insert: {
+          api_tunnel_url: string
+          created_at?: string
+          last_seen_at?: string | null
+          tenant_id: string
+          tunnel_url: string
+          upload_token_hash: string
+        }
+        Update: {
+          api_tunnel_url?: string
+          created_at?: string
+          last_seen_at?: string | null
+          tenant_id?: string
+          tunnel_url?: string
+          upload_token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "camera_gateway_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "tenant"
             referencedColumns: ["id"]
           },
@@ -776,28 +856,40 @@ export type Database = {
       recording: {
         Row: {
           appointment_id: string
+          camera_id: string | null
           created_at: string
           duration_sec: number | null
+          ended_at: string | null
           id: string
           retain_until: string | null
+          size_bytes: number | null
+          started_at: string | null
           storage_path: string
           tenant_id: string
         }
         Insert: {
           appointment_id: string
+          camera_id?: string | null
           created_at?: string
           duration_sec?: number | null
+          ended_at?: string | null
           id?: string
           retain_until?: string | null
+          size_bytes?: number | null
+          started_at?: string | null
           storage_path: string
           tenant_id: string
         }
         Update: {
           appointment_id?: string
+          camera_id?: string | null
           created_at?: string
           duration_sec?: number | null
+          ended_at?: string | null
           id?: string
           retain_until?: string | null
+          size_bytes?: number | null
+          started_at?: string | null
           storage_path?: string
           tenant_id?: string
         }
@@ -807,6 +899,13 @@ export type Database = {
             columns: ["appointment_id"]
             isOneToOne: false
             referencedRelation: "appointment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recording_camera_id_fkey"
+            columns: ["camera_id"]
+            isOneToOne: false
+            referencedRelation: "camera"
             referencedColumns: ["id"]
           },
           {

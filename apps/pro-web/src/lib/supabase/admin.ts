@@ -7,7 +7,7 @@ import type { Database } from "@mylivepet/types/database";
  * Resolve uma variável do ambiente; se ausente (servidor não recarregou o env,
  * por ex.), faz fallback lendo o `.env` da raiz do monorepo direto do disco.
  */
-function envVar(key: string): string | undefined {
+export function envVar(key: string): string | undefined {
   if (process.env[key]) return process.env[key];
   try {
     const rootEnv = resolve(process.cwd(), "../../.env");

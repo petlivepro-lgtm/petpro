@@ -7,14 +7,13 @@ import {
   Check,
   ListChecks,
   PawPrint,
-  MessageSquare,
   Star,
+  Video,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   Card,
   PageHeader,
-  Button,
   Avatar,
   Timeline,
   TimelineItem,
@@ -25,8 +24,8 @@ import {
 import { AppointmentStatusBadge } from "@/components/status-badge";
 import { FinishAppointmentDialog } from "@/components/finish-appointment-dialog";
 import { AppointmentChecklist } from "@/components/appointment-checklist";
+import { StartAppointmentDialog } from "@/components/start-appointment-dialog";
 import type { AppointmentStatus, FeedbackResponse } from "@mylivepet/types";
-import { startAppointment } from "./actions";
 
 function fmt(v: string | null) {
   if (!v) return "—";
@@ -40,7 +39,7 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
   const { data: appt } = await supabase
     .from("appointment")
     .select(
-      "id, status, scheduled_at, started_at, finished_at, notes, photos, pet:pet_id(id, name, photo_path), tutor:tutor_id(full_name), service_type(name), collaborator(full_name)",
+      "id, status, scheduled_at, started_at, finished_at, notes, photos, camera_id, pet:pet_id(id, name, photo_path), tutor:tutor_id(full_name), service_type(name), collaborator(full_name), camera:camera_id(room_label)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -51,7 +50,14 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
   const tutor = appt.tutor as unknown as { full_name: string } | null;
   const service = appt.service_type as unknown as { name: string } | null;
   const collaborator = appt.collaborator as unknown as { full_name: string } | null;
+  const camera = appt.camera as unknown as { room_label: string } | null;
   const status = appt.status as AppointmentStatus;
+
+  // Câmeras ativas para o dialog de início (só busca quando dá para iniciar).
+  const canStart = status === "CONFIRMED" || status === "CHECKED_IN";
+  const { data: cameras } = canStart
+    ? await supabase.from("camera").select("id, room_label").eq("active", true).order("room_label")
+    : { data: null };
 
   const { data: steps } = await supabase
     .from("appointment_step")
@@ -192,17 +198,17 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
               </div>
             </div>
 
-            {(status === "CONFIRMED" || status === "CHECKED_IN") && (
-              <form action={startAppointment}>
-                <input type="hidden" name="appointment_id" value={id} />
-                <Button type="submit" className="w-full">
-                  <Play className="h-4 w-4" /> Iniciar atendimento
-                </Button>
-              </form>
+            {canStart && (
+              <StartAppointmentDialog appointmentId={id} cameras={cameras ?? []} />
             )}
 
             {status === "IN_PROGRESS" && (
               <div className="space-y-4">
+                {camera && (
+                  <p className="flex items-center gap-2 text-sm font-medium text-orange">
+                    <Video className="h-4 w-4" /> Ao vivo para o tutor — {camera.room_label}
+                  </p>
+                )}
                 <AppointmentChecklist
                   appointmentId={id}
                   steps={(steps ?? []).map((s) => ({ id: s.id, label: s.label, done: s.done }))}

@@ -34,6 +34,14 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isPublicRoute = pathname.startsWith("/login") || pathname.startsWith("/cadastrar");
+  // Rotas de máquina com autenticação própria (JWKS público, Bearer do
+  // gateway de câmeras, CRON_SECRET) — sem sessão de staff.
+  const isMachineRoute =
+    pathname.startsWith("/api/camera") ||
+    pathname.startsWith("/api/gateway") ||
+    pathname.startsWith("/api/cron");
+
+  if (isMachineRoute) return response;
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();

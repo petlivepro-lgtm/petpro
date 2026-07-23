@@ -1,4 +1,6 @@
-import { PageHeader } from "@mylivepet/ui";
+import Link from "next/link";
+import { ChevronRight, Video } from "lucide-react";
+import { Card, PageHeader } from "@mylivepet/ui";
 import { feedbackConfigSchema, type FeedbackField } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
@@ -44,6 +46,21 @@ export default async function ConfiguracoesPage() {
       <div className="space-y-6">
         <SettingsForm tenant={initial} />
         <FeedbackSettingsForm fields={feedbackFields} />
+
+        <Link href="/configuracoes/cameras" className="block">
+          <Card className="flex items-center justify-between transition-colors hover:border-orange/40">
+            <div className="flex items-center gap-3">
+              <Video className="h-5 w-5 text-orange" />
+              <div>
+                <p className="font-heading font-semibold text-graphite">Câmeras</p>
+                <p className="text-sm text-gray-neutral">
+                  Transmissão ao vivo do atendimento para o tutor e gravações.
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-gray-neutral" />
+          </Card>
+        </Link>
       </div>
     </>
   );
