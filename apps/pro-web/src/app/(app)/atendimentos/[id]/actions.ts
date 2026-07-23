@@ -97,6 +97,7 @@ export async function startAppointment(formData: FormData) {
   }
 
   revalidatePath(`/atendimentos/${id}`);
+  revalidatePath("/atendimentos");
 }
 
 /** Marca/desmarca um passo do checklist como concluído. */

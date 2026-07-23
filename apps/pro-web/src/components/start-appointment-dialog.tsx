@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Play, Video } from "lucide-react";
-import { Button, Dialog, Label, Select } from "@mylivepet/ui";
+import { Button, Dialog, Label, Select, type ButtonProps } from "@mylivepet/ui";
 import { startAppointment } from "@/app/(app)/atendimentos/[id]/actions";
 
 export type CameraOption = { id: string; room_label: string };
@@ -15,18 +15,23 @@ export type CameraOption = { id: string; room_label: string };
 export function StartAppointmentDialog({
   appointmentId,
   cameras,
+  size,
+  className = "w-full",
 }: {
   appointmentId: string;
   cameras: CameraOption[];
+  size?: ButtonProps["size"];
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const label = size === "sm" ? "Iniciar" : "Iniciar atendimento";
 
   if (cameras.length === 0) {
     return (
       <form action={startAppointment}>
         <input type="hidden" name="appointment_id" value={appointmentId} />
-        <Button type="submit" className="w-full">
-          <Play className="h-4 w-4" /> Iniciar atendimento
+        <Button type="submit" size={size} className={className}>
+          <Play className="h-4 w-4" /> {label}
         </Button>
       </form>
     );
@@ -34,8 +39,8 @@ export function StartAppointmentDialog({
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} className="w-full">
-        <Play className="h-4 w-4" /> Iniciar atendimento
+      <Button onClick={() => setOpen(true)} size={size} className={className}>
+        <Play className="h-4 w-4" /> {label}
       </Button>
 
       <Dialog

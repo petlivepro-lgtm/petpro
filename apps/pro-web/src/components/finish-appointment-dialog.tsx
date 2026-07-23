@@ -2,16 +2,25 @@
 
 import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
-import { Button, Dialog, Label, PhotoGalleryInput, Textarea } from "@mylivepet/ui";
+import { Button, Dialog, Label, PhotoGalleryInput, Textarea, type ButtonProps } from "@mylivepet/ui";
 import { finishAppointment } from "@/app/(app)/atendimentos/[id]/actions";
 
-export function FinishAppointmentDialog({ appointmentId }: { appointmentId: string }) {
+export function FinishAppointmentDialog({
+  appointmentId,
+  size,
+  className = "w-full",
+}: {
+  appointmentId: string;
+  size?: ButtonProps["size"];
+  className?: string;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} className="w-full">
-        <CheckCircle2 className="h-4 w-4" /> Finalizar atendimento
+      <Button onClick={() => setOpen(true)} size={size} className={className}>
+        <CheckCircle2 className="h-4 w-4" />{" "}
+        {size === "sm" ? "Finalizar" : "Finalizar atendimento"}
       </Button>
 
       <Dialog
