@@ -121,9 +121,14 @@ export async function saveGateway(
   // Em produção exigimos https:// (tunnel). Em dev liberamos http:// para
   // testar o gateway local (ex.: http://192.168.x.x:8889).
   const allowHttp = process.env.NODE_ENV !== "production";
-  const isValid = (u?: string) =>
-    u?.startsWith("https://") || (allowHttp && u?.startsWith("http://"));
-  if (!isValid(tunnelUrl) || !isValid(apiTunnelUrl)) {
+  const isValid = (u: string) =>
+    u.startsWith("https://") || (allowHttp && u.startsWith("http://"));
+  if (
+    !tunnelUrl ||
+    !apiTunnelUrl ||
+    !isValid(tunnelUrl) ||
+    !isValid(apiTunnelUrl)
+  ) {
     return {
       ok: false,
       error: allowHttp
