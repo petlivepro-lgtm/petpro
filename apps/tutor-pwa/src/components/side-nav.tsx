@@ -5,20 +5,38 @@ import { usePathname } from "next/navigation";
 import { LogOut, Settings } from "lucide-react";
 import { cn, Button } from "@mylivepet/ui";
 import { navItems } from "./nav-items";
+import { TenantBrand } from "./tenant-brand";
 import { signOut } from "@/app/(app)/actions";
 
-export function SideNav({ tenantName }: { tenantName: string }) {
+export function SideNav({
+  tenantName,
+  tenantLogoUrl,
+}: {
+  tenantName: string;
+  tenantLogoUrl: string | null;
+}) {
   const pathname = usePathname();
   return (
     <aside className="fixed inset-y-0 hidden w-64 flex-col justify-between border-r border-graphite/10 bg-surface p-4 lg:flex">
       <div>
         <div className="mb-8 px-2 pt-2">
-          <img src="/brand/logopet.svg" alt="MyLivePet" className="h-20 w-auto" />
-          <p className="mt-0.5 text-xs text-gray-neutral">{tenantName}</p>
+          <img
+            src="/brand/logopet.svg"
+            alt="MyLivePet"
+            className="h-20 w-auto"
+          />
+          <TenantBrand
+            className="mt-4"
+            name={tenantName}
+            logoUrl={tenantLogoUrl}
+          />
         </div>
         <nav className="space-y-1">
           {navItems.map((item) => {
-            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const active =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
               <Link
@@ -26,7 +44,9 @@ export function SideNav({ tenantName }: { tenantName: string }) {
                 href={item.href}
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                  active ? "bg-orange/10 text-orange" : "text-graphite/70 hover:bg-surface-muted",
+                  active
+                    ? "bg-orange/10 text-orange"
+                    : "text-graphite/70 hover:bg-surface-muted",
                 )}
               >
                 <Icon className="h-[18px] w-[18px]" />
@@ -49,7 +69,11 @@ export function SideNav({ tenantName }: { tenantName: string }) {
           <Settings className="h-[18px] w-[18px]" /> Configurações
         </Link>
         <form action={signOut}>
-          <Button variant="ghost" className="w-full justify-start" type="submit">
+          <Button
+            variant="ghost"
+            className="w-full justify-start"
+            type="submit"
+          >
             <LogOut className="h-4 w-4" /> Sair
           </Button>
         </form>

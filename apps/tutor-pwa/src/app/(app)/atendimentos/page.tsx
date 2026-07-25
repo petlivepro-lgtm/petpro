@@ -7,7 +7,8 @@ import {
   type FeedbackField,
   type FeedbackResponse,
 } from "@mylivepet/types";
-import { ClipboardList } from "lucide-react";
+import Link from "next/link";
+import { ClipboardList, X } from "lucide-react";
 import { AppointmentHistoryCard } from "@/components/appointment-history-card";
 import { AppointmentsDateFilter } from "@/components/appointments-date-filter";
 
@@ -21,9 +22,9 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export default async function HistoricoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; pet?: string }>;
 }) {
-  const { from, to } = await searchParams;
+  const { from, to, pet: petId } = await searchParams;
   const fromDate = from && ISO_DATE.test(from) ? from : undefined;
   const toDate = to && ISO_DATE.test(to) ? to : undefined;
 
@@ -41,13 +42,15 @@ export default async function HistoricoPage({
   // Filtra pela data do agendamento (scheduled_at); "Até" cobre o dia inteiro.
   if (fromDate) query = query.gte("scheduled_at", fromDate);
   if (toDate) query = query.lte("scheduled_at", `${toDate}T23:59:59`);
+  // Filtro por pet (vindo da home); a RLS + tutor_id já restringem ao próprio tutor.
+  if (petId) query = query.eq("pet_id", petId);
 
   const { data } = await query
     .order("scheduled_at", { ascending: false, nullsFirst: false })
     .limit(50);
 
   const rows = data ?? [];
-  const hasFilter = Boolean(fromDate || toDate);
+  const hasFilter = Boolean(fromDate || toDate || petId);
 
   // Formulário de avaliação configurado pelo petshop (vazio → padrão no card).
   const { data: tenantRow } = await supabase
@@ -60,11 +63,26 @@ export default async function HistoricoPage({
   );
   const feedbackFields: FeedbackField[] = fbConfig.success ? fbConfig.data.fields : [];
 
+  // Nome do pet filtrado, para deixar claro de quem é o histórico exibido.
+  const petName = petId
+    ? (await supabase.from("pet").select("name").eq("id", petId).maybeSingle()).data?.name ?? null
+    : null;
+
   return (
     <div className="space-y-5">
       <header>
         <h1 className="font-heading text-xl font-bold text-graphite">Atendimentos</h1>
-        <p className="text-sm text-gray-neutral">Histórico dos serviços do seu pet.</p>
+        <p className="text-sm text-gray-neutral">
+          {petName ? `Histórico dos serviços de ${petName}.` : "Histórico dos serviços do seu pet."}
+        </p>
+        {petId && (
+          <Link
+            href="/atendimentos"
+            className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-petrol hover:underline"
+          >
+            <X className="h-4 w-4" /> Ver de todos os pets
+          </Link>
+        )}
       </header>
 
       <AppointmentsDateFilter from={fromDate} to={toDate} />
@@ -72,7 +90,7 @@ export default async function HistoricoPage({
       {rows.length === 0 ? (
         <EmptyState
           icon={<ClipboardList className="h-6 w-6" />}
-          title={hasFilter ? "Nenhum atendimento no período" : "Nenhum atendimento ainda"}
+          title={hasFilter ? "Nenhum atendimento encontrado" : "Nenhum atendimento ainda"}
         />
       ) : (
         <div className="space-y-4">

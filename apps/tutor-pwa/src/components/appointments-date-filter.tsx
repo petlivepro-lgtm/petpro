@@ -9,12 +9,24 @@ export function AppointmentsDateFilter({ from, to }: { from?: string; to?: strin
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  function push(params: URLSearchParams) {
+    const qs = params.toString();
+    router.replace(qs ? `/atendimentos?${qs}` : "/atendimentos", { scroll: false });
+  }
+
   function update(key: "from" | "to", value: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set(key, value);
     else params.delete(key);
-    const qs = params.toString();
-    router.replace(qs ? `/atendimentos?${qs}` : "/atendimentos", { scroll: false });
+    push(params);
+  }
+
+  /** Limpa só o período; um filtro de pet vindo da home é preservado. */
+  function clear() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("from");
+    params.delete("to");
+    push(params);
   }
 
   const active = Boolean(from || to);
@@ -48,7 +60,7 @@ export function AppointmentsDateFilter({ from, to }: { from?: string; to?: strin
       {active && (
         <button
           type="button"
-          onClick={() => router.replace("/atendimentos", { scroll: false })}
+          onClick={clear}
           className="inline-flex h-11 items-center gap-1 rounded-xl px-3 text-sm font-medium text-gray-neutral transition-colors hover:bg-surface-muted hover:text-graphite"
         >
           <X className="h-4 w-4" /> Limpar

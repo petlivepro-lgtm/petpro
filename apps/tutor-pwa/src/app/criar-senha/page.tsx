@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Input, Label } from "@mylivepet/ui";
+import { Button, Label, PasswordInput } from "@mylivepet/ui";
 
 type Phase = "checking" | "form" | "error";
 
@@ -70,15 +70,23 @@ export default function CriarSenhaPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
       <div className="mb-8 text-center">
-        <img src="/brand/logopet.svg" alt="MyLivePet" className="mx-auto h-24 w-auto" />
-        <h1 className="mt-1 font-heading text-2xl font-bold text-graphite">Crie sua senha</h1>
+        <img
+          src="/brand/logopet.svg"
+          alt="MyLivePet"
+          className="mx-auto h-24 w-auto"
+        />
+        <h1 className="mt-1 font-heading text-2xl font-bold text-graphite">
+          Crie sua senha
+        </h1>
         <p className="mt-1 text-sm text-gray-neutral">
           Defina uma senha para os próximos acessos ao app.
         </p>
       </div>
 
       {phase === "checking" && (
-        <p className="text-center text-sm text-gray-neutral">Validando seu acesso...</p>
+        <p className="text-center text-sm text-gray-neutral">
+          Validando seu acesso...
+        </p>
       )}
 
       {phase === "error" && (
@@ -96,9 +104,8 @@ export default function CriarSenhaPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <Label htmlFor="password">Nova senha</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -107,9 +114,8 @@ export default function CriarSenhaPage() {
           </div>
           <div>
             <Label htmlFor="confirm">Confirmar senha</Label>
-            <Input
+            <PasswordInput
               id="confirm"
-              type="password"
               autoComplete="new-password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}

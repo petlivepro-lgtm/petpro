@@ -5,6 +5,7 @@ export type TutorContext = {
   tutorId: string;
   tenantId: string;
   tenantName: string;
+  tenantLogoUrl: string | null;
   fullName: string;
 };
 
@@ -27,17 +28,27 @@ export async function getTutorContext(
 
   const { data, error } = await supabase
     .from("tutor")
-    .select("id, full_name, tenant:tenant_id (id, name)")
+    .select("id, full_name, tenant:tenant_id (id, name, settings)")
     .eq("profile_id", profileId)
     .limit(1)
     .maybeSingle();
 
   if (error || !data || !data.tenant) return null;
-  const tenant = data.tenant as unknown as { id: string; name: string };
+  const tenant = data.tenant as unknown as {
+    id: string;
+    name: string;
+    settings: { logo_path?: unknown } | null;
+  };
+  const logoPath = tenant.settings?.logo_path;
+
   return {
     tutorId: data.id,
     tenantId: tenant.id,
     tenantName: tenant.name,
+    tenantLogoUrl:
+      typeof logoPath === "string" && logoPath.trim().length > 0
+        ? logoPath
+        : null,
     fullName: data.full_name,
   };
 }

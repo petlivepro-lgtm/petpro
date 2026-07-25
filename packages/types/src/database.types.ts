@@ -1122,6 +1122,10 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _tenant: string }; Returns: boolean }
+      link_tutor_access: {
+        Args: { p_email: string; p_user_id: string }
+        Returns: undefined
+      }
       my_tutor_id: { Args: { _tenant: string }; Returns: string }
       refund_reservation: {
         Args: { p_reservation_id: string }
@@ -1145,6 +1149,7 @@ export type Database = {
         Returns: undefined
       }
       tutor_access_status: { Args: { p_email: string }; Returns: string }
+      tutor_first_access_target: { Args: { p_email: string }; Returns: Json }
     }
     Enums: {
       appointment_origin: "STAFF" | "TUTOR"

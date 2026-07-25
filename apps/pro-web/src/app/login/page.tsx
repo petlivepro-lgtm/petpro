@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Card, Input, Label } from "@mylivepet/ui";
+import { Button, Card, Input, Label, PasswordInput } from "@mylivepet/ui";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,7 +18,10 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (error) {
       setLoading(false);
       setError("E-mail ou senha inválidos.");
@@ -31,8 +34,14 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <img src="/brand/logopet.svg" alt="Pet Live Pro" className="mx-auto mb-3 h-20 w-auto" />
-          <h1 className="font-heading text-2xl font-bold text-graphite">Acessar painel</h1>
+          <img
+            src="/brand/logopet.svg"
+            alt="Pet Live Pro"
+            className="mx-auto mb-3 h-20 w-auto"
+          />
+          <h1 className="font-heading text-2xl font-bold text-graphite">
+            Acessar painel
+          </h1>
           <p className="mt-1 text-sm text-gray-neutral">
             Gestão profissional do cuidado pet.
           </p>
@@ -51,9 +60,8 @@ export default function LoginPage() {
           </div>
           <div>
             <Label htmlFor="password">Senha</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -67,7 +75,10 @@ export default function LoginPage() {
         </form>
         <p className="mt-4 text-center text-sm text-gray-neutral">
           Não tem petshop?{" "}
-          <Link href="/cadastrar" className="font-medium text-orange hover:underline">
+          <Link
+            href="/cadastrar"
+            className="font-medium text-orange hover:underline"
+          >
             Cadastrar
           </Link>
         </p>

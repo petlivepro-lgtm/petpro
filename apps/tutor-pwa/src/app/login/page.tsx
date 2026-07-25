@@ -3,7 +3,9 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Input, Label } from "@mylivepet/ui";
+import { Button, Input, Label, PasswordInput } from "@mylivepet/ui";
+import { activateTutorAccess } from "./actions";
+import { MIN_PASSWORD_LENGTH } from "./password-rules";
 
 export default function LoginPage() {
   return (
@@ -13,8 +15,13 @@ export default function LoginPage() {
   );
 }
 
-/** email: digita o e-mail | login: já tem senha | sent: link enviado por e-mail */
-type Step = "email" | "login" | "sent";
+/**
+ * email  : digita o e-mail (passo 1, decide o resto)
+ * create : primeiro acesso — define a senha aqui mesmo
+ * login  : já tem senha
+ * sent   : link de redefinição enviado por e-mail
+ */
+type Step = "email" | "create" | "login" | "sent";
 
 function LoginForm() {
   const router = useRouter();
@@ -24,7 +31,10 @@ function LoginForm() {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const accessError =
@@ -33,9 +43,16 @@ function LoginForm() {
       : null;
 
   /** Garante que o usuário logado é um tutor (e não staff). Desloga se não for. */
-  async function ensureTutorOrSignOut(userId: string | undefined): Promise<boolean> {
+  async function ensureTutorOrSignOut(
+    userId: string | undefined,
+  ): Promise<boolean> {
     const [{ data: tutor }, { data: membership }] = await Promise.all([
-      supabase.from("tutor").select("id").eq("profile_id", userId ?? "").limit(1).maybeSingle(),
+      supabase
+        .from("tutor")
+        .select("id")
+        .eq("profile_id", userId ?? "")
+        .limit(1)
+        .maybeSingle(),
       supabase
         .from("membership")
         .select("profile_id")
@@ -50,20 +67,23 @@ function LoginForm() {
     return true;
   }
 
-  // Envia o link mágico que leva à página de criação de senha.
-  async function sendLink(createUser: boolean) {
+  /** Link por e-mail — usado só para redefinir senha esquecida. */
+  async function sendResetLink() {
     setLoading(true);
     setError(null);
+    setNotice(null);
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: {
-        shouldCreateUser: createUser,
+        shouldCreateUser: false,
         emailRedirectTo: `${window.location.origin}/criar-senha`,
       },
     });
     setLoading(false);
     if (otpError) {
-      setError("Não foi possível enviar o e-mail. Tente novamente em instantes.");
+      setError(
+        "Não foi possível enviar o e-mail. Tente novamente em instantes.",
+      );
       return;
     }
     setStep("sent");
@@ -73,29 +93,54 @@ function LoginForm() {
   async function onSubmitEmail(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     setLoading(true);
     const value = email.trim().toLowerCase();
-    const { data: status, error: rpcError } = await supabase.rpc("tutor_access_status", {
-      p_email: value,
-    });
+    const { data: status, error: rpcError } = await supabase.rpc(
+      "tutor_access_status",
+      {
+        p_email: value,
+      },
+    );
+    setLoading(false);
     if (rpcError) {
-      setLoading(false);
       setError("Não foi possível verificar o e-mail. Tente novamente.");
       return;
     }
     if (status === "not_found") {
-      setLoading(false);
       setError("E-mail não encontrado. Procure o petshop para se cadastrar.");
       return;
     }
-    if (status === "existing") {
-      setLoading(false);
-      setError(null);
-      setStep("login");
+    // 'existing' => já tem senha, só entrar. 'first_access' => criar a senha aqui.
+    setStep(status === "existing" ? "login" : "create");
+  }
+
+  // Passo 2 (first_access): cria a senha e devolve para a tela de login.
+  async function onSubmitCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setError(
+        `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+      );
       return;
     }
-    // first_access → envia o link para criar a senha
-    await sendLink(true);
+    if (newPassword !== confirm) {
+      setError("As senhas não coincidem.");
+      return;
+    }
+    setLoading(true);
+    const result = await activateTutorAccess(email, newPassword);
+    setLoading(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setNewPassword("");
+    setConfirm("");
+    setPassword("");
+    setNotice("Senha criada com sucesso. Agora entre com ela.");
+    setStep("login");
   }
 
   // Passo 2 (existing): login de quem já tem senha.
@@ -103,10 +148,13 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    });
+    setNotice(null);
+    const { data, error: signInError } = await supabase.auth.signInWithPassword(
+      {
+        email: email.trim().toLowerCase(),
+        password,
+      },
+    );
     if (signInError) {
       setLoading(false);
       setError("E-mail ou senha inválidos.");
@@ -121,20 +169,45 @@ function LoginForm() {
     router.replace("/");
   }
 
+  function backToEmail() {
+    setError(null);
+    setNotice(null);
+    setStep("email");
+  }
+
   const headings: Record<Step, { title: string; subtitle: string }> = {
-    email: { title: "Bem-vindo", subtitle: "Informe seu e-mail para acessar o app." },
-    login: { title: "Bem-vindo de volta", subtitle: "Digite sua senha para entrar." },
-    sent: { title: "Verifique seu e-mail", subtitle: "Enviamos um link de acesso para você." },
+    email: {
+      title: "Bem-vindo",
+      subtitle: "Informe seu e-mail para acessar o app.",
+    },
+    create: {
+      title: "Primeiro acesso",
+      subtitle: "Crie a senha que você vai usar no app.",
+    },
+    login: {
+      title: "Bem-vindo de volta",
+      subtitle: "Digite sua senha para entrar.",
+    },
+    sent: {
+      title: "Verifique seu e-mail",
+      subtitle: "Enviamos um link de acesso para você.",
+    },
   };
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
       <div className="mb-8 text-center">
-        <img src="/brand/logopet.svg" alt="MyLivePet" className="mx-auto h-24 w-auto" />
+        <img
+          src="/brand/logopet.svg"
+          alt="MyLivePet"
+          className="mx-auto h-24 w-auto"
+        />
         <h1 className="mt-1 font-heading text-2xl font-bold text-graphite">
           {headings[step].title}
         </h1>
-        <p className="mt-1 text-sm text-gray-neutral">{headings[step].subtitle}</p>
+        <p className="mt-1 text-sm text-gray-neutral">
+          {headings[step].subtitle}
+        </p>
       </div>
 
       {step === "email" && (
@@ -150,10 +223,57 @@ function LoginForm() {
               required
             />
           </div>
-          {(error ?? accessError) && <p className="text-sm text-danger">{error ?? accessError}</p>}
+          {(error ?? accessError) && (
+            <p className="text-sm text-danger">{error ?? accessError}</p>
+          )}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Verificando..." : "Continuar"}
           </Button>
+        </form>
+      )}
+
+      {step === "create" && (
+        <form onSubmit={onSubmitCreate} className="space-y-4">
+          <div>
+            <Label htmlFor="email-new">E-mail</Label>
+            <Input id="email-new" type="email" value={email} disabled />
+          </div>
+          <div>
+            <Label htmlFor="new-password">Nova senha</Label>
+            <PasswordInput
+              id="new-password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+            />
+            <p className="mt-1 text-xs text-gray-neutral">
+              Pelo menos {MIN_PASSWORD_LENGTH} caracteres.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="confirm-password">Confirmar senha</Label>
+            <PasswordInput
+              id="confirm-password"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              required
+            />
+          </div>
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Criando senha..." : "Criar senha"}
+          </Button>
+          <div className="text-center">
+            <button
+              type="button"
+              className="text-sm text-gray-neutral underline"
+              onClick={backToEmail}
+            >
+              Trocar e-mail
+            </button>
+          </div>
         </form>
       )}
 
@@ -165,15 +285,15 @@ function LoginForm() {
           </div>
           <div>
             <Label htmlFor="password">Senha</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
+          {notice && <p className="text-sm text-success">{notice}</p>}
           {error && <p className="text-sm text-danger">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Entrando..." : "Entrar"}
@@ -182,17 +302,14 @@ function LoginForm() {
             <button
               type="button"
               className="text-gray-neutral underline"
-              onClick={() => {
-                setError(null);
-                setStep("email");
-              }}
+              onClick={backToEmail}
             >
               Trocar e-mail
             </button>
             <button
               type="button"
               className="text-orange underline"
-              onClick={() => sendLink(false)}
+              onClick={sendResetLink}
               disabled={loading}
             >
               Esqueci a senha (receber link)
@@ -204,14 +321,15 @@ function LoginForm() {
       {step === "sent" && (
         <div className="space-y-4 text-center">
           <p className="text-sm text-gray-neutral">
-            Enviamos um link para <span className="font-medium text-graphite">{email}</span>. Abra o
-            e-mail e clique no link para criar sua senha e entrar.
+            Enviamos um link para{" "}
+            <span className="font-medium text-graphite">{email}</span>. Abra o
+            e-mail e clique no link para redefinir sua senha e entrar.
           </p>
           {error && <p className="text-sm text-danger">{error}</p>}
           <button
             type="button"
             className="text-sm text-orange underline"
-            onClick={() => sendLink(true)}
+            onClick={sendResetLink}
             disabled={loading}
           >
             {loading ? "Reenviando..." : "Reenviar link"}
@@ -220,10 +338,7 @@ function LoginForm() {
             <button
               type="button"
               className="text-sm text-gray-neutral underline"
-              onClick={() => {
-                setError(null);
-                setStep("email");
-              }}
+              onClick={backToEmail}
             >
               Trocar e-mail
             </button>
