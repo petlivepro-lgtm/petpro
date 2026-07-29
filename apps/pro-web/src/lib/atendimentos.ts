@@ -68,6 +68,11 @@ export function startOfTodayIso(): string {
   return d.toISOString();
 }
 
+export type FetchAtendimentosOptions = {
+  historyFrom?: string;
+  historyTo?: string;
+};
+
 /**
  * Carrega a tela inteira em duas consultas: a agenda (de hoje em diante, ordem
  * crescente) e o histórico (antes de hoje, mais recente primeiro). Atendimentos
@@ -75,10 +80,29 @@ export function startOfTodayIso(): string {
  */
 export async function fetchAtendimentos(
   supabase: SupabaseClient<Database>,
+  options: FetchAtendimentosOptions = {},
 ): Promise<AtendimentoRow[]> {
   const fromIso = startOfTodayIso();
+  const hasHistoryPeriod = Boolean(options.historyFrom || options.historyTo);
+  let historicoPeriodoQuery = supabase
+    .from("appointment")
+    .select(ATENDIMENTO_SELECT)
+    .lt("scheduled_at", fromIso);
 
-  const [agenda, andamento, historico] = await Promise.all([
+  if (options.historyFrom) {
+    historicoPeriodoQuery = historicoPeriodoQuery.gte(
+      "scheduled_at",
+      options.historyFrom,
+    );
+  }
+  if (options.historyTo) {
+    historicoPeriodoQuery = historicoPeriodoQuery.lte(
+      "scheduled_at",
+      `${options.historyTo}T23:59:59.999`,
+    );
+  }
+
+  const [agenda, andamento, historico, historicoPeriodo] = await Promise.all([
     supabase
       .from("appointment")
       .select(ATENDIMENTO_SELECT)
@@ -94,6 +118,11 @@ export async function fetchAtendimentos(
       .lt("scheduled_at", fromIso)
       .order("scheduled_at", { ascending: false })
       .limit(100),
+    hasHistoryPeriod
+      ? historicoPeriodoQuery
+          .order("scheduled_at", { ascending: false })
+          .limit(100)
+      : Promise.resolve({ data: [] }),
   ]);
 
   // Sem data definida não casa nem `gte` nem `lt` — busca à parte para não sumir.
@@ -107,6 +136,7 @@ export async function fetchAtendimentos(
     ...(agenda.data ?? []),
     ...(andamento.data ?? []),
     ...(historico.data ?? []),
+    ...(historicoPeriodo.data ?? []),
     ...(semData ?? []),
   ] as unknown as RawAtendimento[];
 
@@ -131,7 +161,11 @@ export function isBucket(v: string | undefined): v is Bucket {
   return v === "hoje" || v === "proximos" || v === "historico";
 }
 
-const ACTIVE_STATUSES: AppointmentStatus[] = ["REQUESTED", "CONFIRMED", "CHECKED_IN"];
+const ACTIVE_STATUSES: AppointmentStatus[] = [
+  "REQUESTED",
+  "CONFIRMED",
+  "CHECKED_IN",
+];
 
 /**
  * Hoje: agendado para o dia corrente ou em andamento (não some se atrasou).
@@ -144,7 +178,8 @@ export function bucketOf(row: AtendimentoRow, todayKey: string): Bucket {
   }
   const key = dayKey(new Date(row.scheduledAt));
   if (key === todayKey) return "hoje";
-  if (key > todayKey) return ACTIVE_STATUSES.includes(row.status) ? "proximos" : "historico";
+  if (key > todayKey)
+    return ACTIVE_STATUSES.includes(row.status) ? "proximos" : "historico";
   return "historico";
 }
 
@@ -207,10 +242,16 @@ export function groupByDay(
 /** "2026-07-22T09:00:00Z" → "09:00"; sem data → "--:--". */
 export function formatTime(v: string | null): string {
   if (!v) return "--:--";
-  return new Date(v).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return new Date(v).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export function formatDateTime(v: string | null): string {
   if (!v) return "—";
-  return new Date(v).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return new Date(v).toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
 }

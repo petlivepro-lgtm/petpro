@@ -25,6 +25,14 @@ import { AppointmentStatusBadge } from "@/components/status-badge";
 import { FinishAppointmentDialog } from "@/components/finish-appointment-dialog";
 import { AppointmentChecklist } from "@/components/appointment-checklist";
 import { StartAppointmentDialog } from "@/components/start-appointment-dialog";
+import { BehaviorReportDetail } from "@/components/behavior-report-view";
+import {
+  BEHAVIOR_REPORT_SELECT,
+  fetchBehaviorCategories,
+  mapBehaviorReports,
+  type RawBehaviorReport,
+} from "@/lib/behavior";
+import { getActiveTenant } from "@/lib/tenant";
 import type { AppointmentStatus, FeedbackResponse } from "@mylivepet/types";
 
 function fmt(v: string | null) {
@@ -70,8 +78,23 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
     .select("direction, rating, comment, responses, created_at")
     .eq("appointment_id", id);
 
-  const behavior = (feedbacks ?? []).find((f) => f.direction === "STAFF_TO_TUTOR");
+  // Boletim de comportamento deste atendimento (substitui o antigo feedback
+  // STAFF_TO_TUTOR, que só guardava um texto livre).
+  const { data: behaviorRows } = await supabase
+    .from("pet_behavior_report")
+    .select(BEHAVIOR_REPORT_SELECT)
+    .eq("appointment_id", id);
+  const behavior =
+    mapBehaviorReports((behaviorRows ?? []) as unknown as RawBehaviorReport[])[0] ??
+    null;
+
   const tutorFb = (feedbacks ?? []).find((f) => f.direction === "TUTOR_TO_PETSHOP");
+
+  // Categorias do boletim para o dialog de finalização (só quando dá para finalizar).
+  const tenant = status === "IN_PROGRESS" ? await getActiveTenant(supabase) : null;
+  const behaviorCategories = tenant
+    ? await fetchBehaviorCategories(supabase, tenant.tenantId)
+    : [];
   const tutorResponses = (tutorFb?.responses as FeedbackResponse[] | null) ?? [];
 
   const photos = appt.photos ?? [];
@@ -136,13 +159,15 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
             </Card>
           )}
 
-          {behavior?.comment && (
+          {behavior && (
             <Card>
-              <div className="mb-2 flex items-center gap-2 text-graphite">
+              <div className="mb-3 flex items-center gap-2 text-graphite">
                 <PawPrint className="h-4 w-4 text-orange" />
-                <h2 className="font-heading text-lg font-semibold">Comportamento</h2>
+                <h2 className="font-heading text-lg font-semibold">
+                  Boletim de comportamento
+                </h2>
               </div>
-              <p className="text-sm text-gray-neutral">{behavior.comment}</p>
+              <BehaviorReportDetail report={behavior} />
             </Card>
           )}
 
@@ -213,7 +238,10 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
                   appointmentId={id}
                   steps={(steps ?? []).map((s) => ({ id: s.id, label: s.label, done: s.done }))}
                 />
-                <FinishAppointmentDialog appointmentId={id} />
+                <FinishAppointmentDialog
+                  appointmentId={id}
+                  behaviorCategories={behaviorCategories}
+                />
               </div>
             )}
 

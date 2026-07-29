@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { behaviorFeedbackInput } from "@mylivepet/types";
+import {
+  behaviorReportInput,
+  computeOverallScore,
+  PAYMENT_METHODS,
+  type PaymentMethod,
+} from "@mylivepet/types";
 import { startCameraStream, stopCameraStream } from "@/lib/camera/mediamtx";
 
 const BUCKET = "appointment-photos";
@@ -33,7 +38,8 @@ async function uploadPhotos(
     const { error } = await admin.storage
       .from(BUCKET)
       .upload(path, file, { upsert: true, contentType: file.type });
-    if (!error) urls.push(admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl);
+    if (!error)
+      urls.push(admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl);
   }
   return urls;
 }
@@ -93,7 +99,8 @@ export async function startAppointment(formData: FormData) {
   // impedir o atendimento de começar — o tutor apenas fica sem o ao vivo.
   if (cameraId && appt) {
     const result = await startCameraStream(appt.tenant_id, cameraId);
-    if (!result.ok) console.warn(`[camera] falha ao ligar stream: ${result.error}`);
+    if (!result.ok)
+      console.warn(`[camera] falha ao ligar stream: ${result.error}`);
   }
 
   revalidatePath(`/atendimentos/${id}`);
@@ -115,54 +122,121 @@ export async function toggleStep(formData: FormData) {
   revalidatePath(`/atendimentos/${appointmentId}`);
 }
 
-/** Finaliza o atendimento: fotos + comportamento + status COMPLETED. */
-export async function finishAppointment(formData: FormData) {
+/**
+ * Grava o boletim de comportamento do atendimento. Retorna a mensagem de erro,
+ * ou undefined em caso de sucesso (inclusive quando não há nada a gravar).
+ *
+ * Upsert por appointment_id: refinalizar o atendimento atualiza o boletim em vez
+ * de duplicá-lo.
+ */
+async function saveBehaviorReport(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ctx: { tenantId: string; petId: string; appointmentId: string; authorId: string },
+  formData: FormData,
+): Promise<string | undefined> {
+  let rawResponses: unknown = [];
+  const encoded = str(formData.get("behavior_responses"));
+  if (encoded) {
+    try {
+      rawResponses = JSON.parse(encoded);
+    } catch {
+      return "Boletim inválido";
+    }
+  }
+
+  const parsed = behaviorReportInput.safeParse({
+    appointment_id: ctx.appointmentId,
+    note: str(formData.get("behavior_note")),
+    responses: rawResponses,
+  });
+  if (!parsed.success) {
+    return parsed.error.issues[0]?.message ?? "Boletim inválido";
+  }
+
+  const { note, responses } = parsed.data;
+  if (responses.length === 0 && !note) return undefined;
+
+  const { error } = await supabase.from("pet_behavior_report").upsert(
+    {
+      tenant_id: ctx.tenantId,
+      pet_id: ctx.petId,
+      appointment_id: ctx.appointmentId,
+      overall_score: computeOverallScore(responses),
+      responses,
+      note: note ?? null,
+      author_id: ctx.authorId,
+    },
+    { onConflict: "appointment_id" },
+  );
+  return error?.message;
+}
+
+/** Finaliza o atendimento: fotos + boletim de comportamento + status COMPLETED. */
+export type FinishAppointmentState = { ok: boolean; error?: string };
+
+export async function finishAppointment(
+  _prev: FinishAppointmentState,
+  formData: FormData,
+): Promise<FinishAppointmentState> {
   const id = str(formData.get("appointment_id"));
-  if (!id) return;
+  if (!id) return { ok: false, error: "Atendimento inválido" };
+  const paymentMethod = str(formData.get("payment_method"));
+  if (!PAYMENT_METHODS.includes(paymentMethod as PaymentMethod)) {
+    return { ok: false, error: "Informe a forma de pagamento" };
+  }
 
   const supabase = await createClient();
-  const { data: appt } = await supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Sessão expirada" };
+
+  const { data: appt, error: appointmentError } = await supabase
     .from("appointment")
-    .select("tenant_id, camera_id")
+    .select("tenant_id, camera_id, pet_id")
     .eq("id", id)
     .single();
-  if (!appt) return;
+  if (appointmentError || !appt) {
+    return { ok: false, error: "Atendimento não encontrado" };
+  }
 
   const files = formData
     .getAll("photos")
     .filter((f): f is File => f instanceof File && f.size > 0);
   const photos = await uploadPhotos(appt.tenant_id, id, files);
 
-  await supabase
+  const { error: finishError } = await supabase
     .from("appointment")
     .update({
       status: "COMPLETED",
       finished_at: new Date().toISOString(),
+      payment_method: paymentMethod as PaymentMethod,
+      completed_by: user.id,
       ...(photos.length > 0 ? { photos } : {}),
     })
     .eq("id", id);
+  if (finishError) return { ok: false, error: finishError.message };
 
-  // Relato de comportamento (opcional) → feedback STAFF_TO_TUTOR.
-  const behavior = behaviorFeedbackInput.safeParse({
-    appointment_id: id,
-    comment: str(formData.get("behavior")),
-  });
-  if (behavior.success) {
-    await supabase.from("feedback").insert({
-      tenant_id: appt.tenant_id,
-      appointment_id: id,
-      direction: "STAFF_TO_TUTOR",
-      comment: behavior.data.comment,
-    });
-  }
+  // Boletim de comportamento (notas por categoria + observação). Ambos são
+  // opcionais: sem nota e sem observação, nenhum boletim é gravado.
+  const behaviorError = await saveBehaviorReport(
+    supabase,
+    { tenantId: appt.tenant_id, petId: appt.pet_id, appointmentId: id, authorId: user.id },
+    formData,
+  );
+  if (behaviorError) return { ok: false, error: behaviorError };
 
   // Encerra stream + gravação no gateway (best-effort; o path também é
   // sobrescrito no próximo atendimento que usar a mesma câmera).
   if (appt.camera_id) {
     const result = await stopCameraStream(appt.tenant_id, appt.camera_id);
-    if (!result.ok) console.warn(`[camera] falha ao encerrar stream: ${result.error}`);
+    if (!result.ok)
+      console.warn(`[camera] falha ao encerrar stream: ${result.error}`);
   }
 
   revalidatePath(`/atendimentos/${id}`);
   revalidatePath("/atendimentos");
+  revalidatePath("/financeiro");
+  revalidatePath(`/pets/${appt.pet_id}`);
+  return { ok: true };
 }

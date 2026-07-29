@@ -1,15 +1,34 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
 import { Button, Checkbox, CurrencyInput, Dialog, Input, Label, PhotoGalleryInput, Select } from "@mylivepet/ui";
-import { PRODUCT_CATEGORIES, PRODUCT_CATEGORY_LABEL } from "@mylivepet/types";
+import { formatBRL, PRODUCT_CATEGORIES, PRODUCT_CATEGORY_LABEL } from "@mylivepet/types";
 import {
   createProduct,
   updateProduct,
   type FormState,
 } from "@/app/(app)/produtos/actions";
+import {
+  ProductVariantsInput,
+  serializeVariants,
+  variantTotals,
+  type VariantRow,
+} from "@/components/product-variants-input";
+
+export type ProductVariantRow = {
+  id: string;
+  color_name: string | null;
+  color_hex: string | null;
+  size: string | null;
+  weight_value: number | string | null;
+  weight_unit: string | null;
+  price_cents: number;
+  stock: number;
+  active: boolean;
+  position: number;
+};
 
 export type ProductRow = {
   id: string;
@@ -23,17 +42,43 @@ export type ProductRow = {
   for_sale: boolean;
   photo_path: string | null;
   photos: string[];
+  product_variant?: ProductVariantRow[];
 };
+
+function toVariantRows(variants: ProductVariantRow[] | undefined): VariantRow[] {
+  return [...(variants ?? [])]
+    .sort((a, b) => a.position - b.position)
+    .map((v) => ({
+      id: v.id,
+      key: v.id,
+      color_name: v.color_name,
+      color_hex: v.color_hex,
+      size: v.size ?? "",
+      weight_value: v.weight_value != null ? String(Number(v.weight_value)) : "",
+      weight_unit: v.weight_unit === "kg" ? "kg" : "g",
+      price_cents: v.price_cents,
+      stock: String(v.stock),
+      active: v.active,
+    }));
+}
 
 export function ProductDialog({ product }: { product?: ProductRow }) {
   const router = useRouter();
   const isEdit = !!product;
   const [open, setOpen] = useState(false);
   const [forSale, setForSale] = useState(product?.for_sale ?? true);
+  const [variants, setVariants] = useState<VariantRow[]>(() =>
+    toVariantRows(product?.product_variant),
+  );
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     isEdit ? updateProduct : createProduct,
     { ok: false },
   );
+
+  // Com variações, preço e estoque do produto são derivados no banco (menor
+  // preço / soma dos estoques ativos): os campos viram somente leitura.
+  const hasVariants = variants.length > 0;
+  const totals = useMemo(() => variantTotals(variants), [variants]);
 
   useEffect(() => {
     if (state.ok) {
@@ -47,14 +92,24 @@ export function ProductDialog({ product }: { product?: ProductRow }) {
       {isEdit ? (
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            // Descarta edições não salvas de uma abertura anterior.
+            setVariants(toVariantRows(product!.product_variant));
+            setOpen(true);
+          }}
           aria-label={`Editar ${product!.name}`}
           className="rounded-lg p-2 text-gray-neutral transition-colors hover:bg-orange/10 hover:text-orange"
         >
           <Pencil className="h-4 w-4" />
         </button>
       ) : (
-        <Button size="sm" onClick={() => setOpen(true)}>
+        <Button
+          size="sm"
+          onClick={() => {
+            setVariants([]);
+            setOpen(true);
+          }}
+        >
           <Plus className="h-4 w-4" /> Novo produto
         </Button>
       )}
@@ -99,22 +154,42 @@ export function ProductDialog({ product }: { product?: ProductRow }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label htmlFor="price">Preço {forSale ? "*" : "(opcional)"}</Label>
-              <CurrencyInput id="price" name="price" required={forSale} defaultCents={product?.price_cents} />
+              <Label htmlFor="price">Preço {forSale && !hasVariants ? "*" : "(opcional)"}</Label>
+              {hasVariants ? (
+                <CurrencyInput id="price" cents={totals.minPrice} disabled />
+              ) : (
+                <CurrencyInput
+                  id="price"
+                  name="price"
+                  required={forSale}
+                  defaultCents={product?.price_cents}
+                />
+              )}
             </div>
             <div>
-              <Label htmlFor="stock">Estoque (un.) *</Label>
+              <Label htmlFor="stock">Estoque (un.) {hasVariants ? "" : "*"}</Label>
               <Input
                 id="stock"
-                name="stock"
+                name={hasVariants ? undefined : "stock"}
                 type="number"
                 min="0"
                 step="1"
-                required
-                defaultValue={product ? String(product.stock) : ""}
+                required={!hasVariants}
+                disabled={hasVariants}
+                value={hasVariants ? String(totals.stock) : undefined}
+                readOnly={hasVariants}
+                defaultValue={hasVariants ? undefined : product ? String(product.stock) : ""}
                 placeholder="0"
+                className={hasVariants ? "bg-surface-muted text-gray-neutral" : undefined}
               />
             </div>
+            {hasVariants && (
+              <p className="text-xs text-gray-neutral sm:col-span-2">
+                Preço e estoque vêm das variações: o preço é o menor entre elas
+                {totals.minPrice !== null && ` (${formatBRL(totals.minPrice)})`} e o estoque é a
+                soma das disponíveis.
+              </p>
+            )}
           </div>
 
           <div>
@@ -133,6 +208,16 @@ export function ProductDialog({ product }: { product?: ProductRow }) {
           <div>
             <Label>Fotos (até 5)</Label>
             <PhotoGalleryInput name="photos" defaultUrls={product?.photos ?? []} max={5} />
+          </div>
+
+          <div>
+            <Label>Variações (cor, tamanho, peso)</Label>
+            <input type="hidden" name="variants" value={JSON.stringify(serializeVariants(variants))} />
+            <ProductVariantsInput
+              rows={variants}
+              onChange={setVariants}
+              currentStock={product?.stock}
+            />
           </div>
 
           <div className="space-y-3 rounded-xl border border-graphite/10 p-3">

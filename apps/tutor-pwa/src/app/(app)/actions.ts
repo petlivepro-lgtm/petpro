@@ -101,7 +101,7 @@ export async function submitTutorFeedback(formData: FormData) {
 /** Tutor reserva produtos para pagar na loja (sem pagamento online). */
 export async function createReservation(formData: FormData) {
   const raw = formData.get("items");
-  let items: { product_id: string; quantity: number }[] = [];
+  let items: { product_id: string; variant_id?: string; quantity: number }[] = [];
   try {
     items = JSON.parse(typeof raw === "string" ? raw : "[]");
   } catch {
@@ -114,13 +114,20 @@ export async function createReservation(formData: FormData) {
   const ctx = await getTutorContext(supabase);
   if (!ctx) redirect("/produtos?erro=1");
 
-  // debita o estoque e cria a reserva de forma atômica (evita corrida entre tutores)
+  // debita o estoque (da variação, quando houver) e cria a reserva de forma
+  // atômica — evita corrida entre tutores disputando a última unidade
   const { error } = await supabase.rpc("reserve_products", {
     p_tenant_id: ctx.tenantId,
     p_items: parsed.data.items,
     p_note: parsed.data.note ?? undefined,
   });
-  if (error) redirect("/produtos?erro=estoque");
+  if (error) {
+    redirect(
+      error.message.includes("Selecione a variação")
+        ? "/produtos?erro=variacao"
+        : "/produtos?erro=estoque",
+    );
+  }
 
   revalidatePath("/produtos");
   redirect("/produtos?reservado=1");
@@ -145,5 +152,20 @@ export async function cancelReservation(formData: FormData) {
   const supabase = await createClient();
   await supabase.rpc("cancel_reservation", { p_reservation_id: parsed.data.reservation_id });
 
+  revalidatePath("/produtos");
+}
+
+/**
+ * Tutor dispensa o aviso de uma reserva recusada. Vai para o banco (e não para
+ * o localStorage) para que a dispensa valha em qualquer aparelho.
+ */
+export async function markRejectionSeen(formData: FormData) {
+  const parsed = reservationCancel.safeParse({ reservation_id: formData.get("reservation_id") });
+  if (!parsed.success) return;
+
+  const supabase = await createClient();
+  await supabase.rpc("mark_rejection_seen", { p_reservation_id: parsed.data.reservation_id });
+
+  revalidatePath("/");
   revalidatePath("/produtos");
 }

@@ -16,6 +16,7 @@ import {
   type ProductCategory,
 } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/client";
+import { PRODUCT_SELECT } from "@/lib/produtos";
 import { useRealtimeList } from "@/lib/use-realtime-list";
 import { ProductDialog, type ProductRow } from "@/components/product-dialog";
 import { DeleteProductDialog } from "@/components/delete-product-dialog";
@@ -25,8 +26,6 @@ import {
   useCatalogView,
 } from "@/components/catalog-toolbar";
 
-const PRODUCT_SELECT =
-  "id, name, description, category, price_cents, stock, min_stock, active, for_sale, photo_path, photos";
 const VIEW_STORAGE_KEY = "mylivepet:pro:produtos:view";
 
 type ProductFilter = "venda" | "interno" | "todos";
@@ -48,7 +47,7 @@ export function ProdutosGrid({
   const list = useRealtimeList(
     initialProducts,
     fetchProducts,
-    [{ table: "product" }],
+    [{ table: "product" }, { table: "product_variant" }],
     "produtos-estoque",
   );
 
@@ -156,9 +155,10 @@ function ProductsCards({ products }: { products: ProductRow[] }) {
             {!product.for_sale && (
               <StatusChip tone="info">Uso interno</StatusChip>
             )}
+            <VariantsChip product={product} />
           </div>
           <p className="mt-2 font-heading text-xl font-bold text-graphite">
-            {product.for_sale ? formatBRL(product.price_cents) : "—"}
+            <ProductPrice product={product} />
           </p>
           <ProductActions product={product} />
         </Card>
@@ -229,12 +229,15 @@ function ProductsTable({ products }: { products: ProductRow[] }) {
                     : "—"}
                 </td>
                 <td className="whitespace-nowrap px-4 py-4">
-                  <StatusChip tone={product.for_sale ? "success" : "info"}>
-                    {product.for_sale ? "À venda" : "Uso interno"}
-                  </StatusChip>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <StatusChip tone={product.for_sale ? "success" : "info"}>
+                      {product.for_sale ? "À venda" : "Uso interno"}
+                    </StatusChip>
+                    <VariantsChip product={product} />
+                  </div>
                 </td>
                 <td className="whitespace-nowrap px-4 py-4 font-heading font-semibold text-graphite">
-                  {product.for_sale ? formatBRL(product.price_cents) : "—"}
+                  <ProductPrice product={product} />
                 </td>
                 <td className="whitespace-nowrap px-4 py-4">
                   <ProductStockStatus product={product} />
@@ -278,6 +281,33 @@ function ProductImage({
     />
   ) : (
     <Package className={iconClassName} />
+  );
+}
+
+function variantCount(product: ProductRow) {
+  return product.product_variant?.length ?? 0;
+}
+
+/** Preço exibido: com variações vira "a partir de" (o menor entre as ativas). */
+function ProductPrice({ product }: { product: ProductRow }) {
+  if (!product.for_sale) return <>—</>;
+  const count = variantCount(product);
+  if (count === 0) return <>{formatBRL(product.price_cents)}</>;
+  return (
+    <span className="inline-flex flex-col leading-tight">
+      <span className="text-xs font-normal text-gray-neutral">a partir de</span>
+      {formatBRL(product.price_cents)}
+    </span>
+  );
+}
+
+function VariantsChip({ product }: { product: ProductRow }) {
+  const count = variantCount(product);
+  if (count === 0) return null;
+  return (
+    <StatusChip tone="neutral">
+      {count} variaç{count > 1 ? "ões" : "ão"}
+    </StatusChip>
   );
 }
 

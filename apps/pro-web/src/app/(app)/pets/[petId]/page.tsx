@@ -28,13 +28,20 @@ import {
 } from "@mylivepet/ui";
 import {
   APPOINTMENT_STATUS_LABEL,
+  BEHAVIOR_BADGE_LABEL,
+  BEHAVIOR_BADGE_TONE,
   RESERVATION_STATUS_LABEL,
+  behaviorBadgeOf,
+  formatBehaviorScore,
   type AppointmentStatus,
   type ReservationStatus,
 } from "@mylivepet/types";
+import { RatingStars } from "@mylivepet/ui";
 import { PetTabs } from "@/components/pet-tabs";
 import { PetPhotoDialog } from "@/components/pet-photo-dialog";
 import { AppointmentStatusBadge } from "@/components/status-badge";
+import { BehaviorReportView } from "@/components/behavior-report-view";
+import { fetchBehaviorSummaries, fetchPetBehaviorReports } from "@/lib/behavior";
 import { createStaffAppointment } from "./actions";
 
 const statusColor: Record<AppointmentStatus, string> = {
@@ -83,11 +90,23 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
 
   const { data: appts } = await supabase
     .from("appointment")
-    .select("id, status, scheduled_at, created_at, service_type(name), feedback(direction, comment, rating)")
+    .select(
+      "id, status, scheduled_at, created_at, service_type(name), pet_behavior_report(note)",
+    )
     .eq("pet_id", petId)
     .order("scheduled_at", { ascending: false, nullsFirst: false });
 
   const appointments = appts ?? [];
+
+  const [behaviorReports, summaries] = await Promise.all([
+    fetchPetBehaviorReports(supabase, petId),
+    fetchBehaviorSummaries(supabase, [petId]),
+  ]);
+  const summary = summaries.get(petId) ?? null;
+  const behaviorBadge = behaviorBadgeOf(
+    summary?.averageScore ?? null,
+    summary?.reportCount ?? 0,
+  );
   const emAtendimento = appointments.some((a) => a.status === "IN_PROGRESS");
 
   const { data: reservas } = tutor
@@ -119,8 +138,9 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
       )}
       {appointments.map((a, i) => {
         const service = a.service_type as unknown as { name: string } | null;
-        const fb = (a.feedback as unknown as { direction: string; comment: string | null }[]) ?? [];
-        const behavior = fb.find((f) => f.direction === "STAFF_TO_TUTOR");
+        const reports =
+          (a.pet_behavior_report as unknown as { note: string | null }[]) ?? [];
+        const behavior = reports[0];
         return (
           <TimelineItem
             key={a.id}
@@ -128,7 +148,7 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
             icon={<Stethoscope className="h-4 w-4" />}
             title={`${service?.name ?? "Atendimento"} — ${APPOINTMENT_STATUS_LABEL[a.status as AppointmentStatus]}`}
             time={fmt(a.scheduled_at ?? a.created_at)}
-            description={behavior?.comment ?? undefined}
+            description={behavior?.note ?? undefined}
             last={i === appointments.length - 1}
           />
         );
@@ -199,6 +219,28 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
             </div>
             {meta && <p className="text-sm text-gray-neutral">{meta}</p>}
             {age && <p className="text-sm text-gray-neutral">{age}</p>}
+
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+              {summary?.averageScore !== null && summary !== null ? (
+                <>
+                  <RatingStars value={Math.round(summary.averageScore!)} size="sm" />
+                  <span className="text-sm text-gray-neutral">
+                    {formatBehaviorScore(summary.averageScore)} ·{" "}
+                    {summary.reportCount}{" "}
+                    {summary.reportCount === 1 ? "avaliação" : "avaliações"}
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm text-gray-neutral">
+                  Ainda sem boletim
+                </span>
+              )}
+              {behaviorBadge && (
+                <StatusChip tone={BEHAVIOR_BADGE_TONE[behaviorBadge]}>
+                  {BEHAVIOR_BADGE_LABEL[behaviorBadge]}
+                </StatusChip>
+              )}
+            </div>
             {tutor && (
               <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-graphite/5 pt-3">
                 <div className="flex items-center gap-2">
@@ -232,7 +274,12 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
       </ActionGrid>
 
       {/* Abas */}
-      <PetTabs historico={historico} agenda={agenda} vendas={vendas} />
+      <PetTabs
+        historico={historico}
+        boletim={<BehaviorReportView reports={behaviorReports} />}
+        agenda={agenda}
+        vendas={vendas}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Avatar, StatusChip, cn } from "@mylivepet/ui";
-import type { AppointmentStatus } from "@mylivepet/types";
+import type { AppointmentStatus, BehaviorCategory } from "@mylivepet/types";
 import { AppointmentStatusBadge } from "@/components/status-badge";
 import { AppointmentQuickActions } from "@/components/appointment-quick-actions";
 import type { CameraOption } from "@/components/start-appointment-dialog";
@@ -24,7 +24,15 @@ const accent: Record<AppointmentStatus, string> = {
  * Mesmo bloco no desktop e no mobile — as colunas secundárias somem em telas
  * estreitas em vez de existir um layout paralelo de cards.
  */
-export function AtendimentoRow({ row, cameras }: { row: Row; cameras: CameraOption[] }) {
+export function AtendimentoRow({
+  row,
+  cameras,
+  behaviorCategories,
+}: {
+  row: Row;
+  cameras: CameraOption[];
+  behaviorCategories: BehaviorCategory[];
+}) {
   const live = row.status === "IN_PROGRESS";
 
   return (
@@ -97,6 +105,7 @@ export function AtendimentoRow({ row, cameras }: { row: Row; cameras: CameraOpti
           appointmentId={row.id}
           status={row.status}
           cameras={cameras}
+          behaviorCategories={behaviorCategories}
         />
       </div>
     </div>

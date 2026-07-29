@@ -3,13 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader, EmptyState } from "@mylivepet/ui";
 import { ProductDialog, type ProductRow } from "@/components/product-dialog";
 import { ProdutosGrid } from "@/components/produtos-grid";
+import { PRODUCT_SELECT } from "@/lib/produtos";
 
 export default async function ProdutosPage() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("product")
-    .select("id, name, description, category, price_cents, stock, min_stock, active, for_sale, photo_path, photos")
-    .order("name");
+  const { data } = await supabase.from("product").select(PRODUCT_SELECT).order("name");
 
   const list = (data ?? []) as ProductRow[];
 

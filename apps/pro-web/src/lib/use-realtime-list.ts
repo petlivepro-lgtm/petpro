@@ -16,13 +16,22 @@ export function useRealtimeList<T>(
   fetcher: () => Promise<T[]>,
   watches: TableWatch[],
   channelName: string,
+  syncKey?: string,
 ): T[] {
   const [data, setData] = useState<T[]>(initial);
+  const initialRef = useRef(initial);
+  initialRef.current = initial;
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
   const watchesKey = JSON.stringify(watches);
   const watchesRef = useRef(watches);
   watchesRef.current = watches;
+
+  // Uma nova consulta server-side (ex.: mudança de período) substitui a base
+  // sem desmontar o componente e perder os demais filtros locais.
+  useEffect(() => {
+    if (syncKey !== undefined) setData(initialRef.current);
+  }, [syncKey]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -51,7 +60,12 @@ export function useRealtimeList<T>(
       for (const w of watchesRef.current) {
         channel.on(
           "postgres_changes",
-          { event: "*", schema: "public", table: w.table, ...(w.filter ? { filter: w.filter } : {}) },
+          {
+            event: "*",
+            schema: "public",
+            table: w.table,
+            ...(w.filter ? { filter: w.filter } : {}),
+          },
           refetch,
         );
       }

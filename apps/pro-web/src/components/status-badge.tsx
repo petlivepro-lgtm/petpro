@@ -6,7 +6,10 @@ import {
   type ReservationStatus,
 } from "@mylivepet/types";
 
-const apptTone: Record<AppointmentStatus, React.ComponentProps<typeof Badge>["tone"]> = {
+const apptTone: Record<
+  AppointmentStatus,
+  React.ComponentProps<typeof Badge>["tone"]
+> = {
   REQUESTED: "warning",
   CONFIRMED: "info",
   CHECKED_IN: "info",
@@ -16,18 +19,36 @@ const apptTone: Record<AppointmentStatus, React.ComponentProps<typeof Badge>["to
   CANCELLED: "neutral",
 };
 
-export function AppointmentStatusBadge({ status }: { status: AppointmentStatus }) {
-  return <Badge tone={apptTone[status]}>{APPOINTMENT_STATUS_LABEL[status]}</Badge>;
+export function AppointmentStatusBadge({
+  status,
+}: {
+  status: AppointmentStatus;
+}) {
+  return (
+    <Badge tone={apptTone[status]}>{APPOINTMENT_STATUS_LABEL[status]}</Badge>
+  );
 }
 
-const resvTone: Record<ReservationStatus, React.ComponentProps<typeof Badge>["tone"]> = {
+const resvTone: Record<
+  ReservationStatus,
+  React.ComponentProps<typeof Badge>["tone"]
+> = {
   RESERVED: "warning",
   PICKED: "info",
   COMPLETED: "success",
+  PARTIALLY_REFUNDED: "warning",
+  REFUNDED: "danger",
   EXPIRED: "neutral",
   CANCELLED: "neutral",
+  REJECTED: "danger",
 };
 
-export function ReservationStatusBadge({ status }: { status: ReservationStatus }) {
-  return <Badge tone={resvTone[status]}>{RESERVATION_STATUS_LABEL[status]}</Badge>;
+export function ReservationStatusBadge({
+  status,
+}: {
+  status: ReservationStatus;
+}) {
+  return (
+    <Badge tone={resvTone[status]}>{RESERVATION_STATUS_LABEL[status]}</Badge>
+  );
 }

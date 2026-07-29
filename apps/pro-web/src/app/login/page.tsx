@@ -1,24 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, Input, Label, PasswordInput } from "@mylivepet/ui";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const accessError =
+    searchParams.get("erro") === "acesso"
+      ? "Este acesso não pertence ao painel do petshop."
+      : null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -27,6 +40,21 @@ export default function LoginPage() {
       setError("E-mail ou senha inválidos.");
       return;
     }
+
+    const { data: membership } = await supabase
+      .from("membership")
+      .select("profile_id")
+      .eq("profile_id", data.user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (!membership) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      setError("Este acesso não pertence ao painel do petshop.");
+      return;
+    }
+
     router.replace("/");
   }
 
@@ -68,7 +96,9 @@ export default function LoginPage() {
               required
             />
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {(error ?? accessError) && (
+            <p className="text-sm text-danger">{error ?? accessError}</p>
+          )}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Entrando..." : "Entrar"}
           </Button>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import type { AppointmentStatus } from "@mylivepet/types";
+import type { AppointmentStatus, BehaviorCategory } from "@mylivepet/types";
 import { StartAppointmentDialog, type CameraOption } from "@/components/start-appointment-dialog";
 import { FinishAppointmentDialog } from "@/components/finish-appointment-dialog";
 
@@ -14,10 +14,12 @@ export function AppointmentQuickActions({
   appointmentId,
   status,
   cameras,
+  behaviorCategories,
 }: {
   appointmentId: string;
   status: AppointmentStatus;
   cameras: CameraOption[];
+  behaviorCategories: BehaviorCategory[];
 }) {
   if (status === "CONFIRMED" || status === "CHECKED_IN") {
     return (
@@ -34,6 +36,7 @@ export function AppointmentQuickActions({
     return (
       <FinishAppointmentDialog
         appointmentId={appointmentId}
+        behaviorCategories={behaviorCategories}
         size="sm"
         className="whitespace-nowrap"
       />

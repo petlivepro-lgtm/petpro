@@ -2,14 +2,38 @@
 
 import { useMemo, useState } from "react";
 import { Package, Search } from "lucide-react";
-import { Button, Card, Badge, Dialog, Input, PhotoGallery } from "@mylivepet/ui";
+import {
+  Button,
+  Card,
+  Badge,
+  ChoiceChips,
+  ColorSwatchInput,
+  Dialog,
+  Input,
+  Label,
+  PhotoGallery,
+} from "@mylivepet/ui";
 import {
   formatBRL,
+  formatWeight,
   PRODUCT_CATEGORIES,
   PRODUCT_CATEGORY_LABEL,
+  PRODUCT_COLOR_HEX,
   type ProductCategory,
 } from "@mylivepet/types";
 import { createReservation } from "@/app/(app)/actions";
+
+export type ProductVariant = {
+  id: string;
+  color_name: string | null;
+  color_hex: string | null;
+  size: string | null;
+  weight_value: number | string | null;
+  weight_unit: string | null;
+  price_cents: number;
+  stock: number;
+  position: number;
+};
 
 type Product = {
   id: string;
@@ -20,7 +44,13 @@ type Product = {
   stock: number;
   photo_path?: string | null;
   photos?: string[];
+  product_variant?: ProductVariant[];
 };
+
+/** Escolha em andamento no diálogo de um produto com variações. */
+type VariantChoice = { color: string | null; size: string | null; weight: string | null };
+
+const EMPTY_CHOICE: VariantChoice = { color: null, size: null, weight: null };
 
 function categoryLabel(category?: string | null): string {
   if (!category) return "";
@@ -32,9 +62,33 @@ function photosOf(p: Product): string[] {
   return p.photo_path ? [p.photo_path] : [];
 }
 
+function variantsOf(p: Product): ProductVariant[] {
+  return [...(p.product_variant ?? [])].sort((a, b) => a.position - b.position);
+}
+
+/** Chave de peso usada nos chips ("500 g"); identifica valor + unidade juntos. */
+function weightKey(v: ProductVariant): string | null {
+  return formatWeight(v.weight_value, v.weight_unit);
+}
+
+/** Chave do carrinho: cada variação é um item próprio. */
+function cartKey(productId: string, variantId?: string | null): string {
+  return variantId ? `${productId}:${variantId}` : productId;
+}
+
+/** Menor preço entre as variações com estoque (ou entre todas, se esgotado). */
+function priceFrom(p: Product): number {
+  const variants = variantsOf(p);
+  if (variants.length === 0) return p.price_cents;
+  const withStock = variants.filter((v) => v.stock > 0);
+  const pool = withStock.length > 0 ? withStock : variants;
+  return Math.min(...pool.map((v) => v.price_cents));
+}
+
 export function ReserveList({ products }: { products: Product[] }) {
   const [qty, setQty] = useState<Record<string, number>>({});
   const [openId, setOpenId] = useState<string | null>(null);
+  const [choice, setChoice] = useState<VariantChoice>(EMPTY_CHOICE);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<ProductCategory | null>(null);
 
@@ -57,25 +111,58 @@ export function ReserveList({ products }: { products: Product[] }) {
     });
   }, [products, search, category]);
 
-  const items = Object.entries(qty)
-    .filter(([, q]) => q > 0)
-    .map(([product_id, quantity]) => ({ product_id, quantity }));
+  // Índice das linhas do carrinho para montar o payload e somar o total.
+  const cartRows = useMemo(() => {
+    const rows: { product: Product; variant: ProductVariant | null; quantity: number }[] = [];
+    for (const [key, quantity] of Object.entries(qty)) {
+      if (quantity <= 0) continue;
+      const [productId, variantId] = key.split(":");
+      const product = products.find((p) => p.id === productId);
+      if (!product) continue;
+      const variant = variantId
+        ? (variantsOf(product).find((v) => v.id === variantId) ?? null)
+        : null;
+      if (variantId && !variant) continue;
+      rows.push({ product, variant, quantity });
+    }
+    return rows;
+  }, [qty, products]);
 
-  const total = items.reduce((sum, i) => {
-    const p = products.find((x) => x.id === i.product_id);
-    return sum + (p ? p.price_cents * i.quantity : 0);
-  }, 0);
+  const items = cartRows.map((r) => ({
+    product_id: r.product.id,
+    variant_id: r.variant?.id,
+    quantity: r.quantity,
+  }));
 
-  function setQ(id: string, delta: number, max: number) {
+  const total = cartRows.reduce(
+    (sum, r) => sum + (r.variant?.price_cents ?? r.product.price_cents) * r.quantity,
+    0,
+  );
+
+  function setQ(key: string, delta: number, max: number) {
     setQty((prev) => {
-      const next = Math.max(0, Math.min(max, (prev[id] ?? 0) + delta));
-      return { ...prev, [id]: next };
+      const next = Math.max(0, Math.min(max, (prev[key] ?? 0) + delta));
+      return { ...prev, [key]: next };
     });
   }
 
   const opened = products.find((p) => p.id === openId) ?? null;
+  const openedVariants = opened ? variantsOf(opened) : [];
 
-  function Stepper({ p, onClick }: { p: Product; onClick?: (e: React.MouseEvent) => void }) {
+  function openProduct(p: Product) {
+    setChoice(EMPTY_CHOICE);
+    setOpenId(p.id);
+  }
+
+  function Stepper({
+    cartId,
+    max,
+    onClick,
+  }: {
+    cartId: string;
+    max: number;
+    onClick?: (e: React.MouseEvent) => void;
+  }) {
     return (
       <div className="flex items-center gap-2" onClick={onClick}>
         <Button
@@ -84,22 +171,22 @@ export function ReserveList({ products }: { products: Product[] }) {
           variant="secondary"
           onClick={(e) => {
             e.stopPropagation();
-            setQ(p.id, -1, p.stock);
+            setQ(cartId, -1, max);
           }}
-          disabled={(qty[p.id] ?? 0) <= 0}
+          disabled={(qty[cartId] ?? 0) <= 0}
         >
           −
         </Button>
-        <span className="w-6 text-center text-sm font-medium">{qty[p.id] ?? 0}</span>
+        <span className="w-6 text-center text-sm font-medium">{qty[cartId] ?? 0}</span>
         <Button
           type="button"
           size="sm"
           variant="secondary"
           onClick={(e) => {
             e.stopPropagation();
-            setQ(p.id, 1, p.stock);
+            setQ(cartId, 1, max);
           }}
-          disabled={p.stock <= 0 || (qty[p.id] ?? 0) >= p.stock}
+          disabled={max <= 0 || (qty[cartId] ?? 0) >= max}
         >
           +
         </Button>
@@ -107,8 +194,60 @@ export function ReserveList({ products }: { products: Product[] }) {
     );
   }
 
-  const openedQty = opened ? (qty[opened.id] ?? 0) : 0;
-  const openedSubtotal = opened ? opened.price_cents * openedQty : 0;
+  // --- Estado do diálogo com variações --------------------------------------
+  // As opções de cada eixo saem das variações cadastradas; combinações que não
+  // existem ou estão esgotadas aparecem desabilitadas.
+  const matching = openedVariants.filter(
+    (v) =>
+      (!choice.color || v.color_name === choice.color) &&
+      (!choice.size || v.size === choice.size) &&
+      (!choice.weight || weightKey(v) === choice.weight),
+  );
+
+  /** Uma variação só é "escolhida" quando os eixos disponíveis apontam para uma. */
+  const chosenVariant = matching.length === 1 ? matching[0] : null;
+
+  function axisOptions<T extends string>(
+    values: (v: ProductVariant) => T | null,
+    axis: keyof VariantChoice,
+  ) {
+    const seen = new Map<T, boolean>();
+    for (const v of openedVariants) {
+      const value = values(v);
+      if (value === null) continue;
+      // Disponível se combina com as outras escolhas e tem estoque.
+      const fitsOthers = (Object.keys(choice) as (keyof VariantChoice)[])
+        .filter((k) => k !== axis)
+        .every((k) => {
+          const picked = choice[k];
+          if (!picked) return true;
+          if (k === "color") return v.color_name === picked;
+          if (k === "size") return v.size === picked;
+          return weightKey(v) === picked;
+        });
+      const available = fitsOthers && v.stock > 0;
+      seen.set(value, (seen.get(value) ?? false) || available);
+    }
+    return [...seen.entries()].map(([value, available]) => ({ value, available }));
+  }
+
+  const colorOptions = opened ? axisOptions((v) => v.color_name, "color") : [];
+  const sizeOptions = opened ? axisOptions((v) => v.size, "size") : [];
+  const weightOptions = opened ? axisOptions((v) => weightKey(v), "weight") : [];
+
+  const openedHasVariants = openedVariants.length > 0;
+  const openedUnitPrice = openedHasVariants
+    ? (chosenVariant?.price_cents ?? (opened ? priceFrom(opened) : 0))
+    : (opened?.price_cents ?? 0);
+  const openedStock = openedHasVariants
+    ? (chosenVariant?.stock ?? matching.reduce((s, v) => s + v.stock, 0))
+    : (opened?.stock ?? 0);
+  const openedCartId = opened
+    ? cartKey(opened.id, openedHasVariants ? chosenVariant?.id : null)
+    : "";
+  const openedQty = openedCartId ? (qty[openedCartId] ?? 0) : 0;
+  const openedSubtotal = openedUnitPrice * openedQty;
+  const canAdd = openedHasVariants ? !!chosenVariant && openedStock > 0 : openedStock > 0;
 
   return (
     <div className="space-y-4">
@@ -126,33 +265,19 @@ export function ReserveList({ products }: { products: Product[] }) {
         </div>
 
         {availableCategories.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setCategory(null)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                category === null
-                  ? "border-orange bg-orange text-white"
-                  : "border-graphite/15 bg-surface text-graphite hover:border-orange/40"
-              }`}
-            >
-              Todos
-            </button>
-            {availableCategories.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCategory(c)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  category === c
-                    ? "border-orange bg-orange text-white"
-                    : "border-graphite/15 bg-surface text-graphite hover:border-orange/40"
-                }`}
-              >
-                {PRODUCT_CATEGORY_LABEL[c]}
-              </button>
-            ))}
-          </div>
+          <ChoiceChips
+            aria-label="Filtrar por categoria"
+            allowEmpty={false}
+            value={category ?? "todos"}
+            onChange={(v) => setCategory(v === "todos" ? null : (v as ProductCategory))}
+            options={[
+              { value: "todos", label: "Todos" },
+              ...availableCategories.map((c) => ({
+                value: c,
+                label: PRODUCT_CATEGORY_LABEL[c],
+              })),
+            ]}
+          />
         )}
       </div>
 
@@ -164,11 +289,15 @@ export function ReserveList({ products }: { products: Product[] }) {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filteredProducts.map((p) => {
           const cover = photosOf(p)[0];
-          const selected = (qty[p.id] ?? 0) > 0;
+          const variants = variantsOf(p);
+          const hasVariants = variants.length > 0;
+          const selected = Object.entries(qty).some(
+            ([key, q]) => q > 0 && (key === p.id || key.startsWith(`${p.id}:`)),
+          );
           return (
             <Card
               key={p.id}
-              onClick={() => setOpenId(p.id)}
+              onClick={() => openProduct(p)}
               className={`flex cursor-pointer flex-col gap-3 p-3 transition-shadow hover:shadow-card-hover ${
                 selected ? "ring-2 ring-orange/40" : ""
               }`}
@@ -193,8 +322,16 @@ export function ReserveList({ products }: { products: Product[] }) {
                   <span className="mt-1 text-xs text-gray-neutral">{categoryLabel(p.category)}</span>
                 )}
                 <p className="mt-1 font-heading text-base font-bold text-graphite">
-                  {formatBRL(p.price_cents)}
+                  {hasVariants && (
+                    <span className="mr-1 text-xs font-normal text-gray-neutral">a partir de</span>
+                  )}
+                  {formatBRL(priceFrom(p))}
                 </p>
+                {hasVariants && (
+                  <span className="mt-1 text-xs text-gray-neutral">
+                    {variantAxesLabel(variants)}
+                  </span>
+                )}
               </div>
 
               <div className="mt-auto flex items-center justify-between">
@@ -203,7 +340,26 @@ export function ReserveList({ products }: { products: Product[] }) {
                 ) : (
                   <span className="text-xs text-danger">Indisponível</span>
                 )}
-                <Stepper p={p} onClick={(e) => e.stopPropagation()} />
+                {hasVariants ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={p.stock <= 0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openProduct(p);
+                    }}
+                  >
+                    Escolher
+                  </Button>
+                ) : (
+                  <Stepper
+                    cartId={p.id}
+                    max={p.stock}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                )}
               </div>
             </Card>
           );
@@ -232,10 +388,13 @@ export function ReserveList({ products }: { products: Product[] }) {
 
             <div className="flex items-center justify-between gap-3">
               <span className="font-heading text-2xl font-bold text-graphite">
-                {formatBRL(opened.price_cents)}
+                {openedHasVariants && !chosenVariant && (
+                  <span className="mr-1 text-sm font-normal text-gray-neutral">a partir de</span>
+                )}
+                {formatBRL(openedUnitPrice)}
               </span>
-              {opened.stock > 0 ? (
-                <Badge tone="success">{opened.stock} em estoque</Badge>
+              {openedStock > 0 ? (
+                <Badge tone="success">{openedStock} em estoque</Badge>
               ) : (
                 <Badge tone="danger">Sem estoque</Badge>
               )}
@@ -245,10 +404,78 @@ export function ReserveList({ products }: { products: Product[] }) {
               <p className="text-sm leading-relaxed text-gray-neutral">{opened.description}</p>
             )}
 
+            {openedHasVariants && (
+              <div className="space-y-3 rounded-2xl border border-graphite/10 p-4">
+                {colorOptions.length > 0 && (
+                  <div>
+                    <Label>Cor</Label>
+                    <ColorSwatchInput
+                      aria-label="Cor"
+                      value={choice.color}
+                      options={colorOptions.map((o) => ({
+                        name: o.value,
+                        hex: PRODUCT_COLOR_HEX[o.value] ?? "#9CA3AF",
+                      }))}
+                      disabledColors={colorOptions
+                        .filter((o) => !o.available)
+                        .map((o) => o.value)}
+                      onChange={(color) =>
+                        setChoice((c) => ({ ...c, color: color?.name ?? null }))
+                      }
+                    />
+                  </div>
+                )}
+
+                {sizeOptions.length > 0 && (
+                  <div>
+                    <Label>Tamanho</Label>
+                    <ChoiceChips
+                      aria-label="Tamanho"
+                      value={choice.size}
+                      options={sizeOptions.map((o) => ({
+                        value: o.value,
+                        label: o.value,
+                        disabled: !o.available,
+                      }))}
+                      onChange={(size) => setChoice((c) => ({ ...c, size }))}
+                    />
+                  </div>
+                )}
+
+                {weightOptions.length > 0 && (
+                  <div>
+                    <Label>Peso</Label>
+                    <ChoiceChips
+                      aria-label="Peso"
+                      value={choice.weight}
+                      options={weightOptions.map((o) => ({
+                        value: o.value,
+                        label: o.value,
+                        disabled: !o.available,
+                      }))}
+                      onChange={(weight) => setChoice((c) => ({ ...c, weight }))}
+                    />
+                  </div>
+                )}
+
+                {!chosenVariant && (
+                  <p className="text-xs text-gray-neutral">
+                    Escolha uma opção de cada campo para reservar.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-3 rounded-2xl bg-surface-muted p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-graphite">Quantidade</span>
-                <Stepper p={opened} />
+                {canAdd ? (
+                  <Stepper cartId={openedCartId} max={openedStock} />
+                ) : (
+                  <span className="text-xs text-gray-neutral">
+                    {openedHasVariants ? "Escolha a variação" : "Indisponível"}
+                  </span>
+                )}
               </div>
               <div className="flex items-center justify-between border-t border-graphite/5 pt-3">
                 <span className="text-sm text-gray-neutral">Subtotal</span>
@@ -261,9 +488,9 @@ export function ReserveList({ products }: { products: Product[] }) {
             <Button
               type="button"
               className="w-full"
-              disabled={opened.stock <= 0}
+              disabled={!canAdd}
               onClick={() => {
-                if (openedQty === 0) setQ(opened.id, 1, opened.stock);
+                if (openedQty === 0) setQ(openedCartId, 1, openedStock);
                 setOpenId(null);
               }}
             >
@@ -274,4 +501,13 @@ export function ReserveList({ products }: { products: Product[] }) {
       </Dialog>
     </div>
   );
+}
+
+/** Resumo dos eixos usados pelo produto: "Cor · Tamanho · Peso". */
+function variantAxesLabel(variants: ProductVariant[]): string {
+  const axes: string[] = [];
+  if (variants.some((v) => v.color_name)) axes.push("Cor");
+  if (variants.some((v) => v.size)) axes.push("Tamanho");
+  if (variants.some((v) => v.weight_value != null)) axes.push("Peso");
+  return axes.join(" · ");
 }

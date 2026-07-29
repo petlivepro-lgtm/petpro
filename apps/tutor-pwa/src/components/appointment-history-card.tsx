@@ -4,7 +4,9 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Card, Badge, PhotoGallery, RatingStars, ScaleSelector } from "@mylivepet/ui";
 import {
+  formatBehaviorScore,
   type AppointmentStatus,
+  type BehaviorResponse,
   type FeedbackField,
   type FeedbackResponse,
 } from "@mylivepet/types";
@@ -27,6 +29,12 @@ export type HistoryFeedback = {
   comment: string | null;
   responses: FeedbackResponse[] | null;
 };
+/** Boletim de comportamento registrado pelo petshop neste atendimento. */
+export type HistoryBehavior = {
+  overallScore: number | null;
+  responses: BehaviorResponse[];
+  note: string | null;
+};
 
 export function AppointmentHistoryCard({
   appointmentId,
@@ -35,7 +43,7 @@ export function AppointmentHistoryCard({
   status,
   dateLabel,
   steps,
-  behaviorComment,
+  behavior,
   photos,
   feedbackFields,
   tutorFb,
@@ -46,7 +54,7 @@ export function AppointmentHistoryCard({
   status: AppointmentStatus;
   dateLabel: string;
   steps: HistoryStep[];
-  behaviorComment: string | null;
+  behavior: HistoryBehavior | null;
   photos: string[];
   feedbackFields: FeedbackField[];
   tutorFb: HistoryFeedback | null;
@@ -104,10 +112,40 @@ export function AppointmentHistoryCard({
             </div>
           )}
 
-          {behaviorComment && (
-            <div className="rounded-xl bg-surface-muted p-3">
-              <p className="text-sm font-medium text-graphite">Comportamento do pet</p>
-              <p className="text-sm text-gray-neutral">{behaviorComment}</p>
+          {behavior && (
+            <div className="space-y-2 rounded-xl bg-surface-muted p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium text-graphite">
+                  Boletim de comportamento
+                </p>
+                {behavior.overallScore !== null && (
+                  <span className="flex items-center gap-1.5 text-xs text-gray-neutral">
+                    <RatingStars
+                      value={Math.round(behavior.overallScore)}
+                      size="sm"
+                    />
+                    {formatBehaviorScore(behavior.overallScore)}
+                  </span>
+                )}
+              </div>
+
+              {behavior.responses.length > 0 && (
+                <div className="space-y-1">
+                  {behavior.responses.map((r) => (
+                    <div
+                      key={r.category_id}
+                      className="flex flex-wrap items-center justify-between gap-2"
+                    >
+                      <span className="text-sm text-gray-neutral">{r.label}</span>
+                      <RatingStars value={r.value} size="sm" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {behavior.note && (
+                <p className="text-sm text-gray-neutral">{behavior.note}</p>
+              )}
             </div>
           )}
 

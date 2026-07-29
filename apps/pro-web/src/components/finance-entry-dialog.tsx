@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import {
   Button,
   ConfirmDialog,
@@ -18,11 +18,12 @@ import {
   FINANCE_CATEGORY_LABEL,
   FINANCE_ENTRY_TYPES,
   FINANCE_ENTRY_TYPE_LABEL,
+  PAYMENT_METHODS,
+  PAYMENT_METHOD_LABEL,
 } from "@mylivepet/types";
 import {
   createFinanceEntry,
   deleteFinanceEntry,
-  refundReservation,
   type FormState,
 } from "@/app/(app)/financeiro/actions";
 
@@ -33,12 +34,19 @@ function todayIso(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export function FinanceEntryDialog() {
+export function FinanceEntryDialog({
+  disabled = false,
+}: {
+  disabled?: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [state, formAction, pending] = useActionState<FormState, FormData>(createFinanceEntry, {
-    ok: false,
-  });
+  const [state, formAction, pending] = useActionState<FormState, FormData>(
+    createFinanceEntry,
+    {
+      ok: false,
+    },
+  );
 
   useEffect(() => {
     if (state.ok) {
@@ -49,7 +57,7 @@ export function FinanceEntryDialog() {
 
   return (
     <>
-      <Button size="sm" onClick={() => setOpen(true)}>
+      <Button size="sm" onClick={() => setOpen(true)} disabled={disabled}>
         <Plus className="h-4 w-4" /> Novo lançamento
       </Button>
 
@@ -85,6 +93,25 @@ export function FinanceEntryDialog() {
           </div>
 
           <div>
+            <Label htmlFor="payment_method">Forma de pagamento *</Label>
+            <Select
+              id="payment_method"
+              name="payment_method"
+              required
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Selecione
+              </option>
+              {PAYMENT_METHODS.map((method) => (
+                <option key={method} value={method}>
+                  {PAYMENT_METHOD_LABEL[method]}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div>
             <Label htmlFor="description">Descrição *</Label>
             <Input
               id="description"
@@ -101,14 +128,24 @@ export function FinanceEntryDialog() {
             </div>
             <div>
               <Label htmlFor="occurred_on">Data *</Label>
-              <DatePicker id="occurred_on" name="occurred_on" mode="date" required defaultValue={todayIso()} />
+              <DatePicker
+                id="occurred_on"
+                name="occurred_on"
+                mode="date"
+                required
+                defaultValue={todayIso()}
+              />
             </div>
           </div>
 
           {state.error && <p className="text-sm text-danger">{state.error}</p>}
 
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setOpen(false)}
+            >
               Cancelar
             </Button>
             <Button type="submit" disabled={pending}>
@@ -130,9 +167,12 @@ export function FinanceEntryDeleteButton({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [state, formAction, pending] = useActionState<FormState, FormData>(deleteFinanceEntry, {
-    ok: false,
-  });
+  const [state, formAction, pending] = useActionState<FormState, FormData>(
+    deleteFinanceEntry,
+    {
+      ok: false,
+    },
+  );
 
   useEffect(() => {
     if (state.ok) {
@@ -164,56 +204,6 @@ export function FinanceEntryDeleteButton({
           confirmType="submit"
           pending={pending}
           pendingLabel="Excluindo..."
-          error={state.error}
-        />
-      </form>
-    </>
-  );
-}
-
-export function FinanceReservationRefundButton({
-  reservationId,
-  description,
-}: {
-  reservationId: string;
-  description: string;
-}) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [state, formAction, pending] = useActionState<FormState, FormData>(refundReservation, {
-    ok: false,
-  });
-
-  useEffect(() => {
-    if (state.ok) {
-      setOpen(false);
-      router.refresh();
-    }
-  }, [state, router]);
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={`Estornar ${description}`}
-        className="rounded-lg p-2 text-gray-neutral transition-colors hover:bg-danger/10 hover:text-danger"
-      >
-        <RotateCcw className="h-4 w-4" />
-      </button>
-
-      <form action={formAction}>
-        <input type="hidden" name="reservation_id" value={reservationId} />
-        <ConfirmDialog
-          open={open}
-          onOpenChange={setOpen}
-          title="Estornar venda"
-          description={`Estornar "${description}"? O valor será devolvido (despesa de estorno) e os produtos voltam ao estoque.`}
-          confirmLabel="Estornar"
-          confirmVariant="danger"
-          confirmType="submit"
-          pending={pending}
-          pendingLabel="Estornando..."
           error={state.error}
         />
       </form>

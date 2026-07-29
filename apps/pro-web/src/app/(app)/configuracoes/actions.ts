@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveTenant } from "@/lib/tenant";
-import { feedbackConfigSchema, tenantSettingsInput } from "@mylivepet/types";
+import {
+  behaviorConfigSchema,
+  feedbackConfigSchema,
+  tenantSettingsInput,
+} from "@mylivepet/types";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -131,5 +135,45 @@ export async function updateFeedbackConfig(
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/configuracoes");
+  return { ok: true };
+}
+
+/**
+ * Salva as categorias do boletim de comportamento (tenant.settings.behavior).
+ * São as notas que a equipe dá ao pet ao finalizar cada atendimento.
+ */
+export async function updateBehaviorConfig(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(
+      typeof formData.get("config") === "string" ? (formData.get("config") as string) : "",
+    );
+  } catch {
+    return { ok: false, error: "Dados inválidos" };
+  }
+  const parsed = behaviorConfigSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  const supabase = await createClient();
+  const tenant = await getActiveTenant(supabase);
+  if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
+  if (tenant.role === "VIEWER") return { ok: false, error: "Seu acesso é somente leitura" };
+
+  const admin = createAdminClient();
+  // Merge: `feedback` e os dados de contato vivem no mesmo jsonb.
+  const current = await readSettings(admin, tenant.tenantId);
+  const { error } = await admin
+    .from("tenant")
+    .update({ settings: { ...current, behavior: parsed.data } })
+    .eq("id", tenant.tenantId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/configuracoes");
+  revalidatePath("/atendimentos");
   return { ok: true };
 }

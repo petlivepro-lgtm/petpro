@@ -22,15 +22,22 @@ function str(v: FormDataEntryValue | null): string | undefined {
  * Não gera login/senha: o próprio tutor ativa o acesso no app MyLivePet no
  * primeiro acesso (confirma o e-mail por código e define a senha).
  */
-export async function createTutor(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function createTutor(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
   const parsed = tutorInput.safeParse({
     full_name: formData.get("full_name"),
     email: str(formData.get("email")) ?? "",
     phone: str(formData.get("phone")),
+    cpf: str(formData.get("cpf")),
     notes: str(formData.get("notes")),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos",
+    };
   }
 
   const supabase = await createClient();
@@ -44,11 +51,13 @@ export async function createTutor(_prev: FormState, formData: FormData): Promise
       full_name: parsed.data.full_name,
       email: parsed.data.email || null,
       phone: parsed.data.phone ?? null,
+      cpf: parsed.data.cpf ?? null,
       notes: parsed.data.notes ?? null,
     })
     .select("id")
     .single();
-  if (error || !tutor) return { ok: false, error: error?.message ?? "Falha ao salvar" };
+  if (error || !tutor)
+    return { ok: false, error: error?.message ?? "Falha ao salvar" };
 
   // Primeiro pet (opcional)
   const petName = str(formData.get("pet_name"));
@@ -58,7 +67,11 @@ export async function createTutor(_prev: FormState, formData: FormData): Promise
       name: petName,
       species: str(formData.get("pet_species")),
       breed: str(formData.get("pet_breed")),
-      size: str(formData.get("pet_size")) as "pequeno" | "medio" | "grande" | undefined,
+      size: str(formData.get("pet_size")) as
+        | "pequeno"
+        | "medio"
+        | "grande"
+        | undefined,
       birth_date: str(formData.get("pet_birth_date")),
     });
     if (petParsed.success) {
@@ -84,18 +97,72 @@ export async function createTutor(_prev: FormState, formData: FormData): Promise
   return { ok: true };
 }
 
+export async function updateTutor(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const tutorId = str(formData.get("tutor_id"));
+  if (!tutorId) return { ok: false, error: "Tutor inválido" };
+
+  const parsed = tutorInput.safeParse({
+    full_name: formData.get("full_name"),
+    email: str(formData.get("email")) ?? "",
+    phone: str(formData.get("phone")),
+    cpf: str(formData.get("cpf")),
+    notes: str(formData.get("notes")),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos",
+    };
+  }
+
+  const supabase = await createClient();
+  const tenant = await getActiveTenant(supabase);
+  if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
+  if (tenant.role === "VIEWER")
+    return { ok: false, error: "Seu acesso é somente leitura" };
+
+  const { error } = await supabase
+    .from("tutor")
+    .update({
+      full_name: parsed.data.full_name,
+      email: parsed.data.email || null,
+      phone: parsed.data.phone ?? null,
+      cpf: parsed.data.cpf ?? null,
+      notes: parsed.data.notes ?? null,
+    })
+    .eq("id", tutorId)
+    .eq("tenant_id", tenant.tenantId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/tutores");
+  return { ok: true };
+}
+
 /** Adiciona um pet a um tutor existente. */
-export async function createPet(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function createPet(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
   const parsed = petInput.safeParse({
     tutor_id: formData.get("tutor_id"),
     name: formData.get("name"),
     species: str(formData.get("species")),
     breed: str(formData.get("breed")),
-    size: str(formData.get("size")) as "pequeno" | "medio" | "grande" | undefined,
+    size: str(formData.get("size")) as
+      | "pequeno"
+      | "medio"
+      | "grande"
+      | undefined,
     birth_date: str(formData.get("birth_date")),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos",
+    };
   }
 
   const supabase = await createClient();
@@ -130,7 +197,10 @@ export async function createPet(_prev: FormState, formData: FormData): Promise<F
  * Se o tutor tinha login no app e nenhum outro tutor usa esse profile,
  * remove também o usuário de auth (cascateia a linha profile).
  */
-export async function deleteTutor(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function deleteTutor(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
   const id = str(formData.get("tutor_id"));
   if (!id) return { ok: false, error: "Tutor inválido" };
 
@@ -154,16 +224,22 @@ export async function deleteTutor(_prev: FormState, formData: FormData): Promise
       .neq("id", id)
       .limit(1);
     if (!others || others.length === 0) {
-      const { error: authErr } = await createAdminClient().auth.admin.deleteUser(
-        tutor.profile_id,
-      );
+      const { error: authErr } =
+        await createAdminClient().auth.admin.deleteUser(tutor.profile_id);
       if (authErr) {
-        return { ok: false, error: "Não foi possível excluir o login do tutor: " + authErr.message };
+        return {
+          ok: false,
+          error:
+            "Não foi possível excluir o login do tutor: " + authErr.message,
+        };
       }
     }
   }
 
-  const { error: delError } = await supabase.from("tutor").delete().eq("id", id);
+  const { error: delError } = await supabase
+    .from("tutor")
+    .delete()
+    .eq("id", id);
   if (delError) return { ok: false, error: delError.message };
 
   revalidatePath("/tutores");

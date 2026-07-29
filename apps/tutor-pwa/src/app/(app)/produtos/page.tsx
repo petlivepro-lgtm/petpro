@@ -1,10 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
 import { ProdutosView } from "@/components/produtos-view";
+import {
+  PRODUCT_SELECT,
+  RESERVATION_SELECT,
+  reservationVisibilityFilter,
+} from "@/lib/produtos";
 import { type Reservation } from "@/components/my-reservations";
 
 const ERROR_MESSAGES: Record<string, string> = {
   estoque: "Estoque insuficiente para um dos itens. Ajuste as quantidades e tente novamente.",
+  variacao: "Escolha a cor, o tamanho ou o peso do produto antes de reservar.",
   "1": "Não foi possível enviar sua reserva. Tente novamente.",
 };
 
@@ -20,7 +26,7 @@ export default async function ProdutosPage({
 
   const { data: products } = await supabase
     .from("product")
-    .select("id, name, description, category, price_cents, stock, photo_path, photos")
+    .select(PRODUCT_SELECT)
     .eq("tenant_id", ctx.tenantId)
     .eq("active", true)
     .eq("for_sale", true)
@@ -28,11 +34,9 @@ export default async function ProdutosPage({
 
   const { data: reservations } = await supabase
     .from("product_reservation")
-    .select(
-      "id, note, expires_at, created_at, product_reservation_item(id, quantity, price_cents, product:product_id(name, photo_path))",
-    )
+    .select(RESERVATION_SELECT)
     .eq("tutor_id", ctx.tutorId)
-    .eq("status", "RESERVED")
+    .or(reservationVisibilityFilter())
     .order("created_at", { ascending: false });
 
   return (

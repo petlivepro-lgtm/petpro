@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveTenant } from "@/lib/tenant";
-import { productInput } from "@mylivepet/types";
+import { productInput, type ProductVariantInput } from "@mylivepet/types";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -51,6 +51,74 @@ async function uploadProductPhotos(
   return urls;
 }
 
+/** Lê o JSON de variações enviado pelo ProductVariantsInput. */
+function parseVariants(formData: FormData): unknown[] {
+  try {
+    const raw = JSON.parse(String(formData.get("variants") ?? "[]"));
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Sincroniza as variações do produto: atualiza as que vieram com id, insere as
+ * novas e apaga as que sumiram do formulário. O trigger de agregação
+ * (0020_product_variants.sql) recalcula estoque e preço do produto a cada
+ * escrita — por isso o produto nunca grava esses campos quando há variações.
+ */
+async function syncVariants(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tenantId: string,
+  productId: string,
+  variants: ProductVariantInput[],
+): Promise<string | null> {
+  const { data: existing } = await supabase
+    .from("product_variant")
+    .select("id")
+    .eq("product_id", productId);
+
+  const keptIds = new Set(variants.map((v) => v.id).filter((id): id is string => !!id));
+  const removed = (existing ?? []).map((v) => v.id).filter((id) => !keptIds.has(id));
+
+  if (removed.length > 0) {
+    const { error } = await supabase.from("product_variant").delete().in("id", removed);
+    if (error) {
+      // FK restrict: variação presente em itens de reserva.
+      if (error.code === "23503") {
+        return "Uma das variações está em reservas. Desmarque 'Disponível' em vez de removê-la.";
+      }
+      return error.message;
+    }
+  }
+
+  for (const [index, v] of variants.entries()) {
+    const row = {
+      tenant_id: tenantId,
+      product_id: productId,
+      color_name: v.color_name ?? null,
+      color_hex: v.color_hex ?? null,
+      size: v.size ?? null,
+      weight_value: v.weight_value ?? null,
+      weight_unit: v.weight_unit ?? null,
+      price_cents: v.price_cents,
+      stock: v.stock,
+      active: v.active,
+      position: index,
+    };
+    const { error } = v.id
+      ? await supabase.from("product_variant").update(row).eq("id", v.id)
+      : await supabase.from("product_variant").insert(row);
+    if (error) {
+      // Índice único da combinação cor+tamanho+peso.
+      if (error.code === "23505") return "Há duas variações com a mesma combinação.";
+      return error.message;
+    }
+  }
+
+  return null;
+}
+
 /** Resolve a lista final de fotos: URLs mantidas + novos uploads, no máx. 5. */
 async function resolvePhotos(
   formData: FormData,
@@ -82,6 +150,7 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
     min_stock: toInt(formData.get("min_stock")),
     active: formData.get("active") === "on",
     for_sale: formData.get("for_sale") === "on",
+    variants: parseVariants(formData),
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
@@ -108,6 +177,14 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
     .single();
   if (error || !product) return { ok: false, error: error?.message ?? "Falha ao salvar" };
 
+  const variantError = await syncVariants(
+    supabase,
+    tenant.tenantId,
+    product.id,
+    parsed.data.variants ?? [],
+  );
+  if (variantError) return { ok: false, error: variantError };
+
   const photos = await resolvePhotos(formData, tenant.tenantId, product.id);
   if (photos.length > 0) {
     await supabase
@@ -133,6 +210,7 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
     min_stock: toInt(formData.get("min_stock")),
     active: formData.get("active") === "on",
     for_sale: formData.get("for_sale") === "on",
+    variants: parseVariants(formData),
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
@@ -142,22 +220,30 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
   const tenant = await getActiveTenant(supabase);
   if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
 
+  const variants = parsed.data.variants ?? [];
   const photos = await resolvePhotos(formData, tenant.tenantId, id);
   const update: Record<string, unknown> = {
     name: parsed.data.name,
     description: parsed.data.description ?? null,
     category: parsed.data.category,
-    price_cents: parsed.data.price_cents,
-    stock: parsed.data.stock,
     min_stock: parsed.data.min_stock,
     active: parsed.data.active ?? true,
     for_sale: parsed.data.for_sale ?? true,
     photos,
     photo_path: photos[0] ?? null,
   };
+  // Com variações, preço e estoque são derivados delas por trigger; enviá-los
+  // aqui seria ignorado pelo product_derived_guard de todo jeito.
+  if (variants.length === 0) {
+    update.price_cents = parsed.data.price_cents;
+    update.stock = parsed.data.stock;
+  }
 
   const { error } = await supabase.from("product").update(update).eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  const variantError = await syncVariants(supabase, tenant.tenantId, id, variants);
+  if (variantError) return { ok: false, error: variantError };
 
   revalidatePath("/produtos");
   return { ok: true };

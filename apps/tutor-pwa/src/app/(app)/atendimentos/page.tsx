@@ -4,6 +4,7 @@ import { EmptyState } from "@mylivepet/ui";
 import {
   feedbackConfigSchema,
   type AppointmentStatus,
+  type BehaviorResponse,
   type FeedbackField,
   type FeedbackResponse,
 } from "@mylivepet/types";
@@ -35,7 +36,7 @@ export default async function HistoricoPage({
   let query = supabase
     .from("appointment")
     .select(
-      "id, status, scheduled_at, finished_at, photos, pet:pet_id(name), service_type(name), feedback(direction, rating, comment, responses), appointment_step(id, label, done_at, position)",
+      "id, status, scheduled_at, finished_at, photos, pet:pet_id(name), service_type(name), feedback(direction, rating, comment, responses), pet_behavior_report(overall_score, responses, note), appointment_step(id, label, done_at, position)",
     )
     .eq("tutor_id", ctx.tutorId);
 
@@ -99,8 +100,24 @@ export default async function HistoricoPage({
             const service = a.service_type as unknown as { name: string } | null;
             const status = a.status as AppointmentStatus;
             const fbs = (a.feedback as unknown as { direction: string; rating: number | null; comment: string | null; responses: FeedbackResponse[] | null }[]) ?? [];
-            const behavior = fbs.find((f) => f.direction === "STAFF_TO_TUTOR");
             const tutorFb = fbs.find((f) => f.direction === "TUTOR_TO_PETSHOP");
+            // Boletim de comportamento do atendimento (uma linha por appointment).
+            const reportRow = ((a.pet_behavior_report as unknown as {
+              overall_score: number | string | null;
+              responses: BehaviorResponse[] | null;
+              note: string | null;
+            }[]) ?? [])[0];
+            const behavior = reportRow
+              ? {
+                  // numeric volta como string no supabase-js.
+                  overallScore:
+                    reportRow.overall_score === null
+                      ? null
+                      : Number(reportRow.overall_score),
+                  responses: reportRow.responses ?? [],
+                  note: reportRow.note,
+                }
+              : null;
             const steps = ((a.appointment_step as unknown as { id: string; label: string; done_at: string | null; position: number }[]) ?? [])
               .slice()
               .sort((x, y) => x.position - y.position)
@@ -116,7 +133,7 @@ export default async function HistoricoPage({
                 status={status}
                 dateLabel={fmt(a.finished_at ?? a.scheduled_at)}
                 steps={steps}
-                behaviorComment={behavior?.comment ?? null}
+                behavior={behavior}
                 photos={photos}
                 feedbackFields={feedbackFields}
                 tutorFb={

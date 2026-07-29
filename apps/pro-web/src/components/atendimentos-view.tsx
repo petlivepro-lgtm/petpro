@@ -3,9 +3,17 @@
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarClock, CalendarDays, CheckCircle2, Play, Search, X } from "lucide-react";
+import {
+  CalendarClock,
+  CalendarDays,
+  CheckCircle2,
+  Play,
+  Search,
+  X,
+} from "lucide-react";
 import {
   Card,
+  DatePicker,
   EmptyState,
   Input,
   Select,
@@ -13,7 +21,11 @@ import {
   Tabs,
   type TabItem,
 } from "@mylivepet/ui";
-import { APPOINTMENT_STATUS_LABEL, type AppointmentStatus } from "@mylivepet/types";
+import {
+  APPOINTMENT_STATUS_LABEL,
+  type AppointmentStatus,
+  type BehaviorCategory,
+} from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeList } from "@/lib/use-realtime-list";
 import { AtendimentoRow } from "@/components/atendimento-row";
@@ -34,15 +46,18 @@ const TABS_ORDER: Bucket[] = ["hoje", "proximos", "historico"];
 const EMPTY: Record<Bucket, { title: string; description: string }> = {
   hoje: {
     title: "Nenhum atendimento para hoje",
-    description: "Os atendimentos agendados para o dia aparecem aqui, em ordem de horário.",
+    description:
+      "Os atendimentos agendados para o dia aparecem aqui, em ordem de horário.",
   },
   proximos: {
     title: "Nenhum atendimento agendado",
-    description: "Agendamentos futuros confirmados ou aguardando confirmação aparecem aqui.",
+    description:
+      "Agendamentos futuros confirmados ou aguardando confirmação aparecem aqui.",
   },
   historico: {
     title: "Nenhum atendimento anterior",
-    description: "Atendimentos já realizados, recusados ou cancelados ficam neste histórico.",
+    description:
+      "Atendimentos já realizados, recusados ou cancelados ficam neste histórico.",
   },
 };
 
@@ -50,27 +65,50 @@ export function AtendimentosView({
   initial,
   collaborators,
   cameras,
+  behaviorCategories,
   activeTab,
+  dateFrom,
+  dateTo,
 }: {
   initial: Row[];
   collaborators: CollaboratorOption[];
   cameras: CameraOption[];
+  behaviorCategories: BehaviorCategory[];
   activeTab: Bucket;
+  dateFrom?: string;
+  dateTo?: string;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [collaborator, setCollaborator] = useState("");
 
-  const fetcher = useCallback(() => fetchAtendimentos(createClient()), []);
-  const rows = useRealtimeList(initial, fetcher, [{ table: "appointment" }], "atendimentos");
+  const fetcher = useCallback(
+    () =>
+      fetchAtendimentos(
+        createClient(),
+        activeTab === "historico"
+          ? { historyFrom: dateFrom, historyTo: dateTo }
+          : undefined,
+      ),
+    [activeTab, dateFrom, dateTo],
+  );
+  const syncKey = `${activeTab}:${dateFrom ?? ""}:${dateTo ?? ""}`;
+  const rows = useRealtimeList(
+    initial,
+    fetcher,
+    [{ table: "appointment" }],
+    "atendimentos",
+    syncKey,
+  );
 
   const todayKey = dayKey(new Date());
 
   // Resumo do dia — sempre sobre a base completa, independente dos filtros.
   const summary = useMemo(() => {
     const today = rows.filter(
-      (r) => r.scheduledAt != null && dayKey(new Date(r.scheduledAt)) === todayKey,
+      (r) =>
+        r.scheduledAt != null && dayKey(new Date(r.scheduledAt)) === todayKey,
     );
     return {
       today: today.length,
@@ -80,16 +118,27 @@ export function AtendimentosView({
     };
   }, [rows, todayKey]);
 
-  const hasFilter = search.trim() !== "" || status !== "" || collaborator !== "";
+  const hasDateFilter = activeTab !== "hoje" && Boolean(dateFrom || dateTo);
+  const hasFilter =
+    search.trim() !== "" ||
+    status !== "" ||
+    collaborator !== "" ||
+    hasDateFilter;
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (status && r.status !== status) return false;
       if (collaborator === "none" && r.collaboratorId != null) return false;
-      if (collaborator && collaborator !== "none" && r.collaboratorId !== collaborator) return false;
+      if (
+        collaborator &&
+        collaborator !== "none" &&
+        r.collaboratorId !== collaborator
+      )
+        return false;
       if (term) {
-        const haystack = `${r.petName} ${r.tutorName ?? ""} ${r.serviceName}`.toLowerCase();
+        const haystack =
+          `${r.petName} ${r.tutorName ?? ""} ${r.serviceName}`.toLowerCase();
         if (!haystack.includes(term)) return false;
       }
       return true;
@@ -97,29 +146,73 @@ export function AtendimentosView({
   }, [rows, search, status, collaborator]);
 
   const byBucket = useMemo(() => {
-    const acc: Record<Bucket, Row[]> = { hoje: [], proximos: [], historico: [] };
+    const acc: Record<Bucket, Row[]> = {
+      hoje: [],
+      proximos: [],
+      historico: [],
+    };
     for (const r of filtered) acc[bucketOf(r, todayKey)].push(r);
     return acc;
   }, [filtered, todayKey]);
+
+  const activeRows = useMemo(() => {
+    const bucketRows = byBucket[activeTab];
+    if (!hasDateFilter) return bucketRows;
+
+    return bucketRows.filter((row) => {
+      if (!row.scheduledAt) return false;
+      const key = dayKey(new Date(row.scheduledAt));
+      if (dateFrom && key < dateFrom) return false;
+      if (dateTo && key > dateTo) return false;
+      return true;
+    });
+  }, [activeTab, byBucket, dateFrom, dateTo, hasDateFilter]);
 
   const tabs: TabItem[] = TABS_ORDER.map((id) => ({
     id,
     label:
       id === "historico"
         ? "Histórico"
-        : `${id === "hoje" ? "Hoje" : "Próximos"} (${byBucket[id].length})`,
+        : `${id === "hoje" ? "Hoje" : "Próximos"} (${
+            id === "proximos" && activeTab === "proximos"
+              ? activeRows.length
+              : byBucket[id].length
+          })`,
   }));
 
   const groups = useMemo(
     () =>
-      groupByDay(byBucket[activeTab], activeTab === "historico" ? "desc" : "asc", todayKey),
-    [byBucket, activeTab, todayKey],
+      groupByDay(
+        activeRows,
+        activeTab === "historico" ? "desc" : "asc",
+        todayKey,
+      ),
+    [activeRows, activeTab, todayKey],
   );
 
   const clearFilters = () => {
     setSearch("");
     setStatus("");
     setCollaborator("");
+    if (hasDateFilter) {
+      router.replace(`/atendimentos?tab=${activeTab}`, { scroll: false });
+    }
+  };
+
+  const updateDate = (key: "from" | "to", value: string) => {
+    if (key === "from" && value && dateTo && value > dateTo) return;
+    if (key === "to" && value && dateFrom && value < dateFrom) return;
+
+    const params = new URLSearchParams({ tab: activeTab });
+    const nextFrom = key === "from" ? value : dateFrom;
+    const nextTo = key === "to" ? value : dateTo;
+    if (nextFrom) params.set("from", nextFrom);
+    if (nextTo) params.set("to", nextTo);
+    router.replace(`/atendimentos?${params.toString()}`, { scroll: false });
+  };
+
+  const changeTab = (id: string) => {
+    router.replace(`/atendimentos?tab=${id}`, { scroll: false });
   };
 
   return (
@@ -161,12 +254,12 @@ export function AtendimentosView({
       <Tabs
         tabs={tabs}
         active={activeTab}
-        onChange={(id) => router.replace(`/atendimentos?tab=${id}`, { scroll: false })}
+        onChange={changeTab}
         className="mt-6"
       />
 
-      <Card className="mt-4 flex flex-col gap-3 p-4 md:flex-row md:items-center">
-        <div className="relative flex-1">
+      <Card className="mt-4 flex flex-col gap-3 p-4 md:flex-row md:flex-wrap md:items-end">
+        <div className="relative min-w-64 flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-neutral" />
           <Input
             value={search}
@@ -183,11 +276,13 @@ export function AtendimentosView({
           aria-label="Filtrar por status"
         >
           <option value="">Todos os status</option>
-          {(Object.keys(APPOINTMENT_STATUS_LABEL) as AppointmentStatus[]).map((s) => (
-            <option key={s} value={s}>
-              {APPOINTMENT_STATUS_LABEL[s]}
-            </option>
-          ))}
+          {(Object.keys(APPOINTMENT_STATUS_LABEL) as AppointmentStatus[]).map(
+            (s) => (
+              <option key={s} value={s}>
+                {APPOINTMENT_STATUS_LABEL[s]}
+              </option>
+            ),
+          )}
         </Select>
         <Select
           value={collaborator}
@@ -203,6 +298,40 @@ export function AtendimentosView({
             </option>
           ))}
         </Select>
+        {activeTab !== "hoje" && (
+          <>
+            <div className="w-full sm:w-40">
+              <label
+                htmlFor={`${activeTab}-from`}
+                className="mb-1.5 block text-xs font-medium text-gray-neutral"
+              >
+                De
+              </label>
+              <DatePicker
+                id={`${activeTab}-from`}
+                mode="date"
+                value={dateFrom ?? ""}
+                max={dateTo}
+                onChange={(value) => updateDate("from", value)}
+              />
+            </div>
+            <div className="w-full sm:w-40">
+              <label
+                htmlFor={`${activeTab}-to`}
+                className="mb-1.5 block text-xs font-medium text-gray-neutral"
+              >
+                Até
+              </label>
+              <DatePicker
+                id={`${activeTab}-to`}
+                mode="date"
+                value={dateTo ?? ""}
+                min={dateFrom}
+                onChange={(value) => updateDate("to", value)}
+              />
+            </div>
+          </>
+        )}
         {hasFilter && (
           <button
             type="button"
@@ -218,7 +347,11 @@ export function AtendimentosView({
         {groups.length === 0 ? (
           <EmptyState
             icon={<CalendarClock className="h-6 w-6" />}
-            title={hasFilter ? "Nenhum atendimento encontrado" : EMPTY[activeTab].title}
+            title={
+              hasFilter
+                ? "Nenhum atendimento encontrado"
+                : EMPTY[activeTab].title
+            }
             description={
               hasFilter
                 ? "Ajuste a busca ou os filtros para ver outros atendimentos."
@@ -233,12 +366,18 @@ export function AtendimentosView({
                   {group.label}
                 </h2>
                 <span className="text-xs text-gray-neutral">
-                  {group.rows.length} {group.rows.length === 1 ? "atendimento" : "atendimentos"}
+                  {group.rows.length}{" "}
+                  {group.rows.length === 1 ? "atendimento" : "atendimentos"}
                 </span>
               </div>
               <div className="space-y-2">
                 {group.rows.map((row) => (
-                  <AtendimentoRow key={row.id} row={row} cameras={cameras} />
+                  <AtendimentoRow
+                    key={row.id}
+                    row={row}
+                    cameras={cameras}
+                    behaviorCategories={behaviorCategories}
+                  />
                 ))}
               </div>
             </section>

@@ -2,10 +2,7 @@
 
 import * as React from "react";
 import { cn } from "./cn";
-
-// Lock de scroll seguro para diálogos aninhados: só restaura o overflow quando
-// o último diálogo aberto fecha (contador compartilhado em nível de módulo).
-let openDialogCount = 0;
+import { useScrollLock } from "./use-scroll-lock";
 
 export function Dialog({
   open,
@@ -22,17 +19,13 @@ export function Dialog({
   children: React.ReactNode;
   className?: string;
 }) {
+  useScrollLock(open);
+
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onOpenChange(false);
     document.addEventListener("keydown", onKey);
-    openDialogCount += 1;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      openDialogCount = Math.max(0, openDialogCount - 1);
-      if (openDialogCount === 0) document.body.style.overflow = "";
-    };
+    return () => document.removeEventListener("keydown", onKey);
   }, [open, onOpenChange]);
 
   if (!open) return null;

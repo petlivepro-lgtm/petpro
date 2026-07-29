@@ -1,131 +1,294 @@
+import Link from "next/link";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
-  PackageSearch,
+  ChevronLeft,
+  ChevronRight,
   TriangleAlert,
   Wallet,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import { Badge, Card, EmptyState, PageHeader, StatCard, StatusChip } from "@mylivepet/ui";
+import { Card, PageHeader, StatCard, StatusChip } from "@mylivepet/ui";
 import {
-  FINANCE_CATEGORY_LABEL,
-  STOCK_MOVEMENT_TYPE_LABEL,
-  type FinanceCategory,
+  FINANCE_MOVEMENT_KINDS,
+  FINANCE_ORIGINS,
+  PAYMENT_METHODS,
+  STOCK_MOVEMENT_SOURCES,
+  STOCK_MOVEMENT_TYPES,
+  type FinanceMovementDTO,
+  type FinanceSearchResult,
+  type PaymentMethod,
+  type StockMovementDTO,
+  type StockMovementSource,
   type StockMovementType,
 } from "@mylivepet/types";
+import { createClient } from "@/lib/supabase/server";
+import { getActiveTenant } from "@/lib/tenant";
 import { FinanceiroTabs } from "@/components/financeiro-tabs";
-import {
-  FinanceEntryDeleteButton,
-  FinanceEntryDialog,
-  FinanceReservationRefundButton,
-} from "@/components/finance-entry-dialog";
+import { FinanceEntryDialog } from "@/components/finance-entry-dialog";
 import {
   StockMovementDialog,
   type StockProductOption,
 } from "@/components/stock-movement-dialog";
+import {
+  CounterSaleDialog,
+  type SaleProductOption,
+} from "@/components/counter-sale-dialog";
+import {
+  FinanceFilters,
+  type ManagementFilterValues,
+} from "@/components/finance-filters";
+import { FinanceMovementList } from "@/components/finance-movement-list";
+import { StockMovementList } from "@/components/stock-movement-list";
 
-const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-
-function money(cents: number) {
-  return brl.format(cents / 100);
-}
-
-/** "2026-07-02" -> "02/07/2026" sem depender de fuso. */
-function formatDay(iso: string) {
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
-}
-
-function formatDateTime(v: string) {
-  return new Date(v).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-}
-
-function categoryLabel(category: string | null) {
-  if (!category) return null;
-  return FINANCE_CATEGORY_LABEL[category as FinanceCategory] ?? category;
-}
-
-type EntryRow = {
-  id: string;
-  type: "INCOME" | "EXPENSE";
-  source: "MANUAL" | "APPOINTMENT" | "RESERVATION";
-  description: string;
-  category: string | null;
-  amount_cents: number;
-  occurred_on: string;
-  reservation_id: string | null;
-  reservation: { status: string } | null;
+type SearchParams = {
+  tab?: string;
+  q?: string;
+  from?: string;
+  to?: string;
+  min?: string;
+  max?: string;
+  kind?: string;
+  origin?: string;
+  payment?: string;
+  item?: string;
+  page?: string;
 };
 
-type MovementRow = {
-  id: string;
-  type: StockMovementType;
-  quantity: number;
-  stock_after: number;
-  note: string | null;
-  created_at: string;
-  product: { name: string } | null;
+type ProductRow = SaleProductOption & {
+  min_stock: number;
+  active: boolean;
 };
+
+const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function localIso(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function validDate(value?: string) {
+  if (!value || !isoDatePattern.test(value)) return undefined;
+  const parsed = new Date(`${value}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? undefined : value;
+}
+
+function centsFromQuery(value?: string) {
+  if (!value) return undefined;
+  const amount = Number(value.replace(",", "."));
+  return Number.isFinite(amount) && amount >= 0
+    ? Math.round(amount * 100)
+    : undefined;
+}
+
+function oneOf<const T extends readonly string[]>(
+  value: string | undefined,
+  options: T,
+) {
+  return value && options.includes(value as T[number])
+    ? (value as T[number])
+    : undefined;
+}
+
+function queryHref(
+  current: URLSearchParams,
+  patch: Record<string, string | null>,
+) {
+  const next = new URLSearchParams(current);
+  for (const [key, value] of Object.entries(patch)) {
+    if (value) next.set(key, value);
+    else next.delete(key);
+  }
+  return `/financeiro?${next.toString()}`;
+}
 
 export default async function FinanceiroPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
-  const { tab } = await searchParams;
-  const activeTab = tab === "estoque" ? "estoque" : "financeiro";
+  const raw = await searchParams;
+  const activeTab = raw.tab === "estoque" ? "estoque" : "financeiro";
+  const today = new Date();
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  let from = validDate(raw.from) ?? localIso(monthStart);
+  let to = validDate(raw.to) ?? localIso(today);
+  if (from > to) [from, to] = [to, from];
+
+  const page = Math.max(1, Number.parseInt(raw.page ?? "1", 10) || 1);
+  const q = (raw.q ?? "").trim().slice(0, 120);
+  const minCents = centsFromQuery(raw.min);
+  const maxCents = centsFromQuery(raw.max);
+  const financeKind = oneOf(raw.kind, FINANCE_MOVEMENT_KINDS);
+  const financeOrigin = oneOf(raw.origin, FINANCE_ORIGINS);
+  const payment = oneOf(raw.payment, PAYMENT_METHODS);
+  const item = raw.item && uuidPattern.test(raw.item) ? raw.item : undefined;
+  const stockType = oneOf(raw.kind, STOCK_MOVEMENT_TYPES);
+  const stockSource = oneOf(raw.origin, STOCK_MOVEMENT_SOURCES);
+
   const supabase = await createClient();
+  const tenant = await getActiveTenant(supabase);
+  if (!tenant) {
+    return (
+      <Card className="p-6">
+        <p className="text-sm text-danger">
+          Nenhum petshop vinculado à sua conta.
+        </p>
+      </Card>
+    );
+  }
 
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  const monthStartIso = monthStart.toISOString().slice(0, 10);
+  const financePromise =
+    activeTab === "financeiro"
+      ? supabase.rpc("search_finance_movements", {
+          p_tenant_id: tenant.tenantId,
+          p_q: q || undefined,
+          p_from: from,
+          p_to: to,
+          p_min_cents: minCents,
+          p_max_cents: maxCents,
+          p_kind: financeKind,
+          p_origin: financeOrigin,
+          p_payment: payment,
+          p_item: item,
+          p_page: page,
+          p_page_size: 50,
+        })
+      : Promise.resolve({ data: null, error: null });
+  const stockPromise =
+    activeTab === "estoque"
+      ? supabase.rpc("search_stock_movements", {
+          p_tenant_id: tenant.tenantId,
+          p_q: q || undefined,
+          p_from: from,
+          p_to: to,
+          p_type: stockType,
+          p_source: stockSource,
+          p_page: page,
+          p_page_size: 50,
+        })
+      : Promise.resolve({ data: null, error: null });
 
-  const [{ data: entries }, { data: products }, { data: movements }] = await Promise.all([
-    supabase
-      .from("finance_entry")
-      .select(
-        "id, type, source, description, category, amount_cents, occurred_on, reservation_id, reservation:reservation_id(status)",
-      )
-      .order("occurred_on", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(50),
+  const [
+    financeResponse,
+    stockResponse,
+    { data: products },
+    { data: tutors },
+    { data: services },
+  ] = await Promise.all([
+    financePromise,
+    stockPromise,
     supabase
       .from("product")
-      .select("id, name, stock, min_stock, active")
+      .select(
+        `id, name, price_cents, stock, min_stock, active,
+         product_variant(id, color_name, size, weight_value, weight_unit, price_cents, stock, active)`,
+      )
+      .eq("tenant_id", tenant.tenantId)
       .eq("active", true)
       .order("name"),
     supabase
-      .from("stock_movement")
-      .select("id, type, quantity, stock_after, note, created_at, product(name)")
-      .order("created_at", { ascending: false })
-      .limit(20),
+      .from("tutor")
+      .select("id, full_name, cpf, phone")
+      .eq("tenant_id", tenant.tenantId)
+      .order("full_name"),
+    supabase
+      .from("service_type")
+      .select("id, name")
+      .eq("tenant_id", tenant.tenantId)
+      .order("name"),
   ]);
 
-  const list = (entries ?? []) as unknown as EntryRow[];
-  const monthEntries = list.filter((e) => e.occurred_on >= monthStartIso);
-  const income = monthEntries
-    .filter((e) => e.type === "INCOME")
-    .reduce((sum, e) => sum + e.amount_cents, 0);
-  const expense = monthEntries
-    .filter((e) => e.type === "EXPENSE")
-    .reduce((sum, e) => sum + e.amount_cents, 0);
-  const balance = income - expense;
+  const productList = (products ?? []) as unknown as ProductRow[];
+  const financeData = (financeResponse.data ?? {
+    rows: [],
+    total: 0,
+    income_cents: 0,
+    expense_cents: 0,
+    balance_cents: 0,
+  }) as unknown as FinanceSearchResult;
+  const stockData = (stockResponse.data ?? {
+    rows: [],
+    total: 0,
+  }) as unknown as { rows: StockMovementDTO[]; total: number };
+  const canManage = tenant.role !== "VIEWER";
+  const lowStock = productList.filter(
+    (product) => product.min_stock > 0 && product.stock <= product.min_stock,
+  );
 
-  const productList = (products ?? []) as (StockProductOption & { min_stock: number })[];
-  const lowStock = productList.filter((p) => p.stock <= p.min_stock && p.min_stock > 0);
-  const movementList = (movements ?? []) as unknown as MovementRow[];
+  const filterValues: ManagementFilterValues = {
+    q,
+    from,
+    to,
+    min: raw.min ?? "",
+    max: raw.max ?? "",
+    kind: activeTab === "financeiro" ? (financeKind ?? "") : (stockType ?? ""),
+    origin:
+      activeTab === "financeiro" ? (financeOrigin ?? "") : (stockSource ?? ""),
+    payment: payment ?? "",
+    item: item ?? "",
+  };
+
+  const currentQuery = new URLSearchParams();
+  currentQuery.set("tab", activeTab);
+  for (const [key, value] of Object.entries({
+    q,
+    from,
+    to,
+    min: raw.min,
+    max: raw.max,
+    kind: filterValues.kind,
+    origin: filterValues.origin,
+    payment: filterValues.payment,
+    item: filterValues.item,
+  })) {
+    if (value) currentQuery.set(key, value);
+  }
+
+  const total =
+    activeTab === "financeiro" ? financeData.total : stockData.total;
+  const totalPages = Math.max(1, Math.ceil(total / 50));
+  const itemOptions = [
+    ...(services ?? []).map((service) => ({
+      id: service.id,
+      label: service.name,
+      group: "Serviços" as const,
+    })),
+    ...productList.map((product) => ({
+      id: product.id,
+      label: product.name,
+      group: "Produtos" as const,
+    })),
+  ];
 
   return (
     <div>
       <PageHeader
         title="Financeiro"
-        subtitle="Receitas, despesas e controle de estoque do petshop."
+        subtitle="Receitas, despesas, vendas, devoluções e controle de estoque."
         actions={
           activeTab === "financeiro" ? (
-            <FinanceEntryDialog />
+            <div className="flex flex-wrap gap-2">
+              <CounterSaleDialog
+                products={productList}
+                tutors={tutors ?? []}
+                disabled={!canManage}
+              />
+              <FinanceEntryDialog disabled={!canManage} />
+            </div>
           ) : (
             <StockMovementDialog
-              products={productList.map(({ id, name, stock }) => ({ id, name, stock }))}
+              disabled={!canManage}
+              products={productList.map(
+                ({ id, name, stock, product_variant }) => ({
+                  id,
+                  name,
+                  stock,
+                  product_variant,
+                }),
+              )}
             />
           )
         }
@@ -133,75 +296,81 @@ export default async function FinanceiroPage({
 
       <FinanceiroTabs active={activeTab} />
 
+      <FinanceFilters
+        tab={activeTab}
+        values={filterValues}
+        items={itemOptions}
+      />
+
+      {(financeResponse.error || stockResponse.error) && (
+        <Card className="mb-6 border-danger/30 bg-danger/5 p-4">
+          <p className="text-sm text-danger">
+            Não foi possível consultar as movimentações. Aplique as migrações
+            mais recentes e tente novamente.
+          </p>
+        </Card>
+      )}
+
       {activeTab === "financeiro" ? (
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard
-              label="Receitas do mês"
-              value={money(income)}
-              icon={<ArrowUpCircle className="h-5 w-5" />}
-              accent="#2E9E5B"
-            />
-            <StatCard
-              label="Despesas do mês"
-              value={money(expense)}
-              icon={<ArrowDownCircle className="h-5 w-5" />}
-              accent="#C0892D"
-            />
-            <StatCard
-              label="Saldo do mês"
-              value={money(balance)}
-              icon={<Wallet className="h-5 w-5" />}
-              accent={balance >= 0 ? "#1D4E5F" : "#C94A4A"}
-            />
+            <Link
+              href={queryHref(currentQuery, { kind: "INCOME", page: null })}
+              className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+            >
+              <StatCard
+                label="Receitas no filtro"
+                value={(financeData.income_cents / 100).toLocaleString(
+                  "pt-BR",
+                  {
+                    style: "currency",
+                    currency: "BRL",
+                  },
+                )}
+                icon={<ArrowUpCircle className="h-5 w-5" />}
+                accent="#2E9E5B"
+              />
+            </Link>
+            <Link
+              href={queryHref(currentQuery, { kind: "EXPENSE", page: null })}
+              className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+            >
+              <StatCard
+                label="Despesas no filtro"
+                value={(financeData.expense_cents / 100).toLocaleString(
+                  "pt-BR",
+                  {
+                    style: "currency",
+                    currency: "BRL",
+                  },
+                )}
+                icon={<ArrowDownCircle className="h-5 w-5" />}
+                accent="#C0892D"
+              />
+            </Link>
+            <Link
+              href={queryHref(currentQuery, { kind: null, page: null })}
+              className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+            >
+              <StatCard
+                label="Saldo no filtro"
+                value={(financeData.balance_cents / 100).toLocaleString(
+                  "pt-BR",
+                  {
+                    style: "currency",
+                    currency: "BRL",
+                  },
+                )}
+                icon={<Wallet className="h-5 w-5" />}
+                accent={financeData.balance_cents >= 0 ? "#1D4E5F" : "#C94A4A"}
+              />
+            </Link>
           </div>
 
-          {list.length === 0 ? (
-            <EmptyState
-              icon={<Wallet className="h-6 w-6" />}
-              title="Nenhum lançamento ainda"
-              description="Registre receitas e despesas — atendimentos e reservas concluídos entram automaticamente."
-              action={<FinanceEntryDialog />}
-            />
-          ) : (
-            <div className="space-y-3">
-              {list.map((e) => (
-                <Card key={e.id} className="flex items-center justify-between gap-3 p-4">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-graphite">{e.description}</p>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-neutral">
-                      {formatDay(e.occurred_on)}
-                      {categoryLabel(e.category) && <span>· {categoryLabel(e.category)}</span>}
-                      {e.source !== "MANUAL" && <Badge>Automático</Badge>}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <span
-                      className={
-                        e.type === "INCOME"
-                          ? "text-sm font-semibold text-success"
-                          : "text-sm font-semibold text-danger"
-                      }
-                    >
-                      {e.type === "INCOME" ? "+" : "−"} {money(e.amount_cents)}
-                    </span>
-                    {e.source === "MANUAL" && (
-                      <FinanceEntryDeleteButton id={e.id} description={e.description} />
-                    )}
-                    {e.type === "INCOME" &&
-                      e.source === "RESERVATION" &&
-                      e.reservation_id &&
-                      e.reservation?.status === "COMPLETED" && (
-                        <FinanceReservationRefundButton
-                          reservationId={e.reservation_id}
-                          description={e.description}
-                        />
-                      )}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
+          <FinanceMovementList
+            movements={financeData.rows as FinanceMovementDTO[]}
+            canManage={canManage}
+          />
         </div>
       ) : (
         <div className="space-y-6">
@@ -214,11 +383,16 @@ export default async function FinanceiroPage({
                 </h2>
               </div>
               <ul className="mt-3 space-y-2">
-                {lowStock.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between gap-3 text-sm">
-                    <span className="truncate text-graphite">{p.name}</span>
+                {lowStock.map((product) => (
+                  <li
+                    key={product.id}
+                    className="flex items-center justify-between gap-3 text-sm"
+                  >
+                    <span className="truncate text-graphite">
+                      {product.name}
+                    </span>
                     <StatusChip tone="warning">
-                      {p.stock} un. (mín. {p.min_stock})
+                      {product.stock} un. (mín. {product.min_stock})
                     </StatusChip>
                   </li>
                 ))}
@@ -228,40 +402,43 @@ export default async function FinanceiroPage({
 
           <section>
             <h2 className="mb-3 font-heading text-lg font-semibold text-graphite">
-              Últimas movimentações
+              Movimentações de estoque
             </h2>
-            {movementList.length === 0 ? (
-              <EmptyState
-                icon={<PackageSearch className="h-6 w-6" />}
-                title="Nenhuma movimentação registrada"
-                description="Entradas e saídas de estoque (manuais e por reservas) aparecem aqui."
-              />
-            ) : (
-              <div className="space-y-3">
-                {movementList.map((m) => (
-                  <Card key={m.id} className="flex items-center justify-between gap-3 p-4">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-graphite">
-                        {m.product?.name ?? "Produto"}
-                      </p>
-                      <p className="mt-0.5 text-xs text-gray-neutral">
-                        {formatDateTime(m.created_at)} · {m.note ?? "Movimentação automática"}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end">
-                      <StatusChip tone={m.type === "IN" ? "success" : "danger"}>
-                        {STOCK_MOVEMENT_TYPE_LABEL[m.type]} · {m.quantity} un.
-                      </StatusChip>
-                      <span className="mt-1 text-xs text-gray-neutral">
-                        restou {m.stock_after} un.
-                      </span>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
+            <StockMovementList movements={stockData.rows} />
           </section>
         </div>
+      )}
+
+      {totalPages > 1 && (
+        <nav
+          aria-label="Paginação"
+          className="mt-6 flex items-center justify-between rounded-xl border border-graphite/10 bg-surface p-3"
+        >
+          {page > 1 ? (
+            <Link
+              href={queryHref(currentQuery, { page: String(page - 1) })}
+              className="inline-flex items-center gap-1 text-sm font-medium text-graphite hover:text-orange"
+            >
+              <ChevronLeft className="h-4 w-4" /> Anterior
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-sm text-gray-neutral">
+            Página {Math.min(page, totalPages)} de {totalPages} · {total}{" "}
+            resultado(s)
+          </span>
+          {page < totalPages ? (
+            <Link
+              href={queryHref(currentQuery, { page: String(page + 1) })}
+              className="inline-flex items-center gap-1 text-sm font-medium text-graphite hover:text-orange"
+            >
+              Próxima <ChevronRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <span />
+          )}
+        </nav>
       )}
     </div>
   );

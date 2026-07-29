@@ -3,11 +3,21 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveTenant } from "@/lib/tenant";
 import {
   appointmentStatusUpdate,
   appointmentStatusBatchUpdate,
+  paidReservationInput,
   reservationCancel,
+  reservationReject,
 } from "@mylivepet/types";
+
+export type FormState = { ok: boolean; error?: string };
+
+async function canMutate(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const tenant = await getActiveTenant(supabase);
+  return !!tenant && tenant.role !== "VIEWER";
+}
 
 export async function signOut() {
   const supabase = await createClient();
@@ -24,6 +34,7 @@ export async function updateAppointmentStatus(formData: FormData) {
   if (!parsed.success) return;
 
   const supabase = await createClient();
+  if (!(await canMutate(supabase))) return;
   await supabase
     .from("appointment")
     .update({ status: parsed.data.status })
@@ -45,6 +56,7 @@ export async function updateAppointmentsStatus(formData: FormData) {
   if (!parsed.success) return;
 
   const supabase = await createClient();
+  if (!(await canMutate(supabase))) return;
   await supabase
     .from("appointment")
     .update({ status: parsed.data.status })
@@ -56,10 +68,13 @@ export async function updateAppointmentsStatus(formData: FormData) {
 
 /** Staff confirma uma reserva de produtos: marca como separada (PICKED). */
 export async function confirmReservation(formData: FormData) {
-  const parsed = reservationCancel.safeParse({ reservation_id: formData.get("reservation_id") });
+  const parsed = reservationCancel.safeParse({
+    reservation_id: formData.get("reservation_id"),
+  });
   if (!parsed.success) return;
 
   const supabase = await createClient();
+  if (!(await canMutate(supabase))) return;
   await supabase
     .from("product_reservation")
     .update({ status: "PICKED" })
@@ -73,30 +88,105 @@ export async function confirmReservation(formData: FormData) {
  * Staff conclui a retirada/pagamento de uma reserva já separada (PICKED → COMPLETED).
  * O trigger reservation_finance lança a receita automática (source RESERVATION).
  */
-export async function completeReservation(formData: FormData) {
-  const parsed = reservationCancel.safeParse({ reservation_id: formData.get("reservation_id") });
-  if (!parsed.success) return;
+export async function completeReservation(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = paidReservationInput.safeParse({
+    reservation_id: formData.get("reservation_id"),
+    payment_method: formData.get("payment_method"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos",
+    };
+  }
 
   const supabase = await createClient();
-  await supabase
-    .from("product_reservation")
-    .update({ status: "COMPLETED" })
-    .eq("id", parsed.data.reservation_id)
-    .eq("status", "PICKED");
+  if (!(await canMutate(supabase))) {
+    return { ok: false, error: "Seu acesso é somente leitura" };
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Sessão expirada" };
+
+  const { error } = await supabase.rpc("complete_product_sale", {
+    p_reservation_id: parsed.data.reservation_id,
+    p_payment_method: parsed.data.payment_method,
+  });
+  if (error) return { ok: false, error: error.message };
 
   revalidatePath("/solicitacoes");
   revalidatePath("/produtos");
   revalidatePath("/financeiro");
+  return { ok: true };
 }
 
-/** Staff recusa uma reserva: cancela e devolve o estoque (RPC com privilégio). */
-export async function rejectReservation(formData: FormData) {
-  const parsed = reservationCancel.safeParse({ reservation_id: formData.get("reservation_id") });
-  if (!parsed.success) return;
+/**
+ * Staff recusa uma reserva com um motivo (obrigatório): marca REJECTED,
+ * grava o motivo e devolve o estoque — tudo na RPC com privilégio, que é
+ * quem enxerga a variação de cada item. O motivo aparece para o tutor.
+ */
+export async function rejectReservation(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = reservationReject.safeParse({
+    reservation_id: formData.get("reservation_id"),
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos",
+    };
+  }
 
   const supabase = await createClient();
-  await supabase.rpc("staff_cancel_reservation", { p_reservation_id: parsed.data.reservation_id });
+  if (!(await canMutate(supabase))) {
+    return { ok: false, error: "Seu acesso é somente leitura" };
+  }
+  const { error } = await supabase.rpc("staff_cancel_reservation", {
+    p_reservation_id: parsed.data.reservation_id,
+    p_reason: parsed.data.reason,
+  });
+  if (error) return { ok: false, error: error.message };
 
   revalidatePath("/solicitacoes");
   revalidatePath("/produtos");
+  return { ok: true };
+}
+
+export async function cancelReservationByStaff(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = reservationReject.safeParse({
+    reservation_id: formData.get("reservation_id"),
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos",
+    };
+  }
+
+  const supabase = await createClient();
+  if (!(await canMutate(supabase))) {
+    return { ok: false, error: "Seu acesso é somente leitura" };
+  }
+  const { error } = await supabase.rpc("cancel_product_reservation", {
+    p_reservation_id: parsed.data.reservation_id,
+    p_reason: parsed.data.reason,
+    p_target_status: "CANCELLED",
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/solicitacoes");
+  revalidatePath("/produtos");
+  revalidatePath("/financeiro");
+  return { ok: true };
 }
