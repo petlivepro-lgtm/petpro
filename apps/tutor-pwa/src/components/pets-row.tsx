@@ -1,5 +1,8 @@
-import Link from "next/link";
-import { Card, Avatar, RatingStars, StatusChip } from "@mylivepet/ui";
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import { Card, Avatar, RatingStars, StatusChip, cn } from "@mylivepet/ui";
 import {
   BEHAVIOR_BADGE_LABEL,
   BEHAVIOR_BADGE_TONE,
@@ -17,28 +20,61 @@ export type PetRowItem = {
   summary: BehaviorSummary | null;
 };
 
-/** Fileira de pets da home; cada card leva à ficha do pet. */
-export function PetsRow({ pets }: { pets: PetRowItem[] }) {
+/**
+ * Fileira de pets da home; o pet selecionado define o histórico de atendimentos
+ * logo abaixo, sem sair da tela. A média do boletim aparece no card — a ficha
+ * completa fica em Meus pets.
+ */
+export function PetsRow({
+  pets,
+  selectedId,
+}: {
+  pets: PetRowItem[];
+  selectedId: string | null;
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
   if (pets.length === 0) {
     return (
       <p className="mt-3 text-sm text-gray-neutral">Nenhum pet cadastrado.</p>
     );
   }
 
+  function select(id: string) {
+    if (id === selectedId) return;
+    startTransition(() => router.replace(`/?pet=${id}`, { scroll: false }));
+  }
+
   return (
-    <div className="mt-3 flex gap-3 overflow-x-auto py-1">
+    <div
+      className={cn(
+        "mt-3 flex gap-3 overflow-x-auto py-1 transition-opacity",
+        isPending && "opacity-60",
+      )}
+    >
       {pets.map((p) => {
+        const active = p.id === selectedId;
         const average = p.summary?.averageScore ?? null;
         const count = p.summary?.reportCount ?? 0;
         const badge = behaviorBadgeOf(average, count);
 
         return (
-          <Link
+          <button
             key={p.id}
-            href={`/pets/${p.id}`}
-            className="shrink-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+            type="button"
+            aria-pressed={active}
+            onClick={() => select(p.id)}
+            className="shrink-0 rounded-2xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
           >
-            <Card className="min-w-[11rem] p-4 transition-all hover:border-orange/30 hover:shadow-card-hover">
+            <Card
+              className={cn(
+                "min-w-[11rem] p-4 transition-all",
+                active
+                  ? "border-orange/40 bg-orange/[0.025] shadow-card-hover"
+                  : "hover:border-graphite/10 hover:shadow-card-hover",
+              )}
+            >
               <Avatar name={p.name} src={p.photo_path} size="lg" />
               <p className="mt-2 truncate font-heading font-semibold text-graphite">
                 {p.name}
@@ -67,7 +103,7 @@ export function PetsRow({ pets }: { pets: PetRowItem[] }) {
                 </p>
               )}
             </Card>
-          </Link>
+          </button>
         );
       })}
     </div>
