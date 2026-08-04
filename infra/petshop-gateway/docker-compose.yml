@@ -6,7 +6,10 @@
 # Instalação: ver INSTALL.md. Depois de preencher o .env: docker compose up -d
 services:
   mediamtx:
-    image: bluenviron/mediamtx:1.12.0
+    # Tag `-ffmpeg` (base Alpine) e não a mínima: só ela traz os certificados
+    # raiz. Sem eles o MediaMTX não valida o TLS do APP_URL e falha ao baixar
+    # o JWKS — recusando todo token com 401 e sem logar o motivo.
+    image: bluenviron/mediamtx:1.12.0-ffmpeg
     restart: unless-stopped
     volumes:
       - ./mediamtx.yml:/mediamtx.yml:ro
