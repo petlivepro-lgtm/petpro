@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 // Player do ao vivo: tenta WebRTC (WHEP, latência ~1s) e, se a rede do tutor
 // bloquear a mídia UDP, cai para HLS (~3-8s de atraso) via hls.js. Ambos os
 // endpoints são do MediaMTX do petshop, autenticados pelo `?jwt=` da URL.
+// O stream é só vídeo: o gateway já publica o path sem trilha de áudio.
 
 type Phase = "connecting" | "webrtc" | "hls" | "error";
 
@@ -37,7 +38,6 @@ async function startWhep(
 
   const pc = new RTCPeerConnection({ iceServers });
   pc.addTransceiver("video", { direction: "recvonly" });
-  pc.addTransceiver("audio", { direction: "recvonly" });
   pc.ontrack = (event) => {
     if (event.streams[0]) video.srcObject = event.streams[0];
   };

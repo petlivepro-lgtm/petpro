@@ -9,6 +9,10 @@ import { signCameraJwt } from "./jwt";
 
 export type GatewayResult = { ok: true } | { ok: false; error: string };
 
+// O token de publish do ffmpeg vai embutido no `runOnInit`, sem como renovar em
+// voo — o TTL cobre o atendimento mais longo com folga.
+const PUBLISH_JWT_TTL_SECONDS = 12 * 60 * 60;
+
 export function cameraPathName(cameraId: string): string {
   return `cam-${cameraId}`;
 }
@@ -83,10 +87,24 @@ export async function startCameraStream(
   if ("error" in conn) return { ok: false, error: conn.error };
 
   const name = cameraPathName(cameraId);
+  // O atendimento é transmitido e gravado SEM ÁUDIO. O MediaMTX não descarta
+  // trilhas de um `source` RTSP proxiado, então em vez de proxiar a câmera o
+  // path recebe um publish do ffmpeg com `-an` — o vídeo é copiado sem
+  // reencodar. Assim WebRTC, HLS e gravação nascem mudos, sem depender do
+  // player do tutor.
+  const publishJwt = await signCameraJwt(
+    [{ action: "publish", path: name }],
+    PUBLISH_JWT_TTL_SECONDS,
+  );
   const body = JSON.stringify({
-    source: conn.source,
-    sourceOnDemand: false,
-    rtspTransport: "tcp", // Tapo por UDP perde pacotes com facilidade
+    source: "publisher",
+    // `runOnInitRestart` faz o papel do antigo `sourceOnDemand: false`: o ffmpeg
+    // fica de pé enquanto o path existir (a gravação roda mesmo sem espectador)
+    // e reconecta sozinho se a câmera oscilar.
+    runOnInit:
+      `ffmpeg -rtsp_transport tcp -i ${conn.source}` + // Tapo por UDP perde pacotes com facilidade
+      ` -an -c:v copy -f rtsp rtsp://localhost:8554/$MTX_PATH?jwt=${publishJwt}`,
+    runOnInitRestart: true,
     record: true,
   });
 

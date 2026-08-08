@@ -15,6 +15,14 @@ api: yes
 apiAddress: :9997
 
 ###############################################
+# RTSP interno: o app não proxia a câmera direto — cada path roda um ffmpeg
+# (`runOnInit`) que lê o RTSP da câmera, descarta o áudio (`-an`) e republica
+# aqui em localhost. É o que garante atendimento sem som no ao vivo E na
+# gravação. NÃO exponha a 8554 no docker-compose: o publish é só loopback.
+rtsp: yes
+rtspAddress: :8554
+
+###############################################
 # Saídas para o navegador do tutor.
 hls: yes
 hlsAddress: :8888

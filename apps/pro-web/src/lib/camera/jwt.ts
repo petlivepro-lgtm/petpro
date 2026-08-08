@@ -8,7 +8,7 @@ import { envVar } from "@/lib/supabase/admin";
 // existe no ambiente do pro-web/tutor-pwa (Vercel) — o gateway nunca a vê.
 
 export type MediaMtxPermission = {
-  action: "read" | "playback" | "api";
+  action: "read" | "publish" | "playback" | "api";
   /** Path do stream (ex.: `cam-<cameraId>`); omitido para action "api". */
   path?: string;
 };
