@@ -17,7 +17,7 @@ export default function CriarSenhaPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // O link mágico autentica ao abrir a página; então vinculamos a ficha de
+  // O link de e-mail autentica ao abrir a página; então vinculamos a ficha de
   // tutor (claim) e liberamos o formulário de criação de senha.
   useEffect(() => {
     let done = false;
@@ -27,9 +27,45 @@ export default function CriarSenhaPage() {
       await supabase.rpc("claim_tutor_access");
       setPhase("form");
     }
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) finish();
-    });
+
+    // O link vem sem PKCE (ver sendTutorResetLink), então a sessão chega no
+    // fragmento da URL e é preciso instalá-la à mão: o cliente do navegador é
+    // fixado em pkce pelo @supabase/ssr e recusaria o fragmento sozinho.
+    // Em troca, o link vale em qualquer aparelho, não só no que o pediu.
+    async function start() {
+      const hash = window.location.hash.replace(/^#/, "");
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get("access_token");
+      const refreshToken = params.get("refresh_token");
+
+      // Link expirado/já usado volta como #error=...
+      if (params.get("error")) {
+        setPhase("error");
+        return;
+      }
+
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        // tira o token da barra de endereços antes de qualquer outra coisa
+        window.history.replaceState(null, "", window.location.pathname);
+        if (error) {
+          setPhase("error");
+          return;
+        }
+        await finish();
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) await finish();
+    }
+
+    void start();
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) finish();
     });

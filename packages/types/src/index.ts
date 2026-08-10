@@ -2,6 +2,7 @@ export * from "./enums";
 export * from "./dto";
 export * from "./behavior";
 export * from "./finance";
+export * from "./phone";
 export type { Database, Tables, TablesInsert, Json } from "./database.types";
 
 /** Formata centavos (integer) em moeda BRL. */

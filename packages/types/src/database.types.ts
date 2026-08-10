@@ -1474,6 +1474,7 @@ export type Database = {
           id: string;
           notes: string | null;
           phone: string | null;
+          phone_digits: string | null;
           profile_id: string | null;
           tenant_id: string;
         };
@@ -1485,6 +1486,7 @@ export type Database = {
           id?: string;
           notes?: string | null;
           phone?: string | null;
+          phone_digits?: string | null;
           profile_id?: string | null;
           tenant_id: string;
         };
@@ -1496,6 +1498,7 @@ export type Database = {
           id?: string;
           notes?: string | null;
           phone?: string | null;
+          phone_digits?: string | null;
           profile_id?: string | null;
           tenant_id?: string;
         };
@@ -1644,11 +1647,16 @@ export type Database = {
         Args: { p_email: string; p_user_id: string };
         Returns: undefined;
       };
+      link_tutor_access_by: {
+        Args: { p_email: string; p_phone_digits: string; p_user_id: string };
+        Returns: undefined;
+      };
       mark_rejection_seen: {
         Args: { p_reservation_id: string };
         Returns: undefined;
       };
       my_tutor_id: { Args: { _tenant: string }; Returns: string };
+      normalize_phone_br: { Args: { p_value: string }; Returns: string };
       product_variant_label: {
         Args: { v: Database["public"]["Tables"]["product_variant"]["Row"] };
         Returns: string;
@@ -1755,6 +1763,16 @@ export type Database = {
       tutor_first_access_target: { Args: { p_email: string }; Returns: Json };
       tutor_has_usable_password: {
         Args: { p_email: string };
+        Returns: boolean;
+      };
+      tutor_login_status: { Args: { p_identifier: string }; Returns: Json };
+      tutor_login_target: { Args: { p_identifier: string }; Returns: Json };
+      tutor_resolve_identifier: {
+        Args: { p_identifier: string };
+        Returns: Json;
+      };
+      tutor_user_has_usable_password: {
+        Args: { p_user_id: string };
         Returns: boolean;
       };
     };

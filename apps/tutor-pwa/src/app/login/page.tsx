@@ -2,9 +2,22 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { formatPhoneBR, isValidPhoneBR, phoneDigits } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Input, Label, PasswordInput } from "@mylivepet/ui";
-import { activateTutorAccess } from "./actions";
+import {
+  Button,
+  Input,
+  Label,
+  PasswordInput,
+  PhoneInput,
+  cn,
+} from "@mylivepet/ui";
+import {
+  activateTutorAccess,
+  sendTutorResetLink,
+  signInTutor,
+  type Identifier,
+} from "./actions";
 import { MIN_PASSWORD_LENGTH } from "./password-rules";
 
 export default function LoginPage() {
@@ -16,25 +29,34 @@ export default function LoginPage() {
 }
 
 /**
- * email  : digita o e-mail (passo 1, decide o resto)
- * create : primeiro acesso — define a senha aqui mesmo
- * login  : já tem senha
- * sent   : link de redefinição enviado por e-mail
+ * identify : digita e-mail ou telefone (passo 1, decide o resto)
+ * create   : primeiro acesso — define a senha aqui mesmo
+ * login    : já tem senha
+ * sent     : link de redefinição enviado por e-mail
  */
-type Step = "email" | "create" | "login" | "sent";
+type Step = "identify" | "create" | "login" | "sent";
+type Mode = "email" | "phone";
+
+type LoginStatus = {
+  status: "not_found" | "first_access" | "existing" | "ambiguous";
+  kind: Mode;
+};
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [supabase] = useState(() => createClient());
 
-  const [step, setStep] = useState<Step>("email");
+  const [step, setStep] = useState<Step>("identify");
+  const [mode, setMode] = useState<Mode>("email");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState("");
   const [loading, setLoading] = useState(false);
 
   const accessError =
@@ -42,29 +64,20 @@ function LoginForm() {
       ? "Este acesso nao pertence ao app MyLivePet."
       : null;
 
-  /** Garante que o usuário logado é um tutor (e não staff). Desloga se não for. */
-  async function ensureTutorOrSignOut(
-    userId: string | undefined,
-  ): Promise<boolean> {
-    const [{ data: tutor }, { data: membership }] = await Promise.all([
-      supabase
-        .from("tutor")
-        .select("id")
-        .eq("profile_id", userId ?? "")
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("membership")
-        .select("profile_id")
-        .eq("profile_id", userId ?? "")
-        .limit(1)
-        .maybeSingle(),
-    ]);
-    if (!userId || !tutor || membership) {
-      await supabase.auth.signOut();
-      return false;
-    }
-    return true;
+  /** O que o tutor digitou, no formato que as Server Actions esperam. */
+  const identifier: Identifier =
+    mode === "email"
+      ? { kind: "email", value: email.trim().toLowerCase() }
+      : { kind: "phone", value: phoneDigits(phone) };
+
+  /** Rótulo do identificador nas telas seguintes (readonly). */
+  const identifierLabel = mode === "email" ? "E-mail" : "Telefone";
+  const identifierText = mode === "email" ? email.trim() : formatPhoneBR(phone);
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError(null);
+    setNotice(null);
   }
 
   /** Link por e-mail — usado só para redefinir senha esquecida. */
@@ -72,47 +85,54 @@ function LoginForm() {
     setLoading(true);
     setError(null);
     setNotice(null);
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: `${window.location.origin}/criar-senha`,
-      },
-    });
+    const result = await sendTutorResetLink(identifier);
     setLoading(false);
-    if (otpError) {
-      setError(
-        "Não foi possível enviar o e-mail. Tente novamente em instantes.",
-      );
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
+    setSentTo(result.email);
     setStep("sent");
   }
 
-  // Passo 1: identifica o estado do e-mail e direciona o fluxo.
-  async function onSubmitEmail(e: React.FormEvent) {
+  // Passo 1: identifica o estado do cadastro e direciona o fluxo.
+  async function onSubmitIdentify(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setNotice(null);
-    setLoading(true);
-    const value = email.trim().toLowerCase();
-    const { data: status, error: rpcError } = await supabase.rpc(
-      "tutor_access_status",
-      {
-        p_email: value,
-      },
-    );
-    setLoading(false);
-    if (rpcError) {
-      setError("Não foi possível verificar o e-mail. Tente novamente.");
+
+    if (mode === "phone" && !isValidPhoneBR(identifier.value)) {
+      setError("Digite o DDD e o número do telefone.");
       return;
     }
-    if (status === "not_found") {
-      setError("E-mail não encontrado. Procure o petshop para se cadastrar.");
+
+    setLoading(true);
+    const { data, error: rpcError } = await supabase.rpc("tutor_login_status", {
+      p_identifier: identifier.value,
+    });
+    setLoading(false);
+    if (rpcError) {
+      setError("Não foi possível verificar seu cadastro. Tente novamente.");
+      return;
+    }
+    const result = data as unknown as LoginStatus;
+    if (result.status === "ambiguous") {
+      setError(
+        "Este telefone está em mais de um cadastro. Entre com seu e-mail ou fale com o petshop.",
+      );
+      setMode("email");
+      return;
+    }
+    if (result.status === "not_found") {
+      setError(
+        mode === "phone"
+          ? "Telefone não encontrado. Procure o petshop para se cadastrar."
+          : "E-mail não encontrado. Procure o petshop para se cadastrar.",
+      );
       return;
     }
     // 'existing' => já tem senha, só entrar. 'first_access' => criar a senha aqui.
-    setStep(status === "existing" ? "login" : "create");
+    setStep(result.status === "existing" ? "login" : "create");
   }
 
   // Passo 2 (first_access): cria a senha e devolve para a tela de login.
@@ -130,7 +150,7 @@ function LoginForm() {
       return;
     }
     setLoading(true);
-    const result = await activateTutorAccess(email, newPassword);
+    const result = await activateTutorAccess(identifier, newPassword);
     setLoading(false);
     if (!result.ok) {
       setError(result.error);
@@ -143,42 +163,33 @@ function LoginForm() {
     setStep("login");
   }
 
-  // Passo 2 (existing): login de quem já tem senha.
+  // Passo 2 (existing): login de quem já tem senha. A sessão é criada na
+  // Server Action — por telefone, só o servidor sabe qual conta autenticar.
   async function onSubmitLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setNotice(null);
-    const { data, error: signInError } = await supabase.auth.signInWithPassword(
-      {
-        email: email.trim().toLowerCase(),
-        password,
-      },
-    );
-    if (signInError) {
+    const result = await signInTutor(identifier, password);
+    if (!result.ok) {
       setLoading(false);
-      setError("E-mail ou senha inválidos.");
-      return;
-    }
-    const ok = await ensureTutorOrSignOut(data.user?.id);
-    if (!ok) {
-      setLoading(false);
-      setError("Você não tem permissão para acessar.");
+      setError(result.error);
       return;
     }
     router.replace("/");
+    router.refresh();
   }
 
-  function backToEmail() {
+  function backToIdentify() {
     setError(null);
     setNotice(null);
-    setStep("email");
+    setStep("identify");
   }
 
   const headings: Record<Step, { title: string; subtitle: string }> = {
-    email: {
+    identify: {
       title: "Bem-vindo",
-      subtitle: "Informe seu e-mail para acessar o app.",
+      subtitle: "Informe seu e-mail ou telefone para acessar o app.",
     },
     create: {
       title: "Primeiro acesso",
@@ -210,19 +221,64 @@ function LoginForm() {
         </p>
       </div>
 
-      {step === "email" && (
-        <form onSubmit={onSubmitEmail} className="space-y-4">
-          <div>
-            <Label htmlFor="email">E-mail</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+      {step === "identify" && (
+        <form onSubmit={onSubmitIdentify} className="space-y-4">
+          <div
+            role="tablist"
+            aria-label="Como você quer entrar"
+            className="grid grid-cols-2 gap-1 rounded-xl bg-graphite/5 p-1"
+          >
+            {(
+              [
+                { value: "email", label: "E-mail" },
+                { value: "phone", label: "Telefone" },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                role="tab"
+                aria-selected={mode === tab.value}
+                onClick={() => switchMode(tab.value)}
+                className={cn(
+                  "h-9 rounded-lg text-sm font-medium transition-colors",
+                  mode === tab.value
+                    ? "bg-surface text-graphite shadow-sm"
+                    : "text-gray-neutral",
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
+
+          {mode === "email" ? (
+            <div>
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          ) : (
+            <div>
+              <Label htmlFor="phone">Telefone</Label>
+              <PhoneInput
+                id="phone"
+                value={phone}
+                onChange={setPhone}
+                required
+              />
+              <p className="mt-1 text-xs text-gray-neutral">
+                Digite o DDD e o número, como no cadastro do petshop.
+              </p>
+            </div>
+          )}
+
           {(error ?? accessError) && (
             <p className="text-sm text-danger">{error ?? accessError}</p>
           )}
@@ -235,8 +291,8 @@ function LoginForm() {
       {step === "create" && (
         <form onSubmit={onSubmitCreate} className="space-y-4">
           <div>
-            <Label htmlFor="email-new">E-mail</Label>
-            <Input id="email-new" type="email" value={email} disabled />
+            <Label htmlFor="identifier-new">{identifierLabel}</Label>
+            <Input id="identifier-new" value={identifierText} disabled />
           </div>
           <div>
             <Label htmlFor="new-password">Nova senha</Label>
@@ -269,9 +325,9 @@ function LoginForm() {
             <button
               type="button"
               className="text-sm text-gray-neutral underline"
-              onClick={backToEmail}
+              onClick={backToIdentify}
             >
-              Trocar e-mail
+              Usar outro acesso
             </button>
           </div>
         </form>
@@ -280,8 +336,8 @@ function LoginForm() {
       {step === "login" && (
         <form onSubmit={onSubmitLogin} className="space-y-4">
           <div>
-            <Label htmlFor="email-ro">E-mail</Label>
-            <Input id="email-ro" type="email" value={email} disabled />
+            <Label htmlFor="identifier-ro">{identifierLabel}</Label>
+            <Input id="identifier-ro" value={identifierText} disabled />
           </div>
           <div>
             <Label htmlFor="password">Senha</Label>
@@ -302,9 +358,9 @@ function LoginForm() {
             <button
               type="button"
               className="text-gray-neutral underline"
-              onClick={backToEmail}
+              onClick={backToIdentify}
             >
-              Trocar e-mail
+              Usar outro acesso
             </button>
             <button
               type="button"
@@ -322,7 +378,7 @@ function LoginForm() {
         <div className="space-y-4 text-center">
           <p className="text-sm text-gray-neutral">
             Enviamos um link para{" "}
-            <span className="font-medium text-graphite">{email}</span>. Abra o
+            <span className="font-medium text-graphite">{sentTo}</span>. Abra o
             e-mail e clique no link para redefinir sua senha e entrar.
           </p>
           {error && <p className="text-sm text-danger">{error}</p>}
@@ -338,9 +394,9 @@ function LoginForm() {
             <button
               type="button"
               className="text-sm text-gray-neutral underline"
-              onClick={backToEmail}
+              onClick={backToIdentify}
             >
-              Trocar e-mail
+              Usar outro acesso
             </button>
           </div>
         </div>

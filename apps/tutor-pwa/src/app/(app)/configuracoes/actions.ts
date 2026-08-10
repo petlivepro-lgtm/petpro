@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
 import { tutorInput } from "@mylivepet/types";
@@ -18,8 +19,11 @@ export async function updateTutorProfile(
   formData: FormData,
 ): Promise<FormState> {
   const supabase = await createClient();
-  const ctx = await getTutorContext(supabase);
-  if (!ctx) return { ok: false, error: "Sessão inválida" };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const ctx = await getTutorContext(supabase, user?.id);
+  if (!user || !ctx) return { ok: false, error: "Sessão inválida" };
 
   const parsed = tutorInput.safeParse({
     full_name: str(formData.get("full_name")),
@@ -29,6 +33,27 @@ export async function updateTutorProfile(
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  // Quem ativou o acesso só pelo telefone tem um e-mail interno na conta de
+  // auth (ver login/phone-account.ts). Ao cadastrar um e-mail de verdade, a
+  // conta passa a usá-lo — senão o login por e-mail nunca funcionaria.
+  const newEmail = parsed.data.email?.trim().toLowerCase() || null;
+  if (newEmail && user.user_metadata?.phone_login === true) {
+    const admin = createAdminClient();
+    const { error: authError } = await admin.auth.admin.updateUserById(user.id, {
+      email: newEmail,
+      email_confirm: true,
+      user_metadata: { ...user.user_metadata, phone_login: false },
+    });
+    // O GoTrue não distingue o motivo (e-mail duplicado vem como 500 genérico),
+    // então a ficha não é gravada e o tutor continua entrando pelo telefone.
+    if (authError) {
+      return {
+        ok: false,
+        error: "Não foi possível usar este e-mail — ele pode já estar em uso por outra conta.",
+      };
+    }
   }
 
   const { error } = await supabase
