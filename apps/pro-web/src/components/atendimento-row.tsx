@@ -28,10 +28,12 @@ export function AtendimentoRow({
   row,
   cameras,
   behaviorCategories,
+  canConfirm = true,
 }: {
   row: Row;
   cameras: CameraOption[];
   behaviorCategories: BehaviorCategory[];
+  canConfirm?: boolean;
 }) {
   const live = row.status === "IN_PROGRESS";
 
@@ -106,6 +108,7 @@ export function AtendimentoRow({
           status={row.status}
           cameras={cameras}
           behaviorCategories={behaviorCategories}
+          canConfirm={canConfirm}
         />
       </div>
     </div>

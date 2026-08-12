@@ -21,6 +21,7 @@ import {
   BEHAVIOR_BADGE_TONE,
   behaviorBadgeOf,
   formatBehaviorScore,
+  formatCpfBR,
 } from "@mylivepet/types";
 import { NewTutorDialog } from "@/components/new-tutor-dialog";
 import { NewPetDialog } from "@/components/new-pet-dialog";
@@ -101,10 +102,7 @@ export default async function TutoresPage() {
                       {t.cpf && (
                         <p className="flex items-center gap-1.5">
                           <Contact className="h-3.5 w-3.5" />{" "}
-                          {t.cpf.replace(
-                            /^(\d{3})(\d{3})(\d{3})(\d{2})$/,
-                            "$1.$2.$3-$4",
-                          )}
+                          {formatCpfBR(t.cpf)}
                         </p>
                       )}
                     </div>

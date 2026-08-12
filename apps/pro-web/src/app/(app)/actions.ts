@@ -7,6 +7,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import {
   appointmentStatusUpdate,
   appointmentStatusBatchUpdate,
+  canMutateAsRole,
   paidReservationInput,
   reservationCancel,
   reservationReject,
@@ -14,9 +15,13 @@ import {
 
 export type FormState = { ok: boolean; error?: string };
 
+/**
+ * Solicitações e reservas são gestão do petshop: VIEWER só lê e COLLABORATOR
+ * nem enxerga essas telas (a RLS também o barra no banco).
+ */
 async function canMutate(supabase: Awaited<ReturnType<typeof createClient>>) {
   const tenant = await getActiveTenant(supabase);
-  return !!tenant && tenant.role !== "VIEWER";
+  return !!tenant && canMutateAsRole(tenant.role);
 }
 
 export async function signOut() {

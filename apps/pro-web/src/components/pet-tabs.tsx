@@ -12,14 +12,15 @@ export function PetTabs({
   historico: React.ReactNode;
   boletim: React.ReactNode;
   agenda: React.ReactNode;
-  vendas: React.ReactNode;
+  /** Ausente para o colaborador: reserva de produtos é dado comercial. */
+  vendas?: React.ReactNode;
 }) {
   const [active, setActive] = useState("historico");
   const tabs = [
     { id: "historico", label: "Histórico" },
     { id: "boletim", label: "Boletim" },
     { id: "agenda", label: "Agenda" },
-    { id: "vendas", label: "Vendas" },
+    ...(vendas ? [{ id: "vendas", label: "Vendas" }] : []),
   ];
 
   return (

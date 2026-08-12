@@ -6,6 +6,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import { Nav } from "@/components/nav";
 import { MobileNav } from "@/components/mobile-nav";
 import { Avatar, Button, EmptyState } from "@mylivepet/ui";
+import { STAFF_ROLE_LABEL } from "@mylivepet/types";
 import { signOut } from "./actions";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -15,9 +16,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const tenant = await getActiveTenant(supabase);
+  const tenant = await getActiveTenant(supabase, user.id);
   const fullName = (user.user_metadata?.full_name as string | undefined)?.trim();
   const userName = fullName || user.email || "Usuário";
+  const isCollaborator = tenant?.role === "COLLABORATOR";
 
   return (
     <div className="flex min-h-screen bg-surface-muted">
@@ -41,22 +43,27 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <p className="truncate text-sm font-medium text-graphite">{tenant?.tenantName ?? "—"}</p>
             </div>
           </div>
-          <Nav />
+          <Nav role={tenant?.role} />
         </div>
         <div className="border-t border-graphite/10 pt-3">
           <div className="mb-2 flex items-center gap-3 px-2">
             <Avatar name={userName} size="sm" />
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-graphite">{userName}</p>
+              {tenant && (
+                <p className="text-xs text-gray-neutral">{STAFF_ROLE_LABEL[tenant.role]}</p>
+              )}
             </div>
           </div>
-          <Link
-            href="/configuracoes"
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-graphite/70 transition-colors hover:bg-surface-muted"
-          >
-            <Settings className="h-4 w-4" />
-            Configurações
-          </Link>
+          {!isCollaborator && (
+            <Link
+              href="/configuracoes"
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-graphite/70 transition-colors hover:bg-surface-muted"
+            >
+              <Settings className="h-4 w-4" />
+              Configurações
+            </Link>
+          )}
           <form action={signOut}>
             <Button
               variant="ghost"
@@ -75,6 +82,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           tenantName={tenant?.tenantName ?? "—"}
           logoUrl={tenant?.logoUrl ?? null}
           userName={userName}
+          role={tenant?.role}
         />
         <main className="flex-1 p-5 md:p-8">
           <div className="mx-auto max-w-6xl">

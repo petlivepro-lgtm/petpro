@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveTenant } from "@/lib/tenant";
 import { uploadPetPhoto } from "@/lib/pet-photo";
-import { tutorInput, petInput } from "@mylivepet/types";
+import { canMutateAsRole, tutorInput, petInput } from "@mylivepet/types";
 
 export type FormState = {
   ok: boolean;
@@ -121,7 +121,7 @@ export async function updateTutor(
   const supabase = await createClient();
   const tenant = await getActiveTenant(supabase);
   if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
-  if (tenant.role === "VIEWER")
+  if (!canMutateAsRole(tenant.role))
     return { ok: false, error: "Seu acesso é somente leitura" };
 
   const { error } = await supabase

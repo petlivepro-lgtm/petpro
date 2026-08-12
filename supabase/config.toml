@@ -23,7 +23,15 @@ file_size_limit = "5GiB"
 [auth]
 enabled = true
 site_url = "http://127.0.0.1:3000"
-additional_redirect_urls = ["http://127.0.0.1:3000", "http://127.0.0.1:3001"]
+additional_redirect_urls = [
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3001",
+  # destinos dos links de "esqueci minha senha" (pro-web na 3000, tutor na 3001)
+  "http://127.0.0.1:3000/redefinir-senha",
+  "http://localhost:3000/redefinir-senha",
+  "http://127.0.0.1:3001/criar-senha",
+  "http://localhost:3001/criar-senha",
+]
 jwt_expiry = 3600
 enable_signup = true
 

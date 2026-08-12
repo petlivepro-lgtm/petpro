@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveTenant } from "@/lib/tenant";
 import {
   behaviorConfigSchema,
+  canMutateAsRole,
   feedbackConfigSchema,
   tenantSettingsInput,
 } from "@mylivepet/types";
@@ -162,7 +163,8 @@ export async function updateBehaviorConfig(
   const supabase = await createClient();
   const tenant = await getActiveTenant(supabase);
   if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
-  if (tenant.role === "VIEWER") return { ok: false, error: "Seu acesso é somente leitura" };
+  if (!canMutateAsRole(tenant.role))
+    return { ok: false, error: "Seu acesso é somente leitura" };
 
   const admin = createAdminClient();
   // Merge: `feedback` e os dados de contato vivem no mesmo jsonb.

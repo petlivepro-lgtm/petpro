@@ -55,7 +55,18 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
   if (!appt) notFound();
 
   const pet = appt.pet as unknown as { id: string; name: string; photo_path: string | null } | null;
-  const tutor = appt.tutor as unknown as { full_name: string } | null;
+  // O colaborador não tem acesso à tabela `tutor` (a RLS entregaria telefone e
+  // e-mail junto), então o embedding acima vem vazio para ele. O nome sai da
+  // view collaborator_pet, que expõe só isso.
+  let tutor = appt.tutor as unknown as { full_name: string } | null;
+  if (!tutor && pet) {
+    const { data: petCard } = await supabase
+      .from("collaborator_pet")
+      .select("tutor_name")
+      .eq("id", pet.id)
+      .maybeSingle();
+    if (petCard?.tutor_name) tutor = { full_name: petCard.tutor_name };
+  }
   const service = appt.service_type as unknown as { name: string } | null;
   const collaborator = appt.collaborator as unknown as { full_name: string } | null;
   const camera = appt.camera as unknown as { room_label: string } | null;

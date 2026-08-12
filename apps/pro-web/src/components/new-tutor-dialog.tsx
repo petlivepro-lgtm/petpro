@@ -11,6 +11,7 @@ import {
   Label,
   Select,
   PhoneInput,
+  CpfInput,
   DatePicker,
 } from "@mylivepet/ui";
 import { SPECIES_OPTIONS } from "@mylivepet/types";
@@ -84,15 +85,8 @@ export function NewTutorDialog({
             </div>
           </div>
           <div>
-            <Label htmlFor="cpf">CPF</Label>
-            <Input
-              id="cpf"
-              name="cpf"
-              inputMode="numeric"
-              autoComplete="off"
-              maxLength={14}
-              placeholder="000.000.000-00"
-            />
+            <Label htmlFor="cpf">CPF (opcional)</Label>
+            <CpfInput id="cpf" name="cpf" />
           </div>
           <p className="text-sm text-gray-neutral">
             Com e-mail cadastrado, o tutor cria a própria senha no primeiro

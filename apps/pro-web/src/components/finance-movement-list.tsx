@@ -25,6 +25,7 @@ import {
 } from "@mylivepet/ui";
 import {
   formatBRL,
+  formatCpfBR,
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABEL,
   RESERVATION_STATUS_LABEL,
@@ -49,11 +50,6 @@ function formatDateTime(value?: string | null) {
     dateStyle: "short",
     timeStyle: "short",
   });
-}
-
-function formatCpf(value?: string | null) {
-  if (!value) return "Não informado";
-  return value.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
 }
 
 function paymentLabel(method: PaymentMethod | null) {
@@ -355,7 +351,10 @@ function MovementDetail({
           </h3>
           <dl className="grid gap-3 sm:grid-cols-2">
             <DetailField label="Nome" value={customer.name} />
-            <DetailField label="CPF" value={formatCpf(customer.cpf)} />
+            <DetailField
+              label="CPF"
+              value={customer.cpf ? formatCpfBR(customer.cpf) : "Não informado"}
+            />
             <DetailField label="Telefone" value={customer.phone} />
             <DetailField label="E-mail" value={customer.email} />
           </dl>

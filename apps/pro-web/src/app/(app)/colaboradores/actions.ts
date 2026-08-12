@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { collaboratorInput, type CollaboratorScheduleInput } from "@mylivepet/types";
@@ -113,6 +114,116 @@ export async function updateCollaborator(_prev: FormState, formData: FormData): 
       .insert(scheduleRows(parsed.data.schedules, tenant.tenantId, id));
     if (schedError) return { ok: false, error: schedError.message };
   }
+
+  revalidatePath("/colaboradores");
+  return { ok: true };
+}
+
+/**
+ * Define o e-mail com que o colaborador entra no painel. A conta de auth NÃO
+ * nasce aqui: ela é criada no primeiro acesso, quando ele escolhe a senha
+ * (ver activateCollaboratorAccess em app/login/actions.ts).
+ *
+ * Só OWNER/MANAGER — mesmo recorte da policy membership_admin, já que o
+ * primeiro acesso acaba criando uma membership.
+ */
+export async function setCollaboratorAccess(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const id = str(formData.get("id"));
+  const email = str(formData.get("access_email"))?.toLowerCase();
+  if (!id) return { ok: false, error: "Colaborador inválido" };
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { ok: false, error: "Informe um e-mail válido" };
+  }
+
+  const supabase = await createClient();
+  const tenant = await getActiveTenant(supabase);
+  if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
+  if (tenant.role !== "OWNER" && tenant.role !== "MANAGER") {
+    return { ok: false, error: "Só o dono ou o gerente pode criar acessos" };
+  }
+
+  // E-mail que já tem conta no MyLivePet (um tutor, por exemplo) não pode
+  // virar acesso de colaborador: a ativação criaria uma senha nova por cima
+  // de uma conta que não é nossa para reivindicar.
+  const admin = createAdminClient();
+  const { data: target, error: targetError } = await admin.rpc("staff_access_target", {
+    p_email: email,
+  });
+  if (targetError) {
+    return { ok: false, error: "Não foi possível verificar o e-mail. Tente novamente." };
+  }
+  if ((target as { user_id?: string | null } | null)?.user_id) {
+    return {
+      ok: false,
+      error: "Este e-mail já tem uma conta no MyLivePet. Use outro endereço.",
+    };
+  }
+
+  const { error } = await supabase
+    .from("collaborator")
+    .update({ access_email: email })
+    .eq("id", id);
+  if (error) {
+    // 23505 = colisão no índice único global de access_email
+    if (error.code === "23505") {
+      return { ok: false, error: "Este e-mail já está em uso por outro colaborador" };
+    }
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/colaboradores");
+  return { ok: true };
+}
+
+/**
+ * Tira o acesso ao painel: remove a membership e limpa o vínculo. O middleware
+ * derruba a sessão no request seguinte.
+ *
+ * A conta de auth continua existindo — apagá-la derrubaria a mesma pessoa em
+ * outros vínculos (ela pode ser tutora de um petshop). Fica órfã e sem
+ * membership, ou seja, sem acesso a nada.
+ */
+export async function revokeCollaboratorAccess(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const id = str(formData.get("id"));
+  if (!id) return { ok: false, error: "Colaborador inválido" };
+
+  const supabase = await createClient();
+  const tenant = await getActiveTenant(supabase);
+  if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
+  if (tenant.role !== "OWNER" && tenant.role !== "MANAGER") {
+    return { ok: false, error: "Só o dono ou o gerente pode revogar acessos" };
+  }
+
+  const { data: collaborator, error: readError } = await supabase
+    .from("collaborator")
+    .select("profile_id")
+    .eq("id", id)
+    .single();
+  if (readError || !collaborator) {
+    return { ok: false, error: "Colaborador não encontrado" };
+  }
+
+  const admin = createAdminClient();
+  if (collaborator.profile_id) {
+    const { error: membershipError } = await admin
+      .from("membership")
+      .delete()
+      .eq("tenant_id", tenant.tenantId)
+      .eq("profile_id", collaborator.profile_id);
+    if (membershipError) return { ok: false, error: membershipError.message };
+  }
+
+  const { error } = await admin
+    .from("collaborator")
+    .update({ profile_id: null, access_email: null })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
 
   revalidatePath("/colaboradores");
   return { ok: true };

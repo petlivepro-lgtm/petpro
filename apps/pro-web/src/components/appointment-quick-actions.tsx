@@ -15,11 +15,18 @@ export function AppointmentQuickActions({
   status,
   cameras,
   behaviorCategories,
+  canConfirm = true,
 }: {
   appointmentId: string;
   status: AppointmentStatus;
   cameras: CameraOption[];
   behaviorCategories: BehaviorCategory[];
+  /**
+   * Confirmar solicitação é do balcão. O colaborador chega a ver atendimentos
+   * REQUESTED (o tutor escolhe o profissional ao solicitar), mas /solicitacoes
+   * é rota bloqueada para ele — o link viraria um beco sem saída.
+   */
+  canConfirm?: boolean;
 }) {
   if (status === "CONFIRMED" || status === "CHECKED_IN") {
     return (
@@ -44,6 +51,13 @@ export function AppointmentQuickActions({
   }
 
   if (status === "REQUESTED") {
+    if (!canConfirm) {
+      return (
+        <span className="whitespace-nowrap text-sm text-gray-neutral">
+          Aguardando confirmação
+        </span>
+      );
+    }
     return (
       <Link
         href="/solicitacoes"

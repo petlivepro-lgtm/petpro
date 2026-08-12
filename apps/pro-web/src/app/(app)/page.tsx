@@ -3,10 +3,12 @@ import { Users, PawPrint, Package, CalendarClock, ArrowRight, Wallet, PackageSea
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader, StatCard, Card, EmptyState } from "@mylivepet/ui";
 import { AppointmentStatusBadge } from "@/components/status-badge";
+import { ColaboradorDashboard } from "@/components/colaborador-dashboard";
 import { RecentSolicitacoes } from "@/components/recent-solicitacoes";
 import { FinanceBarChart, type FinanceChartPoint } from "@/components/charts/finance-bar-chart";
 import { StockBarChart, type StockChartPoint } from "@/components/charts/stock-bar-chart";
 import { mapRecent } from "@/lib/solicitacoes";
+import { getActiveTenant } from "@/lib/tenant";
 import type { AppointmentStatus } from "@mylivepet/types";
 
 function formatDate(v: string | null) {
@@ -30,6 +32,13 @@ function lastSixMonths(): { key: string; label: string }[] {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
+
+  // A raiz serve dois painéis. O colaborador não pode ver faturamento, estoque
+  // nem a fila de solicitações, então nem chega nas queries abaixo.
+  const tenant = await getActiveTenant(supabase);
+  if (tenant?.role === "COLLABORATOR") {
+    return <ColaboradorDashboard tenant={tenant} />;
+  }
 
   const countOf = async (table: "tutor" | "pet" | "product") =>
     (await supabase.from(table).select("*", { count: "exact", head: true })).count ?? 0;

@@ -1,44 +1,28 @@
 import { UsersRound, CalendarClock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveTenant } from "@/lib/tenant";
 import { Card, PageHeader, StatusChip, EmptyState } from "@mylivepet/ui";
-import { WEEKDAY_LABEL, type Weekday } from "@mylivepet/types";
+import { hhmm, scheduleSummary } from "@/lib/collaborator-schedule";
+import { CollaboratorAccessDialog } from "@/components/collaborator-access-dialog";
 import { CollaboratorDialog } from "@/components/collaborator-dialog";
 import { DeleteCollaboratorDialog } from "@/components/delete-collaborator-dialog";
 
-type ScheduleRow = { id: string; weekday: number; start_time: string; end_time: string };
-
-/** "08:00:00" (time do Postgres) → "08:00" */
-function hhmm(t: string) {
-  return t.slice(0, 5);
-}
-
-/** Resume as janelas por dia: "Segunda 08:00–12:00, 13:00–18:00". */
-function scheduleSummary(schedules: ScheduleRow[]): string[] {
-  const byDay = new Map<number, ScheduleRow[]>();
-  for (const s of schedules) {
-    const list = byDay.get(s.weekday) ?? [];
-    list.push(s);
-    byDay.set(s.weekday, list);
-  }
-  return [...byDay.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([weekday, list]) => {
-      const ranges = list
-        .sort((a, b) => a.start_time.localeCompare(b.start_time))
-        .map((s) => `${hhmm(s.start_time)}–${hhmm(s.end_time)}`)
-        .join(", ");
-      return `${WEEKDAY_LABEL[weekday as Weekday]} ${ranges}`;
-    });
-}
-
 export default async function ColaboradoresPage() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("collaborator")
-    .select("id, full_name, role_title, active, collaborator_schedule(id, weekday, start_time, end_time)")
-    .order("full_name");
+  const [{ data }, tenant] = await Promise.all([
+    supabase
+      .from("collaborator")
+      .select(
+        "id, full_name, role_title, active, access_email, profile_id, collaborator_schedule(id, weekday, start_time, end_time)",
+      )
+      .order("full_name"),
+    getActiveTenant(supabase),
+  ]);
 
   const list = data ?? [];
+  // Mesmo recorte da policy membership_admin: o acesso ao painel acaba
+  // criando uma membership.
+  const canManageAccess = tenant?.role === "OWNER" || tenant?.role === "MANAGER";
 
   return (
     <div>
@@ -66,9 +50,16 @@ export default async function ColaboradoresPage() {
                     <p className="font-heading font-semibold text-graphite">{c.full_name}</p>
                     {c.role_title && <p className="text-sm text-gray-neutral">{c.role_title}</p>}
                   </div>
-                  <StatusChip tone={c.active ? "success" : "danger"}>
-                    {c.active ? "Ativo" : "Inativo"}
-                  </StatusChip>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <StatusChip tone={c.active ? "success" : "danger"}>
+                      {c.active ? "Ativo" : "Inativo"}
+                    </StatusChip>
+                    {c.profile_id ? (
+                      <StatusChip tone="info">Acesso ao painel</StatusChip>
+                    ) : (
+                      c.access_email && <StatusChip tone="warning">Acesso pendente</StatusChip>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-3 space-y-1">
@@ -88,6 +79,16 @@ export default async function ColaboradoresPage() {
                 <div className="mt-3 flex items-center justify-between border-t border-graphite/5 pt-3">
                   {!c.active && <span className="text-xs text-gray-neutral">Oculto no app</span>}
                   <div className="ml-auto flex items-center gap-1">
+                    {canManageAccess && (
+                      <CollaboratorAccessDialog
+                        collaborator={{
+                          id: c.id,
+                          full_name: c.full_name,
+                          access_email: c.access_email,
+                          has_login: c.profile_id !== null,
+                        }}
+                      />
+                    )}
                     <CollaboratorDialog
                       collaborator={{
                         id: c.id,

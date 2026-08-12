@@ -2,22 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, CalendarClock, ClipboardList, Users, UsersRound, Package, Scissors, Wallet } from "lucide-react";
 import { cn } from "@mylivepet/ui";
+import type { StaffRole } from "@mylivepet/types";
+import { navItemsForRole } from "./nav-items";
 
-const items = [
-  { href: "/", label: "Visão geral", icon: LayoutDashboard },
-  { href: "/solicitacoes", label: "Solicitações", icon: CalendarClock },
-  { href: "/atendimentos", label: "Atendimentos", icon: ClipboardList },
-  { href: "/tutores", label: "Tutores & Pets", icon: Users },
-  { href: "/colaboradores", label: "Colaboradores", icon: UsersRound },
-  { href: "/servicos", label: "Serviços", icon: Scissors },
-  { href: "/produtos", label: "Produtos", icon: Package },
-  { href: "/financeiro", label: "Gestão", icon: Wallet },
-];
-
-export function Nav({ onNavigate }: { onNavigate?: () => void }) {
+export function Nav({
+  role,
+  onNavigate,
+}: {
+  role?: StaffRole;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
+  const items = navItemsForRole(role);
   return (
     <nav className="space-y-1">
       {items.map((item) => {

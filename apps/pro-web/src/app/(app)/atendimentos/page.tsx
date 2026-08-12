@@ -21,6 +21,9 @@ export default async function AtendimentosPage({
 
   const supabase = await createClient();
   const tenant = await getActiveTenant(supabase);
+  // O colaborador vê só a agenda dele — o filtro por profissional não se
+  // aplica, e a RLS já devolveria apenas o próprio cadastro.
+  const isCollaborator = tenant?.role === "COLLABORATOR";
 
   const [rows, { data: collaborators }, { data: cameras }, behaviorCategories] =
     await Promise.all([
@@ -30,11 +33,13 @@ export default async function AtendimentosPage({
           ? { historyFrom: dateFrom, historyTo: dateTo }
           : undefined,
       ),
-      supabase
-        .from("collaborator")
-        .select("id, full_name")
-        .eq("active", true)
-        .order("full_name"),
+      isCollaborator
+        ? Promise.resolve({ data: [] })
+        : supabase
+            .from("collaborator")
+            .select("id, full_name")
+            .eq("active", true)
+            .order("full_name"),
       supabase
         .from("camera")
         .select("id, room_label")
@@ -48,8 +53,12 @@ export default async function AtendimentosPage({
   return (
     <div>
       <PageHeader
-        title="Atendimentos"
-        subtitle="Agenda e andamento dos serviços."
+        title={isCollaborator ? "Minha agenda" : "Atendimentos"}
+        subtitle={
+          isCollaborator
+            ? "Os atendimentos atribuídos a você."
+            : "Agenda e andamento dos serviços."
+        }
       />
 
       <AtendimentosView
@@ -60,6 +69,7 @@ export default async function AtendimentosPage({
         activeTab={activeTab}
         dateFrom={dateFrom}
         dateTo={dateTo}
+        isCollaborator={isCollaborator}
       />
     </div>
   );

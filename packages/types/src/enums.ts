@@ -1,6 +1,41 @@
 // Enums espelhando os tipos do Postgres (supabase/migrations/0001_init.sql).
-export const STAFF_ROLES = ["OWNER", "MANAGER", "ATTENDANT", "VIEWER"] as const;
+// COLLABORATOR (0030) é o profissional que atende: enxerga só a própria
+// agenda e os pets que atende, nunca a gestão do petshop.
+export const STAFF_ROLES = [
+  "OWNER",
+  "MANAGER",
+  "ATTENDANT",
+  "VIEWER",
+  "COLLABORATOR",
+] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
+
+/** Papéis com acesso ao painel de gestão (tudo menos o colaborador). */
+export const MANAGEMENT_ROLES = [
+  "OWNER",
+  "MANAGER",
+  "ATTENDANT",
+  "VIEWER",
+] as const satisfies readonly StaffRole[];
+
+/** Papéis que podem escrever na gestão — VIEWER lê, COLLABORATOR nem vê. */
+export const MUTATING_ROLES = [
+  "OWNER",
+  "MANAGER",
+  "ATTENDANT",
+] as const satisfies readonly StaffRole[];
+
+export function canMutateAsRole(role: StaffRole): boolean {
+  return (MUTATING_ROLES as readonly StaffRole[]).includes(role);
+}
+
+export const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
+  OWNER: "Dono",
+  MANAGER: "Gerente",
+  ATTENDANT: "Atendente",
+  VIEWER: "Visualização",
+  COLLABORATOR: "Colaborador",
+};
 
 export const APPOINTMENT_ORIGINS = ["STAFF", "TUTOR"] as const;
 export type AppointmentOrigin = (typeof APPOINTMENT_ORIGINS)[number];

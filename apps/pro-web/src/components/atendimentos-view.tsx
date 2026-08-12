@@ -69,6 +69,7 @@ export function AtendimentosView({
   activeTab,
   dateFrom,
   dateTo,
+  isCollaborator = false,
 }: {
   initial: Row[];
   collaborators: CollaboratorOption[];
@@ -77,6 +78,9 @@ export function AtendimentosView({
   activeTab: Bucket;
   dateFrom?: string;
   dateTo?: string;
+  /** O colaborador só vê a agenda dele: sem fila de solicitações nem filtro
+   *  por profissional (a RLS já entrega apenas os atendimentos dele). */
+  isCollaborator?: boolean;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -217,7 +221,13 @@ export function AtendimentosView({
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div
+        className={
+          isCollaborator
+            ? "grid grid-cols-1 gap-4 sm:grid-cols-3"
+            : "grid grid-cols-2 gap-4 lg:grid-cols-4"
+        }
+      >
         <StatCard
           label="Hoje"
           value={summary.today}
@@ -232,16 +242,18 @@ export function AtendimentosView({
           icon={<Play className="h-5 w-5" />}
           accent="#FF6A00"
         />
-        <Link href="/solicitacoes" className="block">
-          <StatCard
-            label="Aguardando"
-            value={summary.requested}
-            hint="confirmar solicitação"
-            icon={<CalendarClock className="h-5 w-5" />}
-            accent="#C0892D"
-            className="h-full transition-shadow hover:shadow-card-hover"
-          />
-        </Link>
+        {!isCollaborator && (
+          <Link href="/solicitacoes" className="block">
+            <StatCard
+              label="Aguardando"
+              value={summary.requested}
+              hint="confirmar solicitação"
+              icon={<CalendarClock className="h-5 w-5" />}
+              accent="#C0892D"
+              className="h-full transition-shadow hover:shadow-card-hover"
+            />
+          </Link>
+        )}
         <StatCard
           label="Finalizados hoje"
           value={summary.doneToday}
@@ -284,20 +296,22 @@ export function AtendimentosView({
             ),
           )}
         </Select>
-        <Select
-          value={collaborator}
-          onChange={(e) => setCollaborator(e.target.value)}
-          className="md:w-52"
-          aria-label="Filtrar por profissional"
-        >
-          <option value="">Todos os profissionais</option>
-          <option value="none">Sem profissional</option>
-          {collaborators.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.full_name}
-            </option>
-          ))}
-        </Select>
+        {!isCollaborator && (
+          <Select
+            value={collaborator}
+            onChange={(e) => setCollaborator(e.target.value)}
+            className="md:w-52"
+            aria-label="Filtrar por profissional"
+          >
+            <option value="">Todos os profissionais</option>
+            <option value="none">Sem profissional</option>
+            {collaborators.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.full_name}
+              </option>
+            ))}
+          </Select>
+        )}
         {activeTab !== "hoje" && (
           <>
             <div className="w-full sm:w-40">
@@ -377,6 +391,7 @@ export function AtendimentosView({
                     row={row}
                     cameras={cameras}
                     behaviorCategories={behaviorCategories}
+                    canConfirm={!isCollaborator}
                   />
                 ))}
               </div>

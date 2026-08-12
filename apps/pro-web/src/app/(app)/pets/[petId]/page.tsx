@@ -42,6 +42,7 @@ import { PetPhotoDialog } from "@/components/pet-photo-dialog";
 import { AppointmentStatusBadge } from "@/components/status-badge";
 import { BehaviorReportView } from "@/components/behavior-report-view";
 import { fetchBehaviorSummaries, fetchPetBehaviorReports } from "@/lib/behavior";
+import { getActiveTenant } from "@/lib/tenant";
 import { createStaffAppointment } from "./actions";
 
 const statusColor: Record<AppointmentStatus, string> = {
@@ -76,17 +77,42 @@ function ageFrom(birth: string | null): string | null {
 export default async function FichaPetPage({ params }: { params: Promise<{ petId: string }> }) {
   const { petId } = await params;
   const supabase = await createClient();
+  const tenant = await getActiveTenant(supabase);
+  const isCollaborator = tenant?.role === "COLLABORATOR";
 
-  const { data: pet } = await supabase
-    .from("pet")
-    .select(
-      "id, name, species, breed, size, birth_date, photo_path, notes, tutor:tutor_id (id, full_name, phone, email)",
-    )
-    .eq("id", petId)
-    .maybeSingle();
+  // O colaborador lê a view collaborator_pet (0031): mesma ficha, com o nome do
+  // tutor e sem os contatos dele — ele não tem acesso à tabela `tutor`.
+  const { data: pet } = isCollaborator
+    ? await supabase
+        .from("collaborator_pet")
+        .select(
+          "id, name, species, breed, size, birth_date, photo_path, notes, tutor_id, tutor_name",
+        )
+        .eq("id", petId)
+        .maybeSingle()
+        .then(({ data, error }) => ({
+          data: data
+            ? {
+                ...data,
+                tutor: { id: data.tutor_id, full_name: data.tutor_name, phone: null },
+              }
+            : null,
+          error,
+        }))
+    : await supabase
+        .from("pet")
+        .select(
+          "id, name, species, breed, size, birth_date, photo_path, notes, tutor:tutor_id (id, full_name, phone, email)",
+        )
+        .eq("id", petId)
+        .maybeSingle();
 
   if (!pet) notFound();
   const tutor = pet.tutor as unknown as { id: string; full_name: string; phone: string | null } | null;
+  // As colunas de uma view são sempre nullable nos tipos gerados; o filtro por
+  // id já garante que estas duas existem.
+  const petId_ = pet.id as string;
+  const petName = pet.name as string;
 
   const { data: appts } = await supabase
     .from("appointment")
@@ -109,13 +135,15 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
   );
   const emAtendimento = appointments.some((a) => a.status === "IN_PROGRESS");
 
-  const { data: reservas } = tutor
-    ? await supabase
-        .from("product_reservation")
-        .select("id, status, created_at, note")
-        .eq("tutor_id", tutor.id)
-        .order("created_at", { ascending: false })
-    : { data: [] };
+  // Reserva de produtos é dado comercial: fora do escopo do colaborador.
+  const { data: reservas } =
+    tutor && !isCollaborator
+      ? await supabase
+          .from("product_reservation")
+          .select("id, status, created_at, note")
+          .eq("tutor_id", tutor.id)
+          .order("created_at", { ascending: false })
+      : { data: [] };
 
   const meta = [pet.breed, pet.species, pet.size].filter(Boolean).join(" · ");
   const age = ageFrom(pet.birth_date);
@@ -199,7 +227,7 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
   return (
     <div>
       <Link
-        href="/tutores"
+        href={isCollaborator ? "/pets" : "/tutores"}
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-neutral hover:text-graphite"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar
@@ -209,8 +237,8 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
       <Card className="mb-6">
         <div className="flex flex-wrap items-start gap-4">
           <div className="flex flex-col items-center gap-1.5">
-            <Avatar name={pet.name} src={pet.photo_path} size="xl" />
-            <PetPhotoDialog petId={pet.id} petName={pet.name} photoPath={pet.photo_path} />
+            <Avatar name={petName} src={pet.photo_path} size="xl" />
+            <PetPhotoDialog petId={petId_} petName={petName} photoPath={pet.photo_path} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -258,27 +286,31 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
         </div>
       </Card>
 
-      {/* Grade Adicionar */}
-      <h2 className="mb-3 font-heading text-lg font-semibold text-graphite">Adicionar</h2>
-      <ActionGrid className="mb-8">
-        {tiles.map((t) =>
-          t.action ? (
-            <form key={t.label} action={createStaffAppointment}>
-              <input type="hidden" name="pet_id" value={pet.id} />
-              <ActionTile type="submit" label={t.label} icon={t.icon} color={t.color} className="w-full" />
-            </form>
-          ) : (
-            <ActionTile key={t.label} label={t.label} icon={t.icon} color={t.color} soon />
-          ),
-        )}
-      </ActionGrid>
+      {/* Grade Adicionar — abrir atendimento é do balcão, não do colaborador */}
+      {!isCollaborator && (
+        <>
+          <h2 className="mb-3 font-heading text-lg font-semibold text-graphite">Adicionar</h2>
+          <ActionGrid className="mb-8">
+            {tiles.map((t) =>
+              t.action ? (
+                <form key={t.label} action={createStaffAppointment}>
+                  <input type="hidden" name="pet_id" value={petId_} />
+                  <ActionTile type="submit" label={t.label} icon={t.icon} color={t.color} className="w-full" />
+                </form>
+              ) : (
+                <ActionTile key={t.label} label={t.label} icon={t.icon} color={t.color} soon />
+              ),
+            )}
+          </ActionGrid>
+        </>
+      )}
 
       {/* Abas */}
       <PetTabs
         historico={historico}
         boletim={<BehaviorReportView reports={behaviorReports} />}
         agenda={agenda}
-        vendas={vendas}
+        vendas={isCollaborator ? undefined : vendas}
       />
     </div>
   );

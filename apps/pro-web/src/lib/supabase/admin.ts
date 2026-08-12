@@ -1,3 +1,7 @@
+// Este módulo carrega a service role key, que IGNORA a RLS. O import abaixo
+// quebra o build se algum dia ele for parar num bundle de client — melhor um
+// erro de compilação do que a chave publicada no JavaScript do navegador.
+import "server-only";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createClient } from "@supabase/supabase-js";

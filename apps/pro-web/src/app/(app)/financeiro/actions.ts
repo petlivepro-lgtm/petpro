@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import {
+  canMutateAsRole,
   counterSaleInput,
   financeEntryInput,
   productRefundInput,
@@ -42,7 +43,7 @@ async function managementContext() {
   const supabase = await createClient();
   const tenant = await getActiveTenant(supabase);
   if (!tenant) return { error: "Sem petshop vinculado" as const };
-  if (tenant.role === "VIEWER")
+  if (!canMutateAsRole(tenant.role))
     return { error: "Seu acesso é somente leitura" as const };
 
   const {

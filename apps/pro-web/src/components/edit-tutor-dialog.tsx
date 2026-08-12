@@ -3,7 +3,14 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
-import { Button, Dialog, Input, Label, PhoneInput } from "@mylivepet/ui";
+import {
+  Button,
+  CpfInput,
+  Dialog,
+  Input,
+  Label,
+  PhoneInput,
+} from "@mylivepet/ui";
 import { updateTutor, type FormState } from "@/app/(app)/tutores/actions";
 
 export function EditTutorDialog({
@@ -79,14 +86,11 @@ export function EditTutorDialog({
             </div>
           </div>
           <div>
-            <Label htmlFor={`edit-tutor-cpf-${tutor.id}`}>CPF</Label>
-            <Input
+            <Label htmlFor={`edit-tutor-cpf-${tutor.id}`}>CPF (opcional)</Label>
+            <CpfInput
               id={`edit-tutor-cpf-${tutor.id}`}
               name="cpf"
-              inputMode="numeric"
-              maxLength={14}
               defaultValue={tutor.cpf ?? ""}
-              placeholder="000.000.000-00"
             />
           </div>
           <div>
