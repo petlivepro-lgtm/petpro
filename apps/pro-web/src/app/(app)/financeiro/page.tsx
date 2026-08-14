@@ -4,6 +4,7 @@ import {
   ArrowUpCircle,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
   TriangleAlert,
   Wallet,
 } from "lucide-react";
@@ -11,6 +12,7 @@ import { Card, PageHeader, StatCard, StatusChip } from "@mylivepet/ui";
 import {
   FINANCE_MOVEMENT_KINDS,
   FINANCE_ORIGINS,
+  formatBRL,
   PAYMENT_METHODS,
   STOCK_MOVEMENT_SOURCES,
   STOCK_MOVEMENT_TYPES,
@@ -23,6 +25,7 @@ import {
 } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
+import { loadPaymentTerminals } from "@/lib/payment-terminals";
 import { FinanceiroTabs } from "@/components/financeiro-tabs";
 import { FinanceEntryDialog } from "@/components/finance-entry-dialog";
 import {
@@ -51,6 +54,7 @@ type SearchParams = {
   origin?: string;
   payment?: string;
   item?: string;
+  terminal?: string;
   page?: string;
 };
 
@@ -125,6 +129,8 @@ export default async function FinanceiroPage({
   const financeOrigin = oneOf(raw.origin, FINANCE_ORIGINS);
   const payment = oneOf(raw.payment, PAYMENT_METHODS);
   const item = raw.item && uuidPattern.test(raw.item) ? raw.item : undefined;
+  const terminalFilter =
+    raw.terminal && uuidPattern.test(raw.terminal) ? raw.terminal : undefined;
   const stockType = oneOf(raw.kind, STOCK_MOVEMENT_TYPES);
   const stockSource = oneOf(raw.origin, STOCK_MOVEMENT_SOURCES);
 
@@ -153,6 +159,7 @@ export default async function FinanceiroPage({
           p_origin: financeOrigin,
           p_payment: payment,
           p_item: item,
+          p_terminal: terminalFilter,
           p_page: page,
           p_page_size: 50,
         })
@@ -177,6 +184,7 @@ export default async function FinanceiroPage({
     { data: products },
     { data: tutors },
     { data: services },
+    terminals,
   ] = await Promise.all([
     financePromise,
     stockPromise,
@@ -199,6 +207,7 @@ export default async function FinanceiroPage({
       .select("id, name")
       .eq("tenant_id", tenant.tenantId)
       .order("name"),
+    loadPaymentTerminals(supabase, tenant.tenantId),
   ]);
 
   const productList = (products ?? []) as unknown as ProductRow[];
@@ -208,12 +217,18 @@ export default async function FinanceiroPage({
     income_cents: 0,
     expense_cents: 0,
     balance_cents: 0,
+    fee_cents: 0,
+    net_income_cents: 0,
+    net_balance_cents: 0,
   }) as unknown as FinanceSearchResult;
   const stockData = (stockResponse.data ?? {
     rows: [],
     total: 0,
   }) as unknown as { rows: StockMovementDTO[]; total: number };
   const canManage = tenant.role !== "VIEWER";
+  // Sem maquininha cadastrada a taxa é sempre zero — os cards de líquido só
+  // poluiriam a leitura de quem ainda não configurou nada.
+  const showFees = terminals.length > 0;
   const lowStock = productList.filter(
     (product) => product.min_stock > 0 && product.stock <= product.min_stock,
   );
@@ -229,6 +244,7 @@ export default async function FinanceiroPage({
       activeTab === "financeiro" ? (financeOrigin ?? "") : (stockSource ?? ""),
     payment: payment ?? "",
     item: item ?? "",
+    terminal: terminalFilter ?? "",
   };
 
   const currentQuery = new URLSearchParams();
@@ -243,6 +259,7 @@ export default async function FinanceiroPage({
     origin: filterValues.origin,
     payment: filterValues.payment,
     item: filterValues.item,
+    terminal: filterValues.terminal,
   })) {
     if (value) currentQuery.set(key, value);
   }
@@ -274,9 +291,10 @@ export default async function FinanceiroPage({
               <CounterSaleDialog
                 products={productList}
                 tutors={tutors ?? []}
+                terminals={terminals}
                 disabled={!canManage}
               />
-              <FinanceEntryDialog disabled={!canManage} />
+              <FinanceEntryDialog terminals={terminals} disabled={!canManage} />
             </div>
           ) : (
             <StockMovementDialog
@@ -300,6 +318,7 @@ export default async function FinanceiroPage({
         tab={activeTab}
         values={filterValues}
         items={itemOptions}
+        terminals={terminals}
       />
 
       {(financeResponse.error || stockResponse.error) && (
@@ -313,56 +332,76 @@ export default async function FinanceiroPage({
 
       {activeTab === "financeiro" ? (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div
+            className={
+              showFees
+                ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+                : "grid grid-cols-1 gap-4 sm:grid-cols-3"
+            }
+          >
             <Link
               href={queryHref(currentQuery, { kind: "INCOME", page: null })}
               className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
             >
               <StatCard
                 label="Receitas no filtro"
-                value={(financeData.income_cents / 100).toLocaleString(
-                  "pt-BR",
-                  {
-                    style: "currency",
-                    currency: "BRL",
-                  },
-                )}
+                value={formatBRL(financeData.income_cents)}
+                hint={
+                  showFees
+                    ? `Líquido: ${formatBRL(financeData.net_income_cents)}`
+                    : undefined
+                }
                 icon={<ArrowUpCircle className="h-5 w-5" />}
                 accent="#2E9E5B"
               />
             </Link>
+
+            {showFees && (
+              <StatCard
+                label="Taxas de maquininha"
+                value={formatBRL(financeData.fee_cents)}
+                hint="Retido pelas operadoras nas receitas do filtro"
+                icon={<CreditCard className="h-5 w-5" />}
+                accent="#C94A4A"
+              />
+            )}
+
             <Link
               href={queryHref(currentQuery, { kind: "EXPENSE", page: null })}
               className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
             >
               <StatCard
                 label="Despesas no filtro"
-                value={(financeData.expense_cents / 100).toLocaleString(
-                  "pt-BR",
-                  {
-                    style: "currency",
-                    currency: "BRL",
-                  },
-                )}
+                value={formatBRL(financeData.expense_cents)}
                 icon={<ArrowDownCircle className="h-5 w-5" />}
                 accent="#C0892D"
               />
             </Link>
+
             <Link
               href={queryHref(currentQuery, { kind: null, page: null })}
               className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
             >
               <StatCard
-                label="Saldo no filtro"
-                value={(financeData.balance_cents / 100).toLocaleString(
-                  "pt-BR",
-                  {
-                    style: "currency",
-                    currency: "BRL",
-                  },
+                label={showFees ? "Saldo líquido no filtro" : "Saldo no filtro"}
+                value={formatBRL(
+                  showFees
+                    ? financeData.net_balance_cents
+                    : financeData.balance_cents,
                 )}
+                hint={
+                  showFees
+                    ? `Antes das taxas: ${formatBRL(financeData.balance_cents)}`
+                    : undefined
+                }
                 icon={<Wallet className="h-5 w-5" />}
-                accent={financeData.balance_cents >= 0 ? "#1D4E5F" : "#C94A4A"}
+                accent={
+                  (showFees
+                    ? financeData.net_balance_cents
+                    : financeData.balance_cents) >= 0
+                    ? "#1D4E5F"
+                    : "#C94A4A"
+                }
               />
             </Link>
           </div>

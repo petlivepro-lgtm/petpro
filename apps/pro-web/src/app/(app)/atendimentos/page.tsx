@@ -4,6 +4,7 @@ import { AtendimentosView } from "@/components/atendimentos-view";
 import { fetchAtendimentos, isBucket } from "@/lib/atendimentos";
 import { fetchBehaviorCategories } from "@/lib/behavior";
 import { getActiveTenant } from "@/lib/tenant";
+import { loadPaymentTerminals } from "@/lib/payment-terminals";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -25,30 +26,38 @@ export default async function AtendimentosPage({
   // aplica, e a RLS já devolveria apenas o próprio cadastro.
   const isCollaborator = tenant?.role === "COLLABORATOR";
 
-  const [rows, { data: collaborators }, { data: cameras }, behaviorCategories] =
-    await Promise.all([
-      fetchAtendimentos(
-        supabase,
-        activeTab === "historico"
-          ? { historyFrom: dateFrom, historyTo: dateTo }
-          : undefined,
-      ),
-      isCollaborator
-        ? Promise.resolve({ data: [] })
-        : supabase
-            .from("collaborator")
-            .select("id, full_name")
-            .eq("active", true)
-            .order("full_name"),
-      supabase
-        .from("camera")
-        .select("id, room_label")
-        .eq("active", true)
-        .order("room_label"),
-      tenant
-        ? fetchBehaviorCategories(supabase, tenant.tenantId)
-        : Promise.resolve([]),
-    ]);
+  const [
+    rows,
+    { data: collaborators },
+    { data: cameras },
+    behaviorCategories,
+    terminals,
+  ] = await Promise.all([
+    fetchAtendimentos(
+      supabase,
+      activeTab === "historico"
+        ? { historyFrom: dateFrom, historyTo: dateTo }
+        : undefined,
+    ),
+    isCollaborator
+      ? Promise.resolve({ data: [] })
+      : supabase
+          .from("collaborator")
+          .select("id, full_name")
+          .eq("active", true)
+          .order("full_name"),
+    supabase
+      .from("camera")
+      .select("id, room_label")
+      .eq("active", true)
+      .order("room_label"),
+    tenant
+      ? fetchBehaviorCategories(supabase, tenant.tenantId)
+      : Promise.resolve([]),
+    tenant
+      ? loadPaymentTerminals(supabase, tenant.tenantId, { activeOnly: true })
+      : Promise.resolve([]),
+  ]);
 
   return (
     <div>
@@ -66,6 +75,7 @@ export default async function AtendimentosPage({
         collaborators={collaborators ?? []}
         cameras={cameras ?? []}
         behaviorCategories={behaviorCategories}
+        terminals={terminals}
         activeTab={activeTab}
         dateFrom={dateFrom}
         dateTo={dateTo}

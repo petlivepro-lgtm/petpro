@@ -10,7 +10,7 @@ import {
   Play,
 } from "lucide-react";
 import { Avatar, Card, EmptyState, StatCard, cn } from "@mylivepet/ui";
-import type { BehaviorCategory } from "@mylivepet/types";
+import type { BehaviorCategory, PaymentTerminalDTO } from "@mylivepet/types";
 import { AtendimentoRow } from "@/components/atendimento-row";
 import { AppointmentQuickActions } from "@/components/appointment-quick-actions";
 import { AppointmentStatusBadge } from "@/components/status-badge";
@@ -39,11 +39,13 @@ export function ColaboradorDia({
   initial,
   cameras,
   behaviorCategories,
+  terminals,
   sidebar,
 }: {
   initial: Row[];
   cameras: CameraOption[];
   behaviorCategories: BehaviorCategory[];
+  terminals: PaymentTerminalDTO[];
   sidebar: React.ReactNode;
 }) {
   const fetcher = useCallback(() => fetchAtendimentos(createClient()), []);
@@ -57,7 +59,10 @@ export function ColaboradorDia({
   const { hoje, emAndamento, finalizadosHoje, destaque } = useMemo(() => {
     const todayKey = dayKey(new Date());
     const doDia = rows
-      .filter((r) => r.scheduledAt != null && dayKey(new Date(r.scheduledAt)) === todayKey)
+      .filter(
+        (r) =>
+          r.scheduledAt != null && dayKey(new Date(r.scheduledAt)) === todayKey,
+      )
       .sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""));
 
     // O que está acontecendo agora manda no destaque; senão, o próximo da fila
@@ -104,12 +109,7 @@ export function ColaboradorDia({
         />
       </div>
 
-      <Card
-        className={cn(
-          "mt-6",
-          live && "bg-orange/5 ring-1 ring-orange/30",
-        )}
-      >
+      <Card className={cn("mt-6", live && "bg-orange/5 ring-1 ring-orange/30")}>
         <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-neutral">
           {live ? "Acontecendo agora" : "Próximo atendimento"}
         </p>
@@ -151,6 +151,7 @@ export function ColaboradorDia({
                 status={destaque.status}
                 cameras={cameras}
                 behaviorCategories={behaviorCategories}
+                terminals={terminals}
                 canConfirm={false}
               />
             </div>
@@ -190,6 +191,7 @@ export function ColaboradorDia({
                   row={row}
                   cameras={cameras}
                   behaviorCategories={behaviorCategories}
+                  terminals={terminals}
                   canConfirm={false}
                 />
               ))}

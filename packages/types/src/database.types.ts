@@ -25,6 +25,7 @@ export type Database = {
           created_at: string
           finished_at: string | null
           id: string
+          installments: number
           notes: string | null
           origin: Database["public"]["Enums"]["appointment_origin"]
           payment_method: Database["public"]["Enums"]["payment_method"] | null
@@ -37,6 +38,7 @@ export type Database = {
           started_at: string | null
           status: Database["public"]["Enums"]["appointment_status"]
           tenant_id: string
+          terminal_id: string | null
           tutor_id: string
         }
         Insert: {
@@ -49,6 +51,7 @@ export type Database = {
           created_at?: string
           finished_at?: string | null
           id?: string
+          installments?: number
           notes?: string | null
           origin?: Database["public"]["Enums"]["appointment_origin"]
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
@@ -61,6 +64,7 @@ export type Database = {
           started_at?: string | null
           status?: Database["public"]["Enums"]["appointment_status"]
           tenant_id: string
+          terminal_id?: string | null
           tutor_id: string
         }
         Update: {
@@ -73,6 +77,7 @@ export type Database = {
           created_at?: string
           finished_at?: string | null
           id?: string
+          installments?: number
           notes?: string | null
           origin?: Database["public"]["Enums"]["appointment_origin"]
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
@@ -85,6 +90,7 @@ export type Database = {
           started_at?: string | null
           status?: Database["public"]["Enums"]["appointment_status"]
           tenant_id?: string
+          terminal_id?: string | null
           tutor_id?: string
         }
         Relationships: [
@@ -149,6 +155,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terminal"
             referencedColumns: ["id"]
           },
           {
@@ -615,14 +628,22 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string
+          fee_cents: number
+          fee_fixed_cents: number
+          fee_percent: number
           id: string
+          installments: number
+          net_amount_cents: number | null
           occurred_on: string
           payment_method: Database["public"]["Enums"]["payment_method"] | null
           refund_id: string | null
           reservation_id: string | null
+          settlement_date: string | null
           snapshot: Json
           source: Database["public"]["Enums"]["finance_source"]
           tenant_id: string
+          terminal_id: string | null
+          terminal_name: string | null
           type: Database["public"]["Enums"]["finance_entry_type"]
         }
         Insert: {
@@ -632,14 +653,22 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description: string
+          fee_cents?: number
+          fee_fixed_cents?: number
+          fee_percent?: number
           id?: string
+          installments?: number
+          net_amount_cents?: number | null
           occurred_on?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           refund_id?: string | null
           reservation_id?: string | null
+          settlement_date?: string | null
           snapshot?: Json
           source?: Database["public"]["Enums"]["finance_source"]
           tenant_id: string
+          terminal_id?: string | null
+          terminal_name?: string | null
           type: Database["public"]["Enums"]["finance_entry_type"]
         }
         Update: {
@@ -649,14 +678,22 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string
+          fee_cents?: number
+          fee_fixed_cents?: number
+          fee_percent?: number
           id?: string
+          installments?: number
+          net_amount_cents?: number | null
           occurred_on?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           refund_id?: string | null
           reservation_id?: string | null
+          settlement_date?: string | null
           snapshot?: Json
           source?: Database["public"]["Enums"]["finance_source"]
           tenant_id?: string
+          terminal_id?: string | null
+          terminal_name?: string | null
           type?: Database["public"]["Enums"]["finance_entry_type"]
         }
         Relationships: [
@@ -693,6 +730,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_entry_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terminal"
             referencedColumns: ["id"]
           },
         ]
@@ -869,6 +913,95 @@ export type Database = {
           },
           {
             foreignKeyName: "membership_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_fee_rule: {
+        Row: {
+          created_at: string
+          fee_fixed_cents: number
+          fee_percent: number
+          id: string
+          installments_from: number
+          installments_to: number
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          settlement_days: number
+          tenant_id: string
+          terminal_id: string
+        }
+        Insert: {
+          created_at?: string
+          fee_fixed_cents?: number
+          fee_percent?: number
+          id?: string
+          installments_from?: number
+          installments_to?: number
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          settlement_days?: number
+          tenant_id: string
+          terminal_id: string
+        }
+        Update: {
+          created_at?: string
+          fee_fixed_cents?: number
+          fee_percent?: number
+          id?: string
+          installments_from?: number
+          installments_to?: number
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          settlement_days?: number
+          tenant_id?: string
+          terminal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_fee_rule_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_fee_rule_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terminal"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_terminal: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          tenant_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          tenant_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_terminal_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenant"
@@ -1072,6 +1205,7 @@ export type Database = {
           expires_at: string | null
           id: string
           idempotency_key: string | null
+          installments: number
           note: string | null
           origin: Database["public"]["Enums"]["reservation_origin"]
           payment_method: Database["public"]["Enums"]["payment_method"] | null
@@ -1081,6 +1215,7 @@ export type Database = {
           rejection_seen_at: string | null
           status: Database["public"]["Enums"]["reservation_status"]
           tenant_id: string
+          terminal_id: string | null
           tutor_id: string | null
         }
         Insert: {
@@ -1093,6 +1228,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           idempotency_key?: string | null
+          installments?: number
           note?: string | null
           origin?: Database["public"]["Enums"]["reservation_origin"]
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
@@ -1102,6 +1238,7 @@ export type Database = {
           rejection_seen_at?: string | null
           status?: Database["public"]["Enums"]["reservation_status"]
           tenant_id: string
+          terminal_id?: string | null
           tutor_id?: string | null
         }
         Update: {
@@ -1114,6 +1251,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           idempotency_key?: string | null
+          installments?: number
           note?: string | null
           origin?: Database["public"]["Enums"]["reservation_origin"]
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
@@ -1123,6 +1261,7 @@ export type Database = {
           rejection_seen_at?: string | null
           status?: Database["public"]["Enums"]["reservation_status"]
           tenant_id?: string
+          terminal_id?: string | null
           tutor_id?: string | null
         }
         Relationships: [
@@ -1152,6 +1291,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_reservation_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terminal"
             referencedColumns: ["id"]
           },
           {
@@ -1671,18 +1817,26 @@ export type Database = {
           category: string | null
           created_at: string | null
           description: string | null
+          fee_cents: number | null
+          fee_fixed_cents: number | null
+          fee_percent: number | null
           id: string | null
+          installments: number | null
           movement_kind: string | null
           movement_origin: string | null
+          net_amount_cents: number | null
           occurred_on: string | null
           payment_method: Database["public"]["Enums"]["payment_method"] | null
           refund_id: string | null
           refunds: Json | null
           reservation_id: string | null
           reservation_status: string | null
+          settlement_date: string | null
           snapshot: Json | null
           source: Database["public"]["Enums"]["finance_source"] | null
           tenant_id: string | null
+          terminal_id: string | null
+          terminal_name: string | null
           type: Database["public"]["Enums"]["finance_entry_type"] | null
         }
         Relationships: [
@@ -1712,6 +1866,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_entry_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terminal"
             referencedColumns: ["id"]
           },
         ]
@@ -1778,8 +1939,10 @@ export type Database = {
       }
       complete_product_sale: {
         Args: {
+          p_installments?: number
           p_payment_method: Database["public"]["Enums"]["payment_method"]
           p_reservation_id: string
+          p_terminal_id?: string
         }
         Returns: undefined
       }
@@ -1820,6 +1983,10 @@ export type Database = {
       my_collaborator_id: { Args: { _tenant: string }; Returns: string }
       my_tutor_id: { Args: { _tenant: string }; Returns: string }
       normalize_phone_br: { Args: { p_value: string }; Returns: string }
+      payment_method_uses_terminal: {
+        Args: { p_method: Database["public"]["Enums"]["payment_method"] }
+        Returns: boolean
+      }
       product_variant_label: {
         Args: { v: Database["public"]["Tables"]["product_variant"]["Row"] }
         Returns: string
@@ -1850,9 +2017,11 @@ export type Database = {
       register_counter_sale: {
         Args: {
           p_idempotency_key: string
+          p_installments?: number
           p_items: Json
           p_payment_method: Database["public"]["Enums"]["payment_method"]
           p_tenant_id: string
+          p_terminal_id?: string
           p_tutor_id: string
         }
         Returns: string
@@ -1871,8 +2040,22 @@ export type Database = {
         Args: { p_items: Json; p_note?: string; p_tenant_id: string }
         Returns: string
       }
+      resolve_payment_fee: {
+        Args: {
+          p_amount_cents: number
+          p_installments: number
+          p_method: Database["public"]["Enums"]["payment_method"]
+          p_tenant_id: string
+          p_terminal_id: string
+        }
+        Returns: Record<string, unknown>
+      }
       restore_reservation_stock: {
         Args: { p_reservation_id: string }
+        Returns: undefined
+      }
+      save_payment_fee_rules: {
+        Args: { p_rules: Json; p_terminal_id: string }
         Returns: undefined
       }
       search_finance_movements: {
@@ -1888,6 +2071,7 @@ export type Database = {
           p_payment?: Database["public"]["Enums"]["payment_method"]
           p_q?: string
           p_tenant_id: string
+          p_terminal?: string
           p_to?: string
         }
         Returns: Json

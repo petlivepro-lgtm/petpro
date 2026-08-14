@@ -30,6 +30,12 @@ function toInt(v: FormDataEntryValue | null): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+/** Número de parcelas do formulário; ausente/1 quando a forma não parcela. */
+function toInstallments(v: FormDataEntryValue | null): number | undefined {
+  const n = Number.parseInt(typeof v === "string" ? v : "", 10);
+  return Number.isFinite(n) && n > 1 ? n : undefined;
+}
+
 function json(v: FormDataEntryValue | null): unknown {
   if (typeof v !== "string") return undefined;
   try {
@@ -64,6 +70,8 @@ export async function createFinanceEntry(
     amount_cents: toCents(formData.get("amount")),
     occurred_on: str(formData.get("occurred_on")),
     payment_method: str(formData.get("payment_method")),
+    terminal_id: str(formData.get("terminal_id")),
+    installments: toInstallments(formData.get("installments")),
   });
   if (!parsed.success) {
     return {
@@ -85,6 +93,10 @@ export async function createFinanceEntry(
     amount_cents: parsed.data.amount_cents,
     occurred_on: parsed.data.occurred_on,
     payment_method: parsed.data.payment_method,
+    // A taxa e o líquido são calculados pelo trigger finance_entry_apply_fee
+    // (0036) a partir da maquininha — o app nunca grava fee_cents.
+    terminal_id: parsed.data.terminal_id ?? null,
+    installments: parsed.data.installments ?? 1,
     created_by: user.id,
   });
   if (error) return { ok: false, error: error.message };
@@ -125,6 +137,8 @@ export async function registerCounterSale(
     payment_method: str(formData.get("payment_method")),
     idempotency_key: str(formData.get("idempotency_key")),
     items: json(formData.get("items")),
+    terminal_id: str(formData.get("terminal_id")),
+    installments: toInstallments(formData.get("installments")),
   });
   if (!parsed.success) {
     return {
@@ -143,6 +157,8 @@ export async function registerCounterSale(
     p_payment_method: parsed.data.payment_method,
     p_items: parsed.data.items as Json,
     p_idempotency_key: parsed.data.idempotency_key,
+    p_terminal_id: (parsed.data.terminal_id ?? null) as unknown as string,
+    p_installments: parsed.data.installments ?? 1,
   });
   if (error) return { ok: false, error: error.message };
 

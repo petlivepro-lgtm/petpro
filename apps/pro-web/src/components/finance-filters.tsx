@@ -14,6 +14,7 @@ import {
   STOCK_MOVEMENT_SOURCE_LABEL,
   STOCK_MOVEMENT_TYPES,
   STOCK_MOVEMENT_TYPE_LABEL,
+  type PaymentTerminalDTO,
 } from "@mylivepet/types";
 
 export type ManagementFilterValues = {
@@ -26,16 +27,19 @@ export type ManagementFilterValues = {
   origin: string;
   payment: string;
   item: string;
+  terminal: string;
 };
 
 export function FinanceFilters({
   tab,
   values,
   items,
+  terminals,
 }: {
   tab: "financeiro" | "estoque";
   values: ManagementFilterValues;
   items: { id: string; label: string; group: "Produtos" | "Serviços" }[];
+  terminals: PaymentTerminalDTO[];
 }) {
   const isStock = tab === "estoque";
   const clearHref = `/financeiro?tab=${tab}`;
@@ -182,6 +186,23 @@ export function FinanceFilters({
                   ))}
                 </Select>
               </div>
+              {terminals.length > 0 && (
+                <div>
+                  <Label htmlFor="management-terminal">Maquininha</Label>
+                  <Select
+                    id="management-terminal"
+                    name="terminal"
+                    defaultValue={values.terminal}
+                  >
+                    <option value="">Todas</option>
+                    {terminals.map((terminal) => (
+                      <option key={terminal.id} value={terminal.id}>
+                        {terminal.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              )}
               <div>
                 <Label htmlFor="management-item">Serviço/produto</Label>
                 <Select

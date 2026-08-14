@@ -5,7 +5,7 @@ import type { AppointmentStatus } from "@mylivepet/types";
 // Colunas da tela de Atendimentos — reutilizadas no render inicial (server) e no
 // refetch em tempo real (client), garantindo o mesmo shape nos dois lados.
 export const ATENDIMENTO_SELECT =
-  "id, status, origin, scheduled_at, started_at, finished_at, pet(id, name, photo_path), tutor(full_name), service_type(name), collaborator(id, full_name)";
+  "id, status, origin, scheduled_at, started_at, finished_at, pet(id, name, photo_path), tutor(full_name), service_type(name, price_cents), collaborator(id, full_name)";
 
 type RawAtendimento = {
   id: string;
@@ -16,7 +16,7 @@ type RawAtendimento = {
   finished_at: string | null;
   pet: { id: string; name: string; photo_path: string | null } | null;
   tutor: { full_name: string } | null;
-  service_type: { name: string } | null;
+  service_type: { name: string; price_cents: number } | null;
   collaborator: { id: string; full_name: string } | null;
 };
 
@@ -32,6 +32,8 @@ export type AtendimentoRow = {
   petPhoto: string | null;
   tutorName: string | null;
   serviceName: string;
+  /** Preço do serviço, para prever o líquido ao finalizar (0036). */
+  servicePriceCents: number | null;
   collaboratorId: string | null;
   collaboratorName: string | null;
 };
@@ -49,6 +51,7 @@ export function mapAtendimentos(rows: RawAtendimento[]): AtendimentoRow[] {
     petPhoto: a.pet?.photo_path ?? null,
     tutorName: a.tutor?.full_name ?? null,
     serviceName: a.service_type?.name ?? "Serviço",
+    servicePriceCents: a.service_type?.price_cents ?? null,
     collaboratorId: a.collaborator?.id ?? null,
     collaboratorName: a.collaborator?.full_name ?? null,
   }));

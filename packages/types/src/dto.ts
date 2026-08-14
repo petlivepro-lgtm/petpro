@@ -7,6 +7,7 @@ import {
   PRODUCT_CATEGORIES,
   STOCK_MOVEMENT_TYPES,
   WEIGHT_UNITS,
+  type PaymentMethod,
 } from "./enums";
 
 // DTOs de validação compartilhados entre os apps (formulários, server actions).
@@ -150,9 +151,7 @@ export const behaviorCategorySchema = z.object({
 export type BehaviorCategory = z.infer<typeof behaviorCategorySchema>;
 
 export const behaviorConfigSchema = z.object({
-  categories: z
-    .array(behaviorCategorySchema)
-    .max(8, "No máximo 8 categorias"),
+  categories: z.array(behaviorCategorySchema).max(8, "No máximo 8 categorias"),
 });
 export type BehaviorConfig = z.infer<typeof behaviorConfigSchema>;
 
@@ -262,7 +261,10 @@ export const serviceStepLibrarySchema = z.object({
   known_ids: z.array(z.string().uuid()),
   steps: z
     .array(serviceStepTemplateSchema)
-    .max(SERVICE_STEP_LIBRARY_MAX, `No máximo ${SERVICE_STEP_LIBRARY_MAX} etapas`)
+    .max(
+      SERVICE_STEP_LIBRARY_MAX,
+      `No máximo ${SERVICE_STEP_LIBRARY_MAX} etapas`,
+    )
     // Espelha o índice único (tenant_id, lower(btrim(label))) da 0035, para o
     // erro chegar com o nome da etapa em vez do texto cru do Postgres.
     .superRefine((steps, ctx) => {
@@ -308,7 +310,10 @@ export const serviceTypeInput = z.object({
   step_ids: z
     .array(z.string().uuid())
     .max(SERVICE_STEP_LIBRARY_MAX)
-    .refine((ids) => new Set(ids).size === ids.length, "Etapa repetida no serviço")
+    .refine(
+      (ids) => new Set(ids).size === ids.length,
+      "Etapa repetida no serviço",
+    )
     .optional(),
 });
 export type ServiceTypeInput = z.infer<typeof serviceTypeInput>;
@@ -399,15 +404,121 @@ export const DEFAULT_RECORDING_RETENTION_DAYS = 7;
 // Finalidade LGPD registrada em `consent` para a câmera ao vivo + gravação.
 export const CAMERA_CONSENT_PURPOSE = "transmissão e gravação do atendimento";
 
-// Lançamento financeiro manual (receita ou despesa)
-export const financeEntryInput = z.object({
-  type: z.enum(FINANCE_ENTRY_TYPES),
-  description: z.string().min(2, "Descreva o lançamento"),
-  category: z.string().optional(),
-  amount_cents: z.number().int().positive("Informe o valor"),
-  occurred_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
-  payment_method: z.enum(PAYMENT_METHODS),
+// --- Maquininhas e taxas (0036_payment_terminal_fees.sql) ---
+
+// O banco aceita até 24x; a venda oferece MAX_INSTALLMENTS (enums.ts).
+const installmentsField = z
+  .number()
+  .int()
+  .min(1, "Número de parcelas inválido")
+  .max(24, "Número de parcelas inválido");
+
+const terminalIdField = z.string().uuid("Maquininha inválida").optional();
+
+/** Só o crédito parcela — vale para toda cobrança que escolhe maquininha. */
+function checkInstallments<
+  T extends { payment_method: PaymentMethod; installments?: number },
+>(value: T, ctx: z.RefinementCtx) {
+  if ((value.installments ?? 1) > 1 && value.payment_method !== "CREDIT_CARD") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["installments"],
+      message: "Só o crédito pode ser parcelado",
+    });
+  }
+}
+
+export const paymentTerminalInput = z.object({
+  id: z.string().uuid().optional(),
+  name: z
+    .string()
+    .trim()
+    .min(2, "Nome da maquininha tem 2 a 60 caracteres")
+    .max(60, "Nome da maquininha tem 2 a 60 caracteres"),
+  active: z.boolean().optional(),
+  is_default: z.boolean().optional(),
 });
+export type PaymentTerminalInput = z.infer<typeof paymentTerminalInput>;
+
+export const paymentFeeRuleInput = z
+  .object({
+    payment_method: z.enum(PAYMENT_METHODS),
+    installments_from: installmentsField,
+    installments_to: installmentsField,
+    fee_percent: z
+      .number()
+      .min(0, "Taxa inválida")
+      .max(100, "A taxa não pode passar de 100%"),
+    fee_fixed_cents: z.number().int().min(0, "Tarifa fixa inválida"),
+    settlement_days: z
+      .number()
+      .int()
+      .min(0, "Prazo inválido")
+      .max(365, "Prazo inválido"),
+  })
+  .superRefine((rule, ctx) => {
+    if (rule.installments_to < rule.installments_from) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["installments_to"],
+        message: "A faixa de parcelas está invertida",
+      });
+    }
+    if (
+      rule.payment_method !== "CREDIT_CARD" &&
+      (rule.installments_from !== 1 || rule.installments_to !== 1)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["installments_from"],
+        message: "Só o crédito tem faixas de parcelas",
+      });
+    }
+  });
+
+export const paymentFeeRulesInput = z
+  .object({
+    terminal_id: z.string().uuid("Maquininha inválida"),
+    rules: z.array(paymentFeeRuleInput).max(60, "Taxas demais"),
+  })
+  .superRefine((value, ctx) => {
+    // Duas faixas cobrindo 3x deixariam a taxa aplicada à sorte do plano de
+    // execução; a RPC recusa, mas o erro fica muito melhor aqui.
+    const byMethod = new Map<string, [number, number][]>();
+    for (const rule of value.rules) {
+      const ranges = byMethod.get(rule.payment_method) ?? [];
+      if (
+        ranges.some(
+          ([from, to]) =>
+            rule.installments_from <= to && rule.installments_to >= from,
+        )
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["rules"],
+          message: `Faixas de parcelas sobrepostas em ${rule.payment_method}`,
+        });
+        return;
+      }
+      ranges.push([rule.installments_from, rule.installments_to]);
+      byMethod.set(rule.payment_method, ranges);
+    }
+  });
+export type PaymentFeeRulesInput = z.infer<typeof paymentFeeRulesInput>;
+
+// Lançamento financeiro manual (receita ou despesa)
+export const financeEntryInput = z
+  .object({
+    type: z.enum(FINANCE_ENTRY_TYPES),
+    description: z.string().min(2, "Descreva o lançamento"),
+    category: z.string().optional(),
+    amount_cents: z.number().int().positive("Informe o valor"),
+    occurred_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+    payment_method: z.enum(PAYMENT_METHODS),
+    terminal_id: terminalIdField,
+    installments: installmentsField.optional(),
+  })
+  .superRefine(checkInstallments);
 export type FinanceEntryInput = z.infer<typeof financeEntryInput>;
 
 // Movimentação manual de estoque (entrada/saída)
@@ -422,10 +533,14 @@ export const stockMovementInput = z.object({
 });
 export type StockMovementInput = z.infer<typeof stockMovementInput>;
 
-export const paidReservationInput = z.object({
-  reservation_id: z.string().uuid(),
-  payment_method: z.enum(PAYMENT_METHODS),
-});
+export const paidReservationInput = z
+  .object({
+    reservation_id: z.string().uuid(),
+    payment_method: z.enum(PAYMENT_METHODS),
+    terminal_id: terminalIdField,
+    installments: installmentsField.optional(),
+  })
+  .superRefine(checkInstallments);
 export type PaidReservationInput = z.infer<typeof paidReservationInput>;
 
 export const counterSaleItemInput = z.object({
@@ -434,12 +549,16 @@ export const counterSaleItemInput = z.object({
   quantity: z.number().int().positive(),
 });
 
-export const counterSaleInput = z.object({
-  tutor_id: z.string().uuid().optional(),
-  payment_method: z.enum(PAYMENT_METHODS),
-  idempotency_key: z.string().uuid(),
-  items: z.array(counterSaleItemInput).min(1, "Adicione ao menos um produto"),
-});
+export const counterSaleInput = z
+  .object({
+    tutor_id: z.string().uuid().optional(),
+    payment_method: z.enum(PAYMENT_METHODS),
+    idempotency_key: z.string().uuid(),
+    items: z.array(counterSaleItemInput).min(1, "Adicione ao menos um produto"),
+    terminal_id: terminalIdField,
+    installments: installmentsField.optional(),
+  })
+  .superRefine(checkInstallments);
 export type CounterSaleInput = z.infer<typeof counterSaleInput>;
 
 export const productRefundItemInput = z.object({

@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { ChevronRight, Video } from "lucide-react";
+import { ChevronRight, CreditCard, Video } from "lucide-react";
 import { Card, PageHeader, TabbedSections } from "@mylivepet/ui";
 import {
   behaviorConfigSchema,
@@ -44,7 +45,9 @@ export default async function ConfiguracoesPage() {
   };
 
   const feedbackParsed = feedbackConfigSchema.safeParse(settings.feedback);
-  const feedbackFields: FeedbackField[] = feedbackParsed.success ? feedbackParsed.data.fields : [];
+  const feedbackFields: FeedbackField[] = feedbackParsed.success
+    ? feedbackParsed.data.fields
+    : [];
 
   const behaviorParsed = behaviorConfigSchema.safeParse(settings.behavior);
   const behaviorCategories: BehaviorCategory[] = behaviorParsed.success
@@ -77,7 +80,7 @@ export default async function ConfiguracoesPage() {
     <>
       <PageHeader
         title="Configurações"
-        subtitle="Dados do petshop, etapas do atendimento, formulários de avaliação e câmeras."
+        subtitle="Dados do petshop, etapas do atendimento, formulários de avaliação, maquininhas e câmeras."
       />
 
       <TabbedSections
@@ -108,30 +111,59 @@ export default async function ConfiguracoesPage() {
             content: <FeedbackSettingsForm fields={feedbackFields} />,
           },
           {
+            id: "maquininhas",
+            label: "Maquininhas",
+            content: (
+              <SectionLink
+                href="/configuracoes/pagamentos"
+                icon={<CreditCard className="h-5 w-5 text-orange" />}
+                title="Maquininhas e taxas"
+                description="Quanto a operadora retém em cada forma de pagamento, com o líquido refletido no financeiro."
+              />
+            ),
+          },
+          {
             id: "cameras",
             label: "Câmeras",
             content: (
-              <Link href="/configuracoes/cameras" className="block max-w-3xl">
-                <Card className="flex items-center justify-between transition-colors hover:border-orange/40">
-                  <div className="flex items-center gap-3">
-                    <Video className="h-5 w-5 text-orange" />
-                    <div>
-                      <p className="font-heading font-semibold text-graphite">
-                        Câmeras
-                      </p>
-                      <p className="text-sm text-gray-neutral">
-                        Transmissão ao vivo do atendimento para o tutor e
-                        gravações.
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-gray-neutral" />
-                </Card>
-              </Link>
+              <SectionLink
+                href="/configuracoes/cameras"
+                icon={<Video className="h-5 w-5 text-orange" />}
+                title="Câmeras"
+                description="Transmissão ao vivo do atendimento para o tutor e gravações."
+              />
             ),
           },
         ]}
       />
     </>
+  );
+}
+
+/** Aba que não tem formulário próprio: leva para a sub-rota da seção. */
+function SectionLink({
+  href,
+  icon,
+  title,
+  description,
+}: {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link href={href} className="block max-w-3xl">
+      <Card className="flex items-center justify-between transition-colors hover:border-orange/40">
+        <div className="flex items-center gap-3">
+          {icon}
+          <div>
+            <p className="font-heading font-semibold text-graphite">{title}</p>
+            <p className="text-sm text-gray-neutral">{description}</p>
+          </div>
+        </div>
+        <ChevronRight className="h-5 w-5 text-gray-neutral" />
+      </Card>
+    </Link>
   );
 }

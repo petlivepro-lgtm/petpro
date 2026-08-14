@@ -25,6 +25,7 @@ import {
   APPOINTMENT_STATUS_LABEL,
   type AppointmentStatus,
   type BehaviorCategory,
+  type PaymentTerminalDTO,
 } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeList } from "@/lib/use-realtime-list";
@@ -66,6 +67,7 @@ export function AtendimentosView({
   collaborators,
   cameras,
   behaviorCategories,
+  terminals,
   activeTab,
   dateFrom,
   dateTo,
@@ -75,6 +77,7 @@ export function AtendimentosView({
   collaborators: CollaboratorOption[];
   cameras: CameraOption[];
   behaviorCategories: BehaviorCategory[];
+  terminals: PaymentTerminalDTO[];
   activeTab: Bucket;
   dateFrom?: string;
   dateTo?: string;
@@ -391,6 +394,7 @@ export function AtendimentosView({
                     row={row}
                     cameras={cameras}
                     behaviorCategories={behaviorCategories}
+                    terminals={terminals}
                     canConfirm={!isCollaborator}
                   />
                 ))}

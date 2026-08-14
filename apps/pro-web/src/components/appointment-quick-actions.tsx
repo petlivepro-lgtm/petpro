@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import type { AppointmentStatus, BehaviorCategory } from "@mylivepet/types";
-import { StartAppointmentDialog, type CameraOption } from "@/components/start-appointment-dialog";
+import type {
+  AppointmentStatus,
+  BehaviorCategory,
+  PaymentTerminalDTO,
+} from "@mylivepet/types";
+import {
+  StartAppointmentDialog,
+  type CameraOption,
+} from "@/components/start-appointment-dialog";
 import { FinishAppointmentDialog } from "@/components/finish-appointment-dialog";
 
 /**
@@ -15,12 +22,18 @@ export function AppointmentQuickActions({
   status,
   cameras,
   behaviorCategories,
+  terminals,
+  priceCents,
   canConfirm = true,
 }: {
   appointmentId: string;
   status: AppointmentStatus;
   cameras: CameraOption[];
   behaviorCategories: BehaviorCategory[];
+  /** Maquininhas ativas, para registrar onde a cobrança passou. */
+  terminals: PaymentTerminalDTO[];
+  /** Preço do serviço, para a prévia do líquido na finalização. */
+  priceCents?: number;
   /**
    * Confirmar solicitação é do balcão. O colaborador chega a ver atendimentos
    * REQUESTED (o tutor escolhe o profissional ao solicitar), mas /solicitacoes
@@ -44,6 +57,8 @@ export function AppointmentQuickActions({
       <FinishAppointmentDialog
         appointmentId={appointmentId}
         behaviorCategories={behaviorCategories}
+        terminals={terminals}
+        priceCents={priceCents}
         size="sm"
         className="whitespace-nowrap"
       />

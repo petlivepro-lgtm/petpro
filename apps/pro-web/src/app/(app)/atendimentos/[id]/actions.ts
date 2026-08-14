@@ -134,7 +134,9 @@ export async function startAppointment(formData: FormData) {
           .from("service_step_template")
           .select("id, label")
           .in("id", stepIds);
-        const labelById = new Map((templates ?? []).map((t) => [t.id, t.label]));
+        const labelById = new Map(
+          (templates ?? []).map((t) => [t.id, t.label]),
+        );
 
         // A ordem vem de stepIds, não da ordem devolvida pelo .in(). Um id sem
         // rótulo é ignorado e a posição é recontada, para o checklist não nascer
@@ -151,7 +153,8 @@ export async function startAppointment(formData: FormData) {
             done_at: null,
           }));
 
-        if (rows.length > 0) await supabase.from("appointment_step").insert(rows);
+        if (rows.length > 0)
+          await supabase.from("appointment_step").insert(rows);
       }
     }
   }
@@ -171,7 +174,12 @@ export async function startAppointment(formData: FormData) {
   // Liga stream + gravação no gateway. Best-effort: gateway offline não pode
   // impedir o atendimento de começar — o tutor apenas fica sem o ao vivo.
   if (cameraId && appt) {
-    const result = await openCameraSession(supabase, appt.tenant_id, id, cameraId);
+    const result = await openCameraSession(
+      supabase,
+      appt.tenant_id,
+      id,
+      cameraId,
+    );
     if (!result.ok)
       console.warn(`[camera] falha ao ligar stream: ${result.error}`);
   }
@@ -207,7 +215,12 @@ export async function switchAppointmentCamera(
   }
   if (appt.camera_id === cameraId) return { ok: true };
 
-  const closed = await closeCameraSession(supabase, appt.tenant_id, id, appt.camera_id);
+  const closed = await closeCameraSession(
+    supabase,
+    appt.tenant_id,
+    id,
+    appt.camera_id,
+  );
 
   const { error } = await supabase
     .from("appointment")
@@ -221,9 +234,16 @@ export async function switchAppointmentCamera(
   // A troca já está gravada — o tutor migrou de sala pelo Realtime. Se o
   // gateway recusar, o atendimento continua e só a imagem fica pendente.
   if (cameraId) {
-    const started = await openCameraSession(supabase, appt.tenant_id, id, cameraId);
+    const started = await openCameraSession(
+      supabase,
+      appt.tenant_id,
+      id,
+      cameraId,
+    );
     if (!started.ok) {
-      console.warn(`[camera] falha ao ligar stream da nova sala: ${started.error}`);
+      console.warn(
+        `[camera] falha ao ligar stream da nova sala: ${started.error}`,
+      );
       return { ok: false, error: started.error };
     }
   }
@@ -260,7 +280,12 @@ export async function toggleStep(formData: FormData) {
  */
 async function saveBehaviorReport(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  ctx: { tenantId: string; petId: string; appointmentId: string; authorId: string },
+  ctx: {
+    tenantId: string;
+    petId: string;
+    appointmentId: string;
+    authorId: string;
+  },
   formData: FormData,
 ): Promise<string | undefined> {
   let rawResponses: unknown = [];
@@ -314,6 +339,21 @@ export async function finishAppointment(
     return { ok: false, error: "Informe a forma de pagamento" };
   }
 
+  // Maquininha e parcelas alimentam a taxa congelada na receita (0036). O
+  // trigger recusa parcelamento fora do crédito, então barramos antes.
+  const terminalId = str(formData.get("terminal_id")) ?? null;
+  const parsedInstallments = Number.parseInt(
+    str(formData.get("installments")) ?? "1",
+    10,
+  );
+  const installments =
+    Number.isFinite(parsedInstallments) && parsedInstallments > 1
+      ? parsedInstallments
+      : 1;
+  if (installments > 1 && paymentMethod !== "CREDIT_CARD") {
+    return { ok: false, error: "Só o crédito pode ser parcelado" };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -340,6 +380,8 @@ export async function finishAppointment(
       status: "COMPLETED",
       finished_at: new Date().toISOString(),
       payment_method: paymentMethod as PaymentMethod,
+      terminal_id: terminalId,
+      installments,
       completed_by: user.id,
       ...(photos.length > 0 ? { photos } : {}),
     })
@@ -350,7 +392,12 @@ export async function finishAppointment(
   // opcionais: sem nota e sem observação, nenhum boletim é gravado.
   const behaviorError = await saveBehaviorReport(
     supabase,
-    { tenantId: appt.tenant_id, petId: appt.pet_id, appointmentId: id, authorId: user.id },
+    {
+      tenantId: appt.tenant_id,
+      petId: appt.pet_id,
+      appointmentId: id,
+      authorId: user.id,
+    },
     formData,
   );
   if (behaviorError) return { ok: false, error: behaviorError };
@@ -358,8 +405,14 @@ export async function finishAppointment(
   // Fecha a sessão de câmera e encerra stream + gravação no gateway
   // (best-effort; o path também é sobrescrito no próximo atendimento que usar
   // a mesma câmera).
-  const closed = await closeCameraSession(supabase, appt.tenant_id, id, appt.camera_id);
-  if (!closed.ok) console.warn(`[camera] falha ao encerrar stream: ${closed.error}`);
+  const closed = await closeCameraSession(
+    supabase,
+    appt.tenant_id,
+    id,
+    appt.camera_id,
+  );
+  if (!closed.ok)
+    console.warn(`[camera] falha ao encerrar stream: ${closed.error}`);
 
   revalidatePath(`/atendimentos/${id}`);
   revalidatePath("/atendimentos");

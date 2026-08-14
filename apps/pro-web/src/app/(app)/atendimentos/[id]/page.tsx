@@ -34,28 +34,40 @@ import {
   type RawBehaviorReport,
 } from "@/lib/behavior";
 import { getActiveTenant } from "@/lib/tenant";
+import { loadPaymentTerminals } from "@/lib/payment-terminals";
 import type { AppointmentStatus, FeedbackResponse } from "@mylivepet/types";
 
 function fmt(v: string | null) {
   if (!v) return "—";
-  return new Date(v).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return new Date(v).toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
 }
 
-export default async function AtendimentoPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AtendimentoPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const supabase = await createClient();
 
   const { data: appt } = await supabase
     .from("appointment")
     .select(
-      "id, status, scheduled_at, started_at, finished_at, notes, photos, camera_id, pet:pet_id(id, name, photo_path), tutor:tutor_id(full_name), service_type(name), collaborator(full_name), camera:camera_id(room_label)",
+      "id, status, scheduled_at, started_at, finished_at, notes, photos, camera_id, pet:pet_id(id, name, photo_path), tutor:tutor_id(full_name), service_type(name, price_cents), collaborator(full_name), camera:camera_id(room_label)",
     )
     .eq("id", id)
     .maybeSingle();
 
   if (!appt) notFound();
 
-  const pet = appt.pet as unknown as { id: string; name: string; photo_path: string | null } | null;
+  const pet = appt.pet as unknown as {
+    id: string;
+    name: string;
+    photo_path: string | null;
+  } | null;
   // O colaborador não tem acesso à tabela `tutor` (a RLS entregaria telefone e
   // e-mail junto), então o embedding acima vem vazio para ele. O nome sai da
   // view collaborator_pet, que expõe só isso.
@@ -68,8 +80,13 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
       .maybeSingle();
     if (petCard?.tutor_name) tutor = { full_name: petCard.tutor_name };
   }
-  const service = appt.service_type as unknown as { name: string } | null;
-  const collaborator = appt.collaborator as unknown as { full_name: string } | null;
+  const service = appt.service_type as unknown as {
+    name: string;
+    price_cents: number;
+  } | null;
+  const collaborator = appt.collaborator as unknown as {
+    full_name: string;
+  } | null;
   const camera = appt.camera as unknown as { room_label: string } | null;
   const status = appt.status as AppointmentStatus;
 
@@ -78,7 +95,11 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
   const live = status === "IN_PROGRESS";
   const { data: cameras } =
     canStart || live
-      ? await supabase.from("camera").select("id, room_label").eq("active", true).order("room_label")
+      ? await supabase
+          .from("camera")
+          .select("id, room_label")
+          .eq("active", true)
+          .order("room_label")
       : { data: null };
 
   // Salas por onde o pet passou — uma sessão por câmera usada (0034).
@@ -106,26 +127,52 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
     .select(BEHAVIOR_REPORT_SELECT)
     .eq("appointment_id", id);
   const behavior =
-    mapBehaviorReports((behaviorRows ?? []) as unknown as RawBehaviorReport[])[0] ??
-    null;
+    mapBehaviorReports(
+      (behaviorRows ?? []) as unknown as RawBehaviorReport[],
+    )[0] ?? null;
 
-  const tutorFb = (feedbacks ?? []).find((f) => f.direction === "TUTOR_TO_PETSHOP");
+  const tutorFb = (feedbacks ?? []).find(
+    (f) => f.direction === "TUTOR_TO_PETSHOP",
+  );
 
   // Categorias do boletim para o dialog de finalização (só quando dá para finalizar).
-  const tenant = status === "IN_PROGRESS" ? await getActiveTenant(supabase) : null;
-  const behaviorCategories = tenant
-    ? await fetchBehaviorCategories(supabase, tenant.tenantId)
-    : [];
-  const tutorResponses = (tutorFb?.responses as FeedbackResponse[] | null) ?? [];
+  const tenant =
+    status === "IN_PROGRESS" ? await getActiveTenant(supabase) : null;
+  const [behaviorCategories, terminals] = tenant
+    ? await Promise.all([
+        fetchBehaviorCategories(supabase, tenant.tenantId),
+        loadPaymentTerminals(supabase, tenant.tenantId, { activeOnly: true }),
+      ])
+    : [[], []];
+  const tutorResponses =
+    (tutorFb?.responses as FeedbackResponse[] | null) ?? [];
 
   const photos = appt.photos ?? [];
 
   // eventos da linha do tempo (ciclo + passos)
-  type Ev = { key: string; title: string; time: string | null; icon: React.ReactNode; color: string };
+  type Ev = {
+    key: string;
+    title: string;
+    time: string | null;
+    icon: React.ReactNode;
+    color: string;
+  };
   const events: Ev[] = [];
-  events.push({ key: "ag", title: "Agendado", time: appt.scheduled_at, icon: <CalendarClock className="h-4 w-4" />, color: "#1D4E5F" });
+  events.push({
+    key: "ag",
+    title: "Agendado",
+    time: appt.scheduled_at,
+    icon: <CalendarClock className="h-4 w-4" />,
+    color: "#1D4E5F",
+  });
   if (appt.started_at)
-    events.push({ key: "ini", title: "Atendimento iniciado", time: appt.started_at, icon: <Play className="h-4 w-4" />, color: "#FF6A00" });
+    events.push({
+      key: "ini",
+      title: "Atendimento iniciado",
+      time: appt.started_at,
+      icon: <Play className="h-4 w-4" />,
+      color: "#FF6A00",
+    });
 
   // Miolo cronológico: passos concluídos (os pendentes vivem no checklist) e as
   // trocas de sala, intercalados — é o que mostra o pet indo do banho à tosa.
@@ -133,18 +180,37 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
   (steps ?? [])
     .filter((s) => s.done_at != null)
     .forEach((s) =>
-      middle.push({ key: s.id, title: s.label, time: s.done_at, icon: <ListChecks className="h-4 w-4" />, color: "#1D6E84" }),
+      middle.push({
+        key: s.id,
+        title: s.label,
+        time: s.done_at,
+        icon: <ListChecks className="h-4 w-4" />,
+        color: "#1D6E84",
+      }),
     );
   (cameraSessions ?? []).forEach((s) => {
-    const room = (s.camera as unknown as { room_label: string } | null)?.room_label;
+    const room = (s.camera as unknown as { room_label: string } | null)
+      ?.room_label;
     if (!room) return;
-    middle.push({ key: s.id, title: `Transmitindo da ${room}`, time: s.started_at, icon: <Video className="h-4 w-4" />, color: "#FF6A00" });
+    middle.push({
+      key: s.id,
+      title: `Transmitindo da ${room}`,
+      time: s.started_at,
+      icon: <Video className="h-4 w-4" />,
+      color: "#FF6A00",
+    });
   });
   middle.sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""));
   events.push(...middle);
 
   if (appt.finished_at)
-    events.push({ key: "fim", title: "Atendimento finalizado", time: appt.finished_at, icon: <Check className="h-4 w-4" />, color: "#2E7D5B" });
+    events.push({
+      key: "fim",
+      title: "Atendimento finalizado",
+      time: appt.finished_at,
+      icon: <Check className="h-4 w-4" />,
+      color: "#2E7D5B",
+    });
 
   return (
     <div>
@@ -169,7 +235,9 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
         {/* Coluna principal: linha do tempo */}
         <div className="space-y-6 lg:col-span-2">
           <Card>
-            <h2 className="mb-4 font-heading text-lg font-semibold text-graphite">Histórico</h2>
+            <h2 className="mb-4 font-heading text-lg font-semibold text-graphite">
+              Histórico
+            </h2>
             <Timeline>
               {events.map((e, i) => (
                 <TimelineItem
@@ -186,7 +254,9 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
 
           {photos.length > 0 && (
             <Card>
-              <h2 className="mb-3 font-heading text-lg font-semibold text-graphite">Fotos do pet</h2>
+              <h2 className="mb-3 font-heading text-lg font-semibold text-graphite">
+                Fotos do pet
+              </h2>
               <PhotoGallery photos={photos} alt={pet?.name ?? "Pet"} />
             </Card>
           )}
@@ -207,7 +277,9 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
             <Card>
               <div className="mb-2 flex items-center gap-2 text-graphite">
                 <Star className="h-4 w-4 text-orange" />
-                <h2 className="font-heading text-lg font-semibold">Avaliação do tutor</h2>
+                <h2 className="font-heading text-lg font-semibold">
+                  Avaliação do tutor
+                </h2>
               </div>
               {tutorResponses.length > 0 ? (
                 <div className="space-y-3">
@@ -221,16 +293,22 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
                         <ScaleSelector value={r.value} />
                       )}
                       {r.type === "TEXT" && (
-                        <p className="text-sm text-gray-neutral">{String(r.value)}</p>
+                        <p className="text-sm text-gray-neutral">
+                          {String(r.value)}
+                        </p>
                       )}
                     </div>
                   ))}
                 </div>
               ) : (
                 <>
-                  {typeof tutorFb.rating === "number" && <RatingStars value={tutorFb.rating} />}
+                  {typeof tutorFb.rating === "number" && (
+                    <RatingStars value={tutorFb.rating} />
+                  )}
                   {tutorFb.comment && (
-                    <p className="mt-2 text-sm text-gray-neutral">{tutorFb.comment}</p>
+                    <p className="mt-2 text-sm text-gray-neutral">
+                      {tutorFb.comment}
+                    </p>
                   )}
                 </>
               )}
@@ -242,21 +320,33 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
         <div className="space-y-4">
           <Card>
             <div className="mb-3 flex items-center gap-3">
-              <Avatar name={pet?.name ?? "Pet"} src={pet?.photo_path} size="sm" />
+              <Avatar
+                name={pet?.name ?? "Pet"}
+                src={pet?.photo_path}
+                size="sm"
+              />
               <div className="min-w-0">
                 {pet ? (
-                  <Link href={`/pets/${pet.id}`} className="font-medium text-graphite hover:text-orange">
+                  <Link
+                    href={`/pets/${pet.id}`}
+                    className="font-medium text-graphite hover:text-orange"
+                  >
                     {pet.name}
                   </Link>
                 ) : (
                   <p className="font-medium text-graphite">Pet</p>
                 )}
-                {tutor && <p className="text-xs text-gray-neutral">{tutor.full_name}</p>}
+                {tutor && (
+                  <p className="text-xs text-gray-neutral">{tutor.full_name}</p>
+                )}
               </div>
             </div>
 
             {canStart && (
-              <StartAppointmentDialog appointmentId={id} cameras={cameras ?? []} />
+              <StartAppointmentDialog
+                appointmentId={id}
+                cameras={cameras ?? []}
+              />
             )}
 
             {status === "IN_PROGRESS" && (
@@ -264,10 +354,13 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
                 <div className="space-y-2">
                   {camera ? (
                     <p className="flex items-center gap-2 text-sm font-medium text-orange">
-                      <Video className="h-4 w-4" /> Ao vivo para o tutor — {camera.room_label}
+                      <Video className="h-4 w-4" /> Ao vivo para o tutor —{" "}
+                      {camera.room_label}
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-neutral">Sem transmissão para o tutor.</p>
+                    <p className="text-sm text-gray-neutral">
+                      Sem transmissão para o tutor.
+                    </p>
                   )}
                   <SwitchCameraDialog
                     appointmentId={id}
@@ -277,11 +370,17 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
                 </div>
                 <AppointmentChecklist
                   appointmentId={id}
-                  steps={(steps ?? []).map((s) => ({ id: s.id, label: s.label, done: s.done }))}
+                  steps={(steps ?? []).map((s) => ({
+                    id: s.id,
+                    label: s.label,
+                    done: s.done,
+                  }))}
                 />
                 <FinishAppointmentDialog
                   appointmentId={id}
                   behaviorCategories={behaviorCategories}
+                  terminals={terminals}
+                  priceCents={service?.price_cents}
                 />
               </div>
             )}
@@ -292,7 +391,9 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
               </p>
             )}
 
-            {(status === "REQUESTED" || status === "REJECTED" || status === "CANCELLED") && (
+            {(status === "REQUESTED" ||
+              status === "REJECTED" ||
+              status === "CANCELLED") && (
               <p className="text-sm text-gray-neutral">
                 {status === "REQUESTED"
                   ? "Confirme esta solicitação em Solicitações para iniciar."

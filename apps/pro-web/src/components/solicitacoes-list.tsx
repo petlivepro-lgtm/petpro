@@ -3,16 +3,26 @@
 import { useCallback } from "react";
 import { CalendarClock } from "lucide-react";
 import { EmptyState } from "@mylivepet/ui";
+import type { PaymentTerminalDTO } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeList } from "@/lib/use-realtime-list";
-import { SolicitacaoCard, type SolicitacaoGroup } from "@/components/solicitacao-card";
+import {
+  SolicitacaoCard,
+  type SolicitacaoGroup,
+} from "@/components/solicitacao-card";
 import {
   buildSolicitacaoGroups,
   SOLICITACAO_APPOINTMENT_SELECT,
   SOLICITACAO_RESERVATION_SELECT,
 } from "@/lib/solicitacoes";
 
-export function SolicitacoesList({ initialGroups }: { initialGroups: SolicitacaoGroup[] }) {
+export function SolicitacoesList({
+  initialGroups,
+  terminals,
+}: {
+  initialGroups: SolicitacaoGroup[];
+  terminals: PaymentTerminalDTO[];
+}) {
   const fetcher = useCallback(async (): Promise<SolicitacaoGroup[]> => {
     const supabase = createClient();
     const [{ data: appointments }, { data: reservations }] = await Promise.all([
@@ -46,7 +56,11 @@ export function SolicitacoesList({ initialGroups }: { initialGroups: Solicitacao
   return (
     <div className="space-y-3">
       {groups.map((group) => (
-        <SolicitacaoCard key={group.tutorId} group={group} />
+        <SolicitacaoCard
+          key={group.tutorId}
+          group={group}
+          terminals={terminals}
+        />
       ))}
       {groups.length === 0 && (
         <EmptyState

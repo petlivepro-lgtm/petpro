@@ -103,6 +103,32 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   OTHER: "Outro",
 };
 
+// --- Maquininhas (supabase/migrations/0036_payment_terminal_fees.sql) ---
+
+/**
+ * Formas que passam pela maquininha. Só elas herdam a maquininha padrão quando
+ * a venda não escolhe uma — espelha payment_method_uses_terminal no banco.
+ */
+export const TERMINAL_PAYMENT_METHODS = [
+  "DEBIT_CARD",
+  "CREDIT_CARD",
+  "PIX",
+] as const satisfies readonly PaymentMethod[];
+
+export function usesPaymentTerminal(method: PaymentMethod): boolean {
+  return (TERMINAL_PAYMENT_METHODS as readonly PaymentMethod[]).includes(
+    method,
+  );
+}
+
+/** Só o crédito parcela — as demais formas são sempre 1x. */
+export function supportsInstallments(method: PaymentMethod): boolean {
+  return method === "CREDIT_CARD";
+}
+
+/** Teto de parcelas oferecido na venda (o banco aceita até 24). */
+export const MAX_INSTALLMENTS = 12;
+
 // Opções de espécie de pet (campo de texto livre no banco; centralizado para a UI).
 export const SPECIES_OPTIONS = ["Cão", "Gato"] as const;
 

@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { Avatar, StatusChip, cn } from "@mylivepet/ui";
-import type { AppointmentStatus, BehaviorCategory } from "@mylivepet/types";
+import type {
+  AppointmentStatus,
+  BehaviorCategory,
+  PaymentTerminalDTO,
+} from "@mylivepet/types";
 import { AppointmentStatusBadge } from "@/components/status-badge";
 import { AppointmentQuickActions } from "@/components/appointment-quick-actions";
 import type { CameraOption } from "@/components/start-appointment-dialog";
@@ -28,11 +32,13 @@ export function AtendimentoRow({
   row,
   cameras,
   behaviorCategories,
+  terminals,
   canConfirm = true,
 }: {
   row: Row;
   cameras: CameraOption[];
   behaviorCategories: BehaviorCategory[];
+  terminals: PaymentTerminalDTO[];
   canConfirm?: boolean;
 }) {
   const live = row.status === "IN_PROGRESS";
@@ -66,13 +72,18 @@ export function AtendimentoRow({
           <p className="truncate font-medium text-graphite">
             {row.petName}
             {row.tutorName && (
-              <span className="font-normal text-gray-neutral"> · {row.tutorName}</span>
+              <span className="font-normal text-gray-neutral">
+                {" "}
+                · {row.tutorName}
+              </span>
             )}
           </p>
           <p className="truncate text-xs text-gray-neutral">
             {row.serviceName}
             <span className="md:hidden">
-              {row.collaboratorName ? ` · ${row.collaboratorName}` : " · sem profissional"}
+              {row.collaboratorName
+                ? ` · ${row.collaboratorName}`
+                : " · sem profissional"}
             </span>
           </p>
         </div>
@@ -80,7 +91,11 @@ export function AtendimentoRow({
         <div className="hidden w-40 shrink-0 md:block">
           {row.collaboratorName ? (
             <span className="inline-flex items-center gap-2 text-sm text-gray-neutral">
-              <Avatar name={row.collaboratorName} size="sm" className="h-7 w-7 text-[10px]" />
+              <Avatar
+                name={row.collaboratorName}
+                size="sm"
+                className="h-7 w-7 text-[10px]"
+              />
               <span className="truncate">{row.collaboratorName}</span>
             </span>
           ) : (
@@ -108,6 +123,8 @@ export function AtendimentoRow({
           status={row.status}
           cameras={cameras}
           behaviorCategories={behaviorCategories}
+          terminals={terminals}
+          priceCents={row.servicePriceCents ?? undefined}
           canConfirm={canConfirm}
         />
       </div>

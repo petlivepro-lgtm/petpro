@@ -18,14 +18,15 @@ import {
   FINANCE_CATEGORY_LABEL,
   FINANCE_ENTRY_TYPES,
   FINANCE_ENTRY_TYPE_LABEL,
-  PAYMENT_METHODS,
-  PAYMENT_METHOD_LABEL,
+  type FinanceEntryType,
+  type PaymentTerminalDTO,
 } from "@mylivepet/types";
 import {
   createFinanceEntry,
   deleteFinanceEntry,
   type FormState,
 } from "@/app/(app)/financeiro/actions";
+import { PaymentFields } from "@/components/payment-fields";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -35,12 +36,16 @@ function todayIso(): string {
 }
 
 export function FinanceEntryDialog({
+  terminals,
   disabled = false,
 }: {
+  terminals: PaymentTerminalDTO[];
   disabled?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [type, setType] = useState<FinanceEntryType>("INCOME");
+  const [amountCents, setAmountCents] = useState<number | null>(null);
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     createFinanceEntry,
     {
@@ -51,6 +56,8 @@ export function FinanceEntryDialog({
   useEffect(() => {
     if (state.ok) {
       setOpen(false);
+      setType("INCOME");
+      setAmountCents(null);
       router.refresh();
     }
   }, [state, router]);
@@ -67,11 +74,21 @@ export function FinanceEntryDialog({
         title="Novo lançamento"
         description="Registre uma receita ou despesa do petshop."
       >
-        <form action={formAction} className="space-y-4">
+        {/* key remonta o form a cada abertura: o rascunho anterior (inclusive a
+            maquininha escolhida) não sobrevive ao fechamento. */}
+        <form key={String(open)} action={formAction} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="type">Tipo *</Label>
-              <Select id="type" name="type" required defaultValue="INCOME">
+              <Select
+                id="type"
+                name="type"
+                required
+                value={type}
+                onChange={(event) =>
+                  setType(event.target.value as FinanceEntryType)
+                }
+              >
                 {FINANCE_ENTRY_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {FINANCE_ENTRY_TYPE_LABEL[t]}
@@ -92,24 +109,13 @@ export function FinanceEntryDialog({
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="payment_method">Forma de pagamento *</Label>
-            <Select
-              id="payment_method"
-              name="payment_method"
-              required
-              defaultValue=""
-            >
-              <option value="" disabled>
-                Selecione
-              </option>
-              {PAYMENT_METHODS.map((method) => (
-                <option key={method} value={method}>
-                  {PAYMENT_METHOD_LABEL[method]}
-                </option>
-              ))}
-            </Select>
-          </div>
+          {/* Só receita passa pela maquininha: a taxa da operadora é retida na
+              venda, não numa despesa lançada à mão. */}
+          <PaymentFields
+            idPrefix="entry"
+            terminals={type === "INCOME" ? terminals : []}
+            amountCents={amountCents ?? undefined}
+          />
 
           <div>
             <Label htmlFor="description">Descrição *</Label>
@@ -124,7 +130,13 @@ export function FinanceEntryDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="amount">Valor *</Label>
-              <CurrencyInput id="amount" name="amount" required />
+              <CurrencyInput
+                id="amount"
+                name="amount"
+                required
+                cents={amountCents}
+                onCentsChange={setAmountCents}
+              />
             </div>
             <div>
               <Label htmlFor="occurred_on">Data *</Label>

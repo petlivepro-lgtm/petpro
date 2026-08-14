@@ -330,7 +330,9 @@ function MovementDetail({
         <DetailField label="Valor" value={formatBRL(movement.amount_cents)} />
         <DetailField
           label="Pagamento"
-          value={paymentLabel(movement.payment_method)}
+          value={`${paymentLabel(movement.payment_method)}${
+            movement.installments > 1 ? ` em ${movement.installments}x` : ""
+          }`}
         />
         <DetailField
           label="Origem"
@@ -343,6 +345,43 @@ function MovementDetail({
           }
         />
       </div>
+
+      {movement.terminal_name && (
+        <section>
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-graphite">
+            <CreditCard className="h-4 w-4 text-orange" /> Maquininha
+          </h3>
+          <dl className="grid gap-3 sm:grid-cols-2">
+            <DetailField label="Operadora" value={movement.terminal_name} />
+            <DetailField
+              label="Taxa aplicada"
+              value={
+                movement.fee_cents > 0
+                  ? `${formatBRL(movement.fee_cents)} (${Number(
+                      movement.fee_percent,
+                    ).toLocaleString("pt-BR")}%${
+                      movement.fee_fixed_cents > 0
+                        ? ` + ${formatBRL(movement.fee_fixed_cents)}`
+                        : ""
+                    })`
+                  : "Sem taxa"
+              }
+            />
+            <DetailField
+              label="Líquido recebido"
+              value={formatBRL(movement.net_amount_cents)}
+            />
+            <DetailField
+              label="Previsão de recebimento"
+              value={
+                movement.settlement_date
+                  ? formatDay(movement.settlement_date)
+                  : "Não informado"
+              }
+            />
+          </dl>
+        </section>
+      )}
 
       {customer && (
         <section>
@@ -549,15 +588,22 @@ export function FinanceMovementList({
                   )}
                 </p>
               </div>
-              <span
-                className={
-                  movement.type === "INCOME"
-                    ? "shrink-0 text-sm font-semibold text-success"
-                    : "shrink-0 text-sm font-semibold text-danger"
-                }
-              >
-                {movement.type === "INCOME" ? "+" : "−"}{" "}
-                {formatBRL(movement.amount_cents)}
+              <span className="shrink-0 text-right">
+                <span
+                  className={
+                    movement.type === "INCOME"
+                      ? "block text-sm font-semibold text-success"
+                      : "block text-sm font-semibold text-danger"
+                  }
+                >
+                  {movement.type === "INCOME" ? "+" : "−"}{" "}
+                  {formatBRL(movement.amount_cents)}
+                </span>
+                {movement.fee_cents > 0 && (
+                  <span className="block text-xs text-gray-neutral">
+                    líquido {formatBRL(movement.net_amount_cents)}
+                  </span>
+                )}
               </span>
             </button>
           </Card>

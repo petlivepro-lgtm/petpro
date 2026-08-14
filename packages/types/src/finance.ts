@@ -83,6 +83,16 @@ export type FinanceMovementDTO = {
   movement_origin: FinanceOrigin;
   reservation_status: ReservationStatus | null;
   refunds: FinanceRefundDetail[];
+  // Maquininha e taxa congeladas no momento da venda (0036). terminal_name é
+  // snapshot: continua legível se a maquininha sair do cadastro depois.
+  terminal_id: string | null;
+  terminal_name: string | null;
+  installments: number;
+  fee_percent: number | string;
+  fee_fixed_cents: number;
+  fee_cents: number;
+  net_amount_cents: number;
+  settlement_date: string | null;
 };
 
 export type FinanceSearchResult = {
@@ -91,7 +101,64 @@ export type FinanceSearchResult = {
   income_cents: number;
   expense_cents: number;
   balance_cents: number;
+  /** Total retido pelas maquininhas nas receitas do filtro. */
+  fee_cents: number;
+  net_income_cents: number;
+  net_balance_cents: number;
 };
+
+// --- Maquininhas e taxas -------------------------------------------------
+
+export type PaymentFeeRule = {
+  payment_method: PaymentMethod;
+  installments_from: number;
+  installments_to: number;
+  /** Percentual retido pela operadora (4.99 = 4,99%). */
+  fee_percent: number;
+  fee_fixed_cents: number;
+  settlement_days: number;
+};
+
+export type PaymentTerminalDTO = {
+  id: string;
+  name: string;
+  active: boolean;
+  is_default: boolean;
+  rules: PaymentFeeRule[];
+};
+
+/** Regra que cobre a forma de pagamento e o número de parcelas, se houver. */
+export function findFeeRule(
+  rules: PaymentFeeRule[],
+  method: PaymentMethod,
+  installments = 1,
+): PaymentFeeRule | null {
+  const parcels = Math.max(installments, 1);
+  return (
+    rules.find(
+      (rule) =>
+        rule.payment_method === method &&
+        parcels >= rule.installments_from &&
+        parcels <= rule.installments_to,
+    ) ?? null
+  );
+}
+
+/**
+ * Quanto a operadora retém. Espelha resolve_payment_fee (0036), inclusive o
+ * teto: a tarifa fixa nunca pode engolir mais do que o valor cobrado.
+ */
+export function computeFeeCents(
+  amountCents: number,
+  rule: PaymentFeeRule | null,
+): number {
+  if (!rule) return 0;
+  const amount = Math.max(amountCents, 0);
+  const fee =
+    Math.round((amount * Number(rule.fee_percent)) / 100) +
+    rule.fee_fixed_cents;
+  return Math.min(amount, Math.max(fee, 0));
+}
 
 export type StockMovementDTO = {
   id: string;

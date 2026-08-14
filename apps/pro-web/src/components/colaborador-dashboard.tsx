@@ -9,6 +9,7 @@ import { ColaboradorDia } from "@/components/colaborador-dia";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAtendimentos } from "@/lib/atendimentos";
 import { fetchBehaviorCategories } from "@/lib/behavior";
+import { loadPaymentTerminals } from "@/lib/payment-terminals";
 import { rangesOfDay, scheduleByDay } from "@/lib/collaborator-schedule";
 import type { ActiveTenant } from "@/lib/tenant";
 
@@ -26,7 +27,11 @@ function startOfMonth(): string {
  * os atendimentos atribuídos a ele, o próprio cadastro e os boletins que ele
  * mesmo escreveu.
  */
-export async function ColaboradorDashboard({ tenant }: { tenant: ActiveTenant }) {
+export async function ColaboradorDashboard({
+  tenant,
+}: {
+  tenant: ActiveTenant;
+}) {
   const supabase = await createClient();
 
   const [
@@ -36,11 +41,14 @@ export async function ColaboradorDashboard({ tenant }: { tenant: ActiveTenant })
     { data: scores },
     { data: cameras },
     behaviorCategories,
+    terminals,
   ] = await Promise.all([
     fetchAtendimentos(supabase),
     supabase
       .from("collaborator")
-      .select("id, full_name, role_title, collaborator_schedule(weekday, start_time, end_time)")
+      .select(
+        "id, full_name, role_title, collaborator_schedule(weekday, start_time, end_time)",
+      )
       .maybeSingle(),
     supabase
       .from("appointment")
@@ -57,6 +65,7 @@ export async function ColaboradorDashboard({ tenant }: { tenant: ActiveTenant })
       .eq("active", true)
       .order("room_label"),
     fetchBehaviorCategories(supabase, tenant.tenantId),
+    loadPaymentTerminals(supabase, tenant.tenantId, { activeOnly: true }),
   ]);
 
   const notas = (scores ?? [])
@@ -137,7 +146,9 @@ export async function ColaboradorDashboard({ tenant }: { tenant: ActiveTenant })
             <p className="font-heading text-2xl font-bold tabular-nums text-graphite">
               {doneThisMonth ?? 0}
             </p>
-            <p className="text-xs text-gray-neutral">atendimentos concluídos no mês</p>
+            <p className="text-xs text-gray-neutral">
+              atendimentos concluídos no mês
+            </p>
           </div>
         </div>
       </Card>
@@ -150,7 +161,9 @@ export async function ColaboradorDashboard({ tenant }: { tenant: ActiveTenant })
           <div className="min-w-0">
             {mediaBoletim === null ? (
               <>
-                <p className="font-heading text-lg font-semibold text-graphite">—</p>
+                <p className="font-heading text-lg font-semibold text-graphite">
+                  —
+                </p>
                 <p className="text-xs text-gray-neutral">
                   você ainda não preencheu boletins
                 </p>
@@ -184,6 +197,7 @@ export async function ColaboradorDashboard({ tenant }: { tenant: ActiveTenant })
         initial={rows}
         cameras={cameras ?? []}
         behaviorCategories={behaviorCategories}
+        terminals={terminals}
         sidebar={sidebar}
       />
     </div>

@@ -9,7 +9,6 @@ import {
   Label,
   PhotoGalleryInput,
   RatingStars,
-  Select,
   StatusChip,
   Textarea,
   type ButtonProps,
@@ -20,25 +19,31 @@ import {
   behaviorBadgeOf,
   computeOverallScore,
   formatBehaviorScore,
-  PAYMENT_METHODS,
-  PAYMENT_METHOD_LABEL,
   type BehaviorCategory,
   type BehaviorResponse,
+  type PaymentTerminalDTO,
 } from "@mylivepet/types";
 import {
   finishAppointment,
   type FinishAppointmentState,
 } from "@/app/(app)/atendimentos/[id]/actions";
+import { PaymentFields } from "@/components/payment-fields";
 
 export function FinishAppointmentDialog({
   appointmentId,
   behaviorCategories = [],
+  terminals = [],
+  priceCents,
   size,
   className = "w-full",
 }: {
   appointmentId: string;
   /** Categorias do boletim configuradas em /configuracoes. */
   behaviorCategories?: BehaviorCategory[];
+  /** Maquininhas ativas, para escolher onde a cobrança foi passada. */
+  terminals?: PaymentTerminalDTO[];
+  /** Preço do serviço, quando conhecido, para a prévia do líquido. */
+  priceCents?: number;
   size?: ButtonProps["size"];
   className?: string;
 }) {
@@ -100,26 +105,11 @@ export function FinishAppointmentDialog({
             value={JSON.stringify(responses)}
           />
 
-          <div>
-            <Label htmlFor={`appointment-payment-${appointmentId}`}>
-              Forma de pagamento *
-            </Label>
-            <Select
-              id={`appointment-payment-${appointmentId}`}
-              name="payment_method"
-              required
-              defaultValue=""
-            >
-              <option value="" disabled>
-                Selecione
-              </option>
-              {PAYMENT_METHODS.map((method) => (
-                <option key={method} value={method}>
-                  {PAYMENT_METHOD_LABEL[method]}
-                </option>
-              ))}
-            </Select>
-          </div>
+          <PaymentFields
+            idPrefix={`appointment-${appointmentId}`}
+            terminals={terminals}
+            amountCents={priceCents}
+          />
 
           <div>
             <Label>Fotos do pet (até 5)</Label>

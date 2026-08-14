@@ -97,9 +97,19 @@ export async function completeReservation(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const installments = Number.parseInt(
+    String(formData.get("installments") ?? "1"),
+    10,
+  );
+  const terminalId = String(formData.get("terminal_id") ?? "").trim();
   const parsed = paidReservationInput.safeParse({
     reservation_id: formData.get("reservation_id"),
     payment_method: formData.get("payment_method"),
+    terminal_id: terminalId || undefined,
+    installments:
+      Number.isFinite(installments) && installments > 1
+        ? installments
+        : undefined,
   });
   if (!parsed.success) {
     return {
@@ -120,6 +130,9 @@ export async function completeReservation(
   const { error } = await supabase.rpc("complete_product_sale", {
     p_reservation_id: parsed.data.reservation_id,
     p_payment_method: parsed.data.payment_method,
+    // A RPC aceita SQL NULL ("sem maquininha"); o gerador tipa uuid como string.
+    p_terminal_id: (parsed.data.terminal_id ?? null) as unknown as string,
+    p_installments: parsed.data.installments ?? 1,
   });
   if (error) return { ok: false, error: error.message };
 

@@ -7,13 +7,13 @@ import { Button, Dialog, Label, Select } from "@mylivepet/ui";
 import {
   formatBRL,
   formatVariantLabel,
-  PAYMENT_METHODS,
-  PAYMENT_METHOD_LABEL,
+  type PaymentTerminalDTO,
 } from "@mylivepet/types";
 import {
   registerCounterSale,
   type FormState,
 } from "@/app/(app)/financeiro/actions";
+import { PaymentFields } from "@/components/payment-fields";
 
 export type SaleProductOption = {
   id: string;
@@ -49,6 +49,7 @@ const newLine = (key = crypto.randomUUID()): SaleLine => ({
 export function CounterSaleDialog({
   products,
   tutors,
+  terminals,
   disabled = false,
 }: {
   products: SaleProductOption[];
@@ -58,6 +59,7 @@ export function CounterSaleDialog({
     cpf: string | null;
     phone: string | null;
   }[];
+  terminals: PaymentTerminalDTO[];
   disabled?: boolean;
 }) {
   const router = useRouter();
@@ -263,31 +265,17 @@ export function CounterSaleDialog({
             })}
           </div>
 
-          <div className="grid items-end gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="counter-payment">Forma de pagamento *</Label>
-              <Select
-                id="counter-payment"
-                name="payment_method"
-                required
-                defaultValue=""
-              >
-                <option value="" disabled>
-                  Selecione
-                </option>
-                {PAYMENT_METHODS.map((method) => (
-                  <option key={method} value={method}>
-                    {PAYMENT_METHOD_LABEL[method]}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="rounded-xl bg-surface-muted px-4 py-3 text-right">
-              <p className="text-xs text-gray-neutral">Total da venda</p>
-              <p className="font-heading text-xl font-semibold text-graphite">
-                {formatBRL(total)}
-              </p>
-            </div>
+          <PaymentFields
+            idPrefix="counter"
+            terminals={terminals}
+            amountCents={total}
+          />
+
+          <div className="rounded-xl bg-surface-muted px-4 py-3 text-right">
+            <p className="text-xs text-gray-neutral">Total da venda</p>
+            <p className="font-heading text-xl font-semibold text-graphite">
+              {formatBRL(total)}
+            </p>
           </div>
 
           {state.error && <p className="text-sm text-danger">{state.error}</p>}

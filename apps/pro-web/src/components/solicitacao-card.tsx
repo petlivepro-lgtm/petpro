@@ -16,16 +16,15 @@ import {
   Avatar,
   Dialog,
   Label,
-  Select,
   StatusChip,
   Textarea,
 } from "@mylivepet/ui";
 import {
-  PAYMENT_METHODS,
-  PAYMENT_METHOD_LABEL,
+  type PaymentTerminalDTO,
   type ReservationStatus,
 } from "@mylivepet/types";
 import { ReservationStatusBadge } from "@/components/status-badge";
+import { PaymentFields } from "@/components/payment-fields";
 import {
   updateAppointmentStatus,
   updateAppointmentsStatus,
@@ -208,9 +207,13 @@ function RejectReservationButton({
 
 function CompleteReservationButton({
   reservationId,
+  totalCents,
+  terminals,
   onDone,
 }: {
   reservationId: string;
+  totalCents: number;
+  terminals: PaymentTerminalDTO[];
   onDone: () => void;
 }) {
   const router = useRouter();
@@ -238,28 +241,13 @@ function CompleteReservationButton({
         title="Concluir venda"
         description="Confirme a forma de pagamento para gerar a receita."
       >
-        <form action={formAction} className="space-y-4">
+        <form key={String(open)} action={formAction} className="space-y-4">
           <input type="hidden" name="reservation_id" value={reservationId} />
-          <div>
-            <Label htmlFor={`reservation-payment-${reservationId}`}>
-              Forma de pagamento *
-            </Label>
-            <Select
-              id={`reservation-payment-${reservationId}`}
-              name="payment_method"
-              required
-              defaultValue=""
-            >
-              <option value="" disabled>
-                Selecione
-              </option>
-              {PAYMENT_METHODS.map((method) => (
-                <option key={method} value={method}>
-                  {PAYMENT_METHOD_LABEL[method]}
-                </option>
-              ))}
-            </Select>
-          </div>
+          <PaymentFields
+            idPrefix={`reservation-${reservationId}`}
+            terminals={terminals}
+            amountCents={totalCents}
+          />
           {state.error && <p className="text-sm text-danger">{state.error}</p>}
           <div className="flex justify-end gap-2">
             <Button
@@ -351,7 +339,13 @@ function CancelReservationButton({
   );
 }
 
-export function SolicitacaoCard({ group }: { group: SolicitacaoGroup }) {
+export function SolicitacaoCard({
+  group,
+  terminals,
+}: {
+  group: SolicitacaoGroup;
+  terminals: PaymentTerminalDTO[];
+}) {
   const [open, setOpen] = useState(false);
   const apptCount = group.appointments.length;
   const resvCount = group.reservations.length;
@@ -597,6 +591,8 @@ export function SolicitacaoCard({ group }: { group: SolicitacaoGroup }) {
                         <>
                           <CompleteReservationButton
                             reservationId={r.id}
+                            totalCents={total}
+                            terminals={terminals}
                             onDone={() => setOpen(false)}
                           />
                           <CancelReservationButton
