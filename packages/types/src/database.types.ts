@@ -1313,7 +1313,8 @@ export type Database = {
         Row: {
           id: string
           price_cents: number
-          product_id: string
+          product_id: string | null
+          product_name: string | null
           quantity: number
           reservation_id: string
           tenant_id: string
@@ -1323,7 +1324,8 @@ export type Database = {
         Insert: {
           id?: string
           price_cents?: number
-          product_id: string
+          product_id?: string | null
+          product_name?: string | null
           quantity?: number
           reservation_id: string
           tenant_id: string
@@ -1333,7 +1335,8 @@ export type Database = {
         Update: {
           id?: string
           price_cents?: number
-          product_id?: string
+          product_id?: string | null
+          product_name?: string | null
           quantity?: number
           reservation_id?: string
           tenant_id?: string

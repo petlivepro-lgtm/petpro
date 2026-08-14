@@ -11,6 +11,8 @@ type ReservationItem = {
   quantity: number;
   price_cents: number;
   variant_label: string | null;
+  /** Snapshot (0037): o produto pode ter saído do catálogo depois da reserva. */
+  product_name: string | null;
   product: { name: string; photo_path: string | null } | null;
 };
 
@@ -137,7 +139,7 @@ export function MyReservations({ reservations }: { reservations: Reservation[] }
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={item.product.photo_path}
-                        alt={item.product?.name ?? "Produto"}
+                        alt={item.product?.name ?? item.product_name ?? "Produto"}
                         className="h-full w-full object-cover"
                       />
                     ) : (
@@ -146,7 +148,7 @@ export function MyReservations({ reservations }: { reservations: Reservation[] }
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-graphite">
-                      {item.product?.name ?? "Produto"}
+                      {item.product?.name ?? item.product_name ?? "Produto"}
                     </p>
                     {item.variant_label && (
                       <p className="truncate text-xs text-gray-neutral">{item.variant_label}</p>

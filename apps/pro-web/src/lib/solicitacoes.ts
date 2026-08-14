@@ -6,7 +6,7 @@ import type { SolicitacaoGroup } from "@/components/solicitacao-card";
 export const SOLICITACAO_APPOINTMENT_SELECT =
   "id, scheduled_at, notes, tutor_id, request_group_id, pet(name), service_type(name), tutor(full_name), collaborator(full_name)";
 export const SOLICITACAO_RESERVATION_SELECT = `id, status, note, expires_at, created_at, tutor_id, tutor(full_name),
-  product_reservation_item(id, quantity, price_cents, variant_label, product(name))`;
+  product_reservation_item(id, quantity, price_cents, variant_label, product_name, product(name))`;
 
 type RawAppointment = {
   id: string;
@@ -32,6 +32,8 @@ type RawReservation = {
     quantity: number;
     price_cents: number;
     variant_label: string | null;
+    /** Snapshot (0037): é o que sobra quando o produto é excluído do catálogo. */
+    product_name: string | null;
     product: { name: string } | null;
   }[];
 };
@@ -108,7 +110,7 @@ export function buildSolicitacaoGroups(
         id: i.id,
         quantity: i.quantity,
         price_cents: i.price_cents,
-        productName: i.product?.name ?? "Produto",
+        productName: i.product?.name ?? i.product_name ?? "Produto",
         variantLabel: i.variant_label,
       })),
     });

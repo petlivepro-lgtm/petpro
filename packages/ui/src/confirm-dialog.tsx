@@ -19,6 +19,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancelar",
   confirmVariant = "primary",
   confirmType = "button",
+  confirmDisabled = false,
   onConfirm,
   pending = false,
   pendingLabel = "Aguarde...",
@@ -33,6 +34,8 @@ export function ConfirmDialog({
   cancelLabel?: string;
   confirmVariant?: "primary" | "danger";
   confirmType?: "button" | "submit";
+  /** Trava o confirmar sem virar "Aguarde...": aviso ainda não reconhecido, etc. */
+  confirmDisabled?: boolean;
   onConfirm?: () => void;
   pending?: boolean;
   pendingLabel?: string;
@@ -51,7 +54,7 @@ export function ConfirmDialog({
           <Button
             type={confirmType}
             variant={confirmVariant}
-            disabled={pending}
+            disabled={pending || confirmDisabled}
             onClick={onConfirm}
           >
             {pending ? pendingLabel : confirmLabel}

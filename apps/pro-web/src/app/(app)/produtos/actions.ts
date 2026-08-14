@@ -249,16 +249,121 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
   return { ok: true };
 }
 
-export async function deleteProduct(_prev: FormState, formData: FormData): Promise<FormState> {
+/**
+ * O que o petshop perde ao excluir o produto — lido antes de abrir o aviso,
+ * para o popup falar de números reais em vez de um genérico "não pode ser
+ * desfeita".
+ */
+export type ProductDeletionImpact = {
+  /** Reservas RESERVED/PICKED: bloqueiam a exclusão até serem resolvidas. */
+  activeReservations: number;
+  /** Itens em reservas já encerradas — viram histórico com o nome em snapshot. */
+  pastReservations: number;
+  /** Quantos desses itens são venda concluída (entram no financeiro). */
+  sales: number;
+  /** Movimentações de estoque, que são apagadas junto (cascade, 0012). */
+  stockMovements: number;
+};
+
+const RESERVATION_ITEM_IMPACT_SELECT = "quantity, product_reservation(status)";
+
+type ImpactRow = { quantity: number; product_reservation: { status: string } | null };
+
+/** Reservas que ainda estão em andamento — o produto não pode sumir no meio. */
+const ACTIVE_RESERVATION_STATUS = ["RESERVED", "PICKED"];
+/** Reservas que geraram receita (o estorno mantém o item, então conta igual). */
+const SALE_RESERVATION_STATUS = ["COMPLETED", "PARTIALLY_REFUNDED", "REFUNDED"];
+
+async function loadDeletionImpact(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  productId: string,
+): Promise<ProductDeletionImpact> {
+  const [{ data: items }, { count: movements }] = await Promise.all([
+    supabase
+      .from("product_reservation_item")
+      .select(RESERVATION_ITEM_IMPACT_SELECT)
+      .eq("product_id", productId),
+    supabase
+      .from("stock_movement")
+      .select("id", { count: "exact", head: true })
+      .eq("product_id", productId),
+  ]);
+
+  const impact: ProductDeletionImpact = {
+    activeReservations: 0,
+    pastReservations: 0,
+    sales: 0,
+    stockMovements: movements ?? 0,
+  };
+
+  for (const row of (items ?? []) as unknown as ImpactRow[]) {
+    const status = row.product_reservation?.status ?? "";
+    if (ACTIVE_RESERVATION_STATUS.includes(status)) {
+      impact.activeReservations += 1;
+      continue;
+    }
+    impact.pastReservations += 1;
+    if (SALE_RESERVATION_STATUS.includes(status)) impact.sales += 1;
+  }
+
+  return impact;
+}
+
+/** Consultado pelo popup de exclusão ao abrir. */
+export async function getProductDeletionImpact(
+  productId: string,
+): Promise<ProductDeletionImpact> {
+  const supabase = await createClient();
+  return loadDeletionImpact(supabase, productId);
+}
+
+export type DeleteProductState = FormState & {
+  /** Exclusão barrada por reservas em andamento. */
+  blocked?: boolean;
+  impact?: ProductDeletionImpact;
+};
+
+/**
+ * Exclui o produto de fato. Desde a 0037 o histórico sobrevive à exclusão
+ * (o item da reserva guarda nome, preço e variação em snapshot), então o
+ * bloqueio antigo por FK deixou de existir — no lugar dele ficam duas
+ * travas de produto: reserva em andamento impede, e histórico exige o
+ * "confirm" que o popup só envia depois do aviso.
+ */
+export async function deleteProduct(
+  _prev: DeleteProductState,
+  formData: FormData,
+): Promise<DeleteProductState> {
   const id = str(formData.get("id"));
   if (!id) return { ok: false, error: "Produto inválido" };
 
   const supabase = await createClient();
+  const impact = await loadDeletionImpact(supabase, id);
+
+  if (impact.activeReservations > 0) {
+    const n = impact.activeReservations;
+    return {
+      ok: false,
+      blocked: true,
+      impact,
+      error: `Há ${n} ${n > 1 ? "reservas em andamento" : "reserva em andamento"} com este produto. Conclua ou cancele ${n > 1 ? "essas reservas" : "essa reserva"} antes de excluir.`,
+    };
+  }
+
+  // Rede de segurança: sem o aviso confirmado, nada é apagado — mesmo que a
+  // checagem de impacto do popup tenha falhado no cliente.
+  if (impact.pastReservations > 0 && formData.get("confirm") !== "1") {
+    return {
+      ok: false,
+      impact,
+      error: "Confirme que entendeu que a exclusão é permanente.",
+    };
+  }
+
   const { error } = await supabase.from("product").delete().eq("id", id);
   if (error) {
-    // FK restrict: produto presente em itens de reserva.
     if (error.code === "23503") {
-      return { ok: false, error: "Produto está em reservas. Desative-o em vez de excluir." };
+      return { ok: false, error: "Produto ainda está vinculado a outros registros." };
     }
     return { ok: false, error: error.message };
   }

@@ -13,6 +13,8 @@ export type RejectionNotice = {
     id: string;
     quantity: number;
     variant_label: string | null;
+    /** Snapshot (0037): o produto pode ter saído do catálogo depois da reserva. */
+    product_name: string | null;
     product: { name: string } | null;
   }[];
 };
@@ -60,7 +62,7 @@ export function RejectionNotices({ reservations }: { reservations: RejectionNoti
                 <ul className="mt-2 space-y-0.5 text-sm text-graphite">
                   {items.map((i) => (
                     <li key={i.id}>
-                      {i.quantity} × {i.product?.name ?? "Produto"}
+                      {i.quantity} × {i.product?.name ?? i.product_name ?? "Produto"}
                       {i.variant_label && (
                         <span className="text-gray-neutral"> ({i.variant_label})</span>
                       )}
