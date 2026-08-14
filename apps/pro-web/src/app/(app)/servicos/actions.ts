@@ -30,11 +30,23 @@ function parse(formData: FormData) {
     price_cents: toCents(formData.get("price")),
     duration_min: toInt(formData.get("duration_min")),
     active: formData.get("active") === "on",
-    default_steps: formData
-      .getAll("steps")
+    // Ids da biblioteca de etapas, na ordem enviada pelo dialog.
+    step_ids: formData
+      .getAll("step_ids")
       .map((v) => (typeof v === "string" ? v.trim() : ""))
       .filter((s) => s !== ""),
   });
+}
+
+/**
+ * Traduz os erros dos triggers de 0035 (id fora da biblioteca / etapa repetida),
+ * que aparecem quando o dialog está com uma biblioteca desatualizada.
+ */
+function stepError(error: { code?: string; message: string }): string {
+  if (error.code === "23503")
+    return "Alguma etapa selecionada não existe mais — feche e reabra o serviço.";
+  if (error.code === "23514") return "A mesma etapa foi escolhida duas vezes.";
+  return error.message;
 }
 
 export async function createServiceType(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -54,9 +66,9 @@ export async function createServiceType(_prev: FormState, formData: FormData): P
     price_cents: parsed.data.price_cents,
     duration_min: parsed.data.duration_min,
     active: parsed.data.active ?? true,
-    default_steps: parsed.data.default_steps ?? [],
+    step_ids: parsed.data.step_ids ?? [],
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: stepError(error) };
 
   revalidatePath("/servicos");
   return { ok: true };
@@ -80,10 +92,10 @@ export async function updateServiceType(_prev: FormState, formData: FormData): P
       price_cents: parsed.data.price_cents,
       duration_min: parsed.data.duration_min,
       active: parsed.data.active ?? true,
-      default_steps: parsed.data.default_steps ?? [],
+      step_ids: parsed.data.step_ids ?? [],
     })
     .eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: stepError(error) };
 
   revalidatePath("/servicos");
   return { ok: true };

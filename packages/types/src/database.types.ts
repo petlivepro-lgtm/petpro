@@ -1379,6 +1379,38 @@ export type Database = {
           },
         ]
       }
+      service_step_template: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          position: number
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          position?: number
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          position?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_step_template_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_type: {
         Row: {
           active: boolean
@@ -1389,6 +1421,7 @@ export type Database = {
           id: string
           name: string
           price_cents: number
+          step_ids: string[]
           tenant_id: string
         }
         Insert: {
@@ -1400,6 +1433,7 @@ export type Database = {
           id?: string
           name: string
           price_cents?: number
+          step_ids?: string[]
           tenant_id: string
         }
         Update: {
@@ -1411,6 +1445,7 @@ export type Database = {
           id?: string
           name?: string
           price_cents?: number
+          step_ids?: string[]
           tenant_id?: string
         }
         Relationships: [

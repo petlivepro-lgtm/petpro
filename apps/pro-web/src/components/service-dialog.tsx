@@ -1,9 +1,19 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus, X } from "lucide-react";
-import { Button, Checkbox, CurrencyInput, Dialog, Input, Label } from "@mylivepet/ui";
+import Link from "next/link";
+import { ArrowDown, ArrowUp, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  Button,
+  Checkbox,
+  CurrencyInput,
+  Dialog,
+  Input,
+  Label,
+  Select,
+} from "@mylivepet/ui";
+import type { ServiceStepTemplate } from "@mylivepet/types";
 import {
   createServiceType,
   updateServiceType,
@@ -17,14 +27,21 @@ export type ServiceRow = {
   price_cents: number;
   duration_min: number;
   active: boolean;
-  default_steps: string[];
+  /** Etapas escolhidas na biblioteca do petshop (Configurações → Etapas). */
+  step_ids: string[];
 };
 
-export function ServiceDialog({ service }: { service?: ServiceRow }) {
+export function ServiceDialog({
+  service,
+  library,
+}: {
+  service?: ServiceRow;
+  library: ServiceStepTemplate[];
+}) {
   const router = useRouter();
   const isEdit = !!service;
   const [open, setOpen] = useState(false);
-  const [steps, setSteps] = useState<string[]>(service?.default_steps ?? []);
+  const [stepIds, setStepIds] = useState<string[]>(service?.step_ids ?? []);
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     isEdit ? updateServiceType : createServiceType,
     { ok: false },
@@ -39,8 +56,32 @@ export function ServiceDialog({ service }: { service?: ServiceRow }) {
 
   // Sincroniza os passos com o serviço sempre que o diálogo é aberto.
   useEffect(() => {
-    if (open) setSteps(service?.default_steps ?? []);
+    if (open) setStepIds(service?.step_ids ?? []);
   }, [open, service]);
+
+  const byId = useMemo(
+    () => new Map(library.map((s) => [s.id, s] as const)),
+    [library],
+  );
+  // Um id que sumiu da biblioteca (removida em outra aba) é descartado aqui.
+  const selected = useMemo(
+    () => stepIds.map((id) => byId.get(id)).filter((s): s is ServiceStepTemplate => !!s),
+    [stepIds, byId],
+  );
+  const available = useMemo(
+    () => library.filter((s) => !stepIds.includes(s.id)),
+    [library, stepIds],
+  );
+
+  function moveStep(index: number, dir: -1 | 1) {
+    setStepIds((prev) => {
+      const next = [...prev];
+      const target = index + dir;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
 
   return (
     <>
@@ -112,39 +153,100 @@ export function ServiceDialog({ service }: { service?: ServiceRow }) {
           <div>
             <Label>Passo a passo do atendimento</Label>
             <p className="mb-2 text-xs text-gray-neutral">
-              Esses passos aparecem como checklist ao iniciar o atendimento.
+              Escolha as etapas da biblioteca do petshop e defina a ordem. Elas
+              viram o checklist ao iniciar o atendimento.
             </p>
-            <div className="space-y-2">
-              {steps.map((step, i) => (
-                <div key={i} className="flex gap-2">
-                  <Input
-                    name="steps"
-                    value={step}
-                    onChange={(e) =>
-                      setSteps((prev) => prev.map((s, j) => (j === i ? e.target.value : s)))
-                    }
-                    placeholder={`Ex.: ${i === 0 ? "Recepção do pet" : "Banho concluído"}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setSteps((prev) => prev.filter((_, j) => j !== i))}
-                    aria-label={`Remover passo ${i + 1}`}
-                    className="rounded-lg p-2 text-gray-neutral transition-colors hover:bg-danger/10 hover:text-danger"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="mt-2"
-              onClick={() => setSteps((prev) => [...prev, ""])}
-            >
-              <Plus className="h-4 w-4" /> Adicionar passo
-            </Button>
+
+            {/* A ordem do FormData segue a ordem no DOM, então a lista abaixo
+                é a ordem enviada ao servidor. */}
+            {stepIds.map((id) => (
+              <input key={id} type="hidden" name="step_ids" value={id} />
+            ))}
+
+            {library.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-graphite/15 bg-surface-muted p-4 text-center">
+                <p className="text-sm text-gray-neutral">
+                  Nenhuma etapa cadastrada na biblioteca do petshop.
+                </p>
+                <Link
+                  href="/configuracoes"
+                  className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-orange"
+                >
+                  Cadastrar etapas em Configurações
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              </div>
+            ) : (
+              <>
+                {selected.length > 0 && (
+                  <ul className="space-y-2">
+                    {selected.map((step, i) => (
+                      <li
+                        key={step.id}
+                        className="flex items-center gap-2 rounded-xl border border-graphite/10 px-3 py-2"
+                      >
+                        <span className="w-4 shrink-0 text-xs font-medium tabular-nums text-gray-neutral">
+                          {i + 1}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-sm text-graphite">
+                          {step.label}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Mover para cima"
+                          onClick={() => moveStep(i, -1)}
+                          disabled={i === 0}
+                          className="rounded-lg p-1.5 text-gray-neutral hover:bg-surface-muted disabled:opacity-30"
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Mover para baixo"
+                          onClick={() => moveStep(i, 1)}
+                          disabled={i === selected.length - 1}
+                          className="rounded-lg p-1.5 text-gray-neutral hover:bg-surface-muted disabled:opacity-30"
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Remover ${step.label}`}
+                          onClick={() =>
+                            setStepIds((prev) => prev.filter((id) => id !== step.id))
+                          }
+                          className="rounded-lg p-1.5 text-danger hover:bg-danger/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <Select
+                  aria-label="Adicionar etapa"
+                  className="mt-2"
+                  value=""
+                  disabled={available.length === 0}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    if (id) setStepIds((prev) => [...prev, id]);
+                  }}
+                >
+                  <option value="" disabled>
+                    {available.length > 0
+                      ? "Adicionar etapa..."
+                      : "Todas as etapas já foram adicionadas"}
+                  </option>
+                  {available.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </Select>
+              </>
+            )}
           </div>
 
           {state.error && <p className="text-sm text-danger">{state.error}</p>}

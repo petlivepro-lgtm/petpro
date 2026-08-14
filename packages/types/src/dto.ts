@@ -237,6 +237,66 @@ export const petshopSignup = z.object({
 });
 export type PetshopSignup = z.infer<typeof petshopSignup>;
 
+// --- Biblioteca de etapas do atendimento (Configurações → Etapas) ---
+// O petshop cadastra as etapas uma vez; cada serviço escolhe as suas por id
+// (service_type.step_ids). Renomear aqui reflete em todos os serviços, mas não
+// em atendimentos já iniciados: appointment_step guarda o rótulo como snapshot.
+export const SERVICE_STEP_LIBRARY_MAX = 30;
+export const SERVICE_STEP_LABEL_MAX = 60;
+
+export const serviceStepTemplateSchema = z.object({
+  // uuid porque vira a PK de service_step_template (crypto.randomUUID no form)
+  id: z.string().uuid(),
+  label: z
+    .string()
+    .trim()
+    .min(1, "Informe o nome da etapa")
+    .max(SERVICE_STEP_LABEL_MAX, "Nome muito longo (máx. 60 caracteres)"),
+});
+export type ServiceStepTemplate = z.infer<typeof serviceStepTemplateSchema>;
+
+export const serviceStepLibrarySchema = z.object({
+  // Ids que o formulário tinha em mãos ao carregar. A action só apaga o que
+  // está aqui e não está em `steps`, então uma tela desatualizada (ou ainda
+  // vazia, em pleno carregamento) nunca derruba a biblioteca de outra pessoa.
+  known_ids: z.array(z.string().uuid()),
+  steps: z
+    .array(serviceStepTemplateSchema)
+    .max(SERVICE_STEP_LIBRARY_MAX, `No máximo ${SERVICE_STEP_LIBRARY_MAX} etapas`)
+    // Espelha o índice único (tenant_id, lower(btrim(label))) da 0035, para o
+    // erro chegar com o nome da etapa em vez do texto cru do Postgres.
+    .superRefine((steps, ctx) => {
+      const seen = new Set<string>();
+      for (const s of steps) {
+        const norm = s.label.trim().toLowerCase();
+        if (seen.has(norm)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `A etapa “${s.label}” está repetida`,
+          });
+          return;
+        }
+        seen.add(norm);
+      }
+    }),
+});
+export type ServiceStepLibrary = z.infer<typeof serviceStepLibrarySchema>;
+
+// Só os rótulos: o id é gerado no form, porque precisa ser uuid válido para
+// virar PK (diferente de DEFAULT_BEHAVIOR_CATEGORIES, que já vem com id fixo).
+export const DEFAULT_SERVICE_STEP_LABELS = [
+  "Recepção do pet",
+  "Avaliação inicial",
+  "Escovação e desembolo",
+  "Banho",
+  "Secagem",
+  "Tosa",
+  "Corte de unhas",
+  "Limpeza de ouvidos",
+  "Perfume e acabamento",
+  "Pet pronto para retirada",
+] as const;
+
 // Serviço oferecido pelo petshop (cadastro/edição no CRM; some no app do tutor)
 export const serviceTypeInput = z.object({
   name: z.string().min(1, "Informe o nome"),
@@ -244,7 +304,12 @@ export const serviceTypeInput = z.object({
   price_cents: z.number().int().min(0),
   duration_min: z.number().int().positive("Informe a duração em minutos"),
   active: z.boolean().optional(),
-  default_steps: z.array(z.string().min(1)).optional(),
+  // Etapas escolhidas na biblioteca, na ordem em que viram checklist.
+  step_ids: z
+    .array(z.string().uuid())
+    .max(SERVICE_STEP_LIBRARY_MAX)
+    .refine((ids) => new Set(ids).size === ids.length, "Etapa repetida no serviço")
+    .optional(),
 });
 export type ServiceTypeInput = z.infer<typeof serviceTypeInput>;
 

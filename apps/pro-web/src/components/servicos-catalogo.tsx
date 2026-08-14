@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Clock, ListChecks, Scissors, SearchX } from "lucide-react";
 import { Button, Card, EmptyState, StatusChip } from "@mylivepet/ui";
-import { formatBRL } from "@mylivepet/types";
+import { formatBRL, type ServiceStepTemplate } from "@mylivepet/types";
 import { ServiceDialog, type ServiceRow } from "@/components/service-dialog";
 import { DeleteServiceDialog } from "@/components/delete-service-dialog";
 import {
@@ -14,7 +14,13 @@ import {
 
 const VIEW_STORAGE_KEY = "mylivepet:pro:servicos:view";
 
-export function ServicosCatalogo({ services }: { services: ServiceRow[] }) {
+export function ServicosCatalogo({
+  services,
+  library,
+}: {
+  services: ServiceRow[];
+  library: ServiceStepTemplate[];
+}) {
   const [query, setQuery] = useState("");
   const [view, setView] = useCatalogView(VIEW_STORAGE_KEY);
 
@@ -28,8 +34,8 @@ export function ServicosCatalogo({ services }: { services: ServiceRow[] }) {
             formatBRL(service.price_cents),
             `${service.duration_min} min`,
             `${service.duration_min}min`,
-            `${service.default_steps.length} ${
-              service.default_steps.length === 1 ? "passo" : "passos"
+            `${service.step_ids.length} ${
+              service.step_ids.length === 1 ? "passo" : "passos"
             }`,
             service.active ? "ativo visível no app" : "inativo oculto no app",
           ],
@@ -67,15 +73,21 @@ export function ServicosCatalogo({ services }: { services: ServiceRow[] }) {
           }
         />
       ) : view === "cards" ? (
-        <ServicesCards services={visibleServices} />
+        <ServicesCards services={visibleServices} library={library} />
       ) : (
-        <ServicesTable services={visibleServices} />
+        <ServicesTable services={visibleServices} library={library} />
       )}
     </div>
   );
 }
 
-function ServicesCards({ services }: { services: ServiceRow[] }) {
+function ServicesCards({
+  services,
+  library,
+}: {
+  services: ServiceRow[];
+  library: ServiceStepTemplate[];
+}) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {services.map((service) => (
@@ -100,22 +112,27 @@ function ServicesCards({ services }: { services: ServiceRow[] }) {
             <span className="inline-flex items-center gap-1 text-sm text-gray-neutral">
               <Clock className="h-3.5 w-3.5" /> {service.duration_min}min
             </span>
-            {service.default_steps.length > 0 && (
+            {service.step_ids.length > 0 && (
               <span className="inline-flex items-center gap-1 text-sm text-gray-neutral">
-                <ListChecks className="h-3.5 w-3.5" />{" "}
-                {service.default_steps.length}{" "}
-                {service.default_steps.length === 1 ? "passo" : "passos"}
+                <ListChecks className="h-3.5 w-3.5" /> {service.step_ids.length}{" "}
+                {service.step_ids.length === 1 ? "passo" : "passos"}
               </span>
             )}
           </div>
-          <ServiceActions service={service} />
+          <ServiceActions service={service} library={library} />
         </Card>
       ))}
     </div>
   );
 }
 
-function ServicesTable({ services }: { services: ServiceRow[] }) {
+function ServicesTable({
+  services,
+  library,
+}: {
+  services: ServiceRow[];
+  library: ServiceStepTemplate[];
+}) {
   return (
     <div className="overflow-hidden rounded-2xl border border-graphite/5 bg-surface shadow-card">
       <div className="overflow-x-auto">
@@ -173,8 +190,8 @@ function ServicesTable({ services }: { services: ServiceRow[] }) {
                   {service.duration_min}min
                 </td>
                 <td className="whitespace-nowrap px-4 py-4 text-gray-neutral">
-                  {service.default_steps.length}{" "}
-                  {service.default_steps.length === 1 ? "passo" : "passos"}
+                  {service.step_ids.length}{" "}
+                  {service.step_ids.length === 1 ? "passo" : "passos"}
                 </td>
                 <td className="whitespace-nowrap px-4 py-4">
                   <StatusChip tone={service.active ? "success" : "danger"}>
@@ -183,7 +200,7 @@ function ServicesTable({ services }: { services: ServiceRow[] }) {
                 </td>
                 <td className="px-5 py-4">
                   <div className="flex items-center justify-end gap-1">
-                    <ServiceDialog service={service} />
+                    <ServiceDialog service={service} library={library} />
                     <DeleteServiceDialog
                       serviceId={service.id}
                       serviceName={service.name}
@@ -199,14 +216,20 @@ function ServicesTable({ services }: { services: ServiceRow[] }) {
   );
 }
 
-function ServiceActions({ service }: { service: ServiceRow }) {
+function ServiceActions({
+  service,
+  library,
+}: {
+  service: ServiceRow;
+  library: ServiceStepTemplate[];
+}) {
   return (
     <div className="mt-3 flex items-center justify-between border-t border-graphite/5 pt-3">
       {!service.active && (
         <span className="text-xs text-gray-neutral">Oculto no app</span>
       )}
       <div className="ml-auto flex items-center gap-1">
-        <ServiceDialog service={service} />
+        <ServiceDialog service={service} library={library} />
         <DeleteServiceDialog
           serviceId={service.id}
           serviceName={service.name}

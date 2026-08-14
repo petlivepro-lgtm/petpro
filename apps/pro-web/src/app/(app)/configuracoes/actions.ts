@@ -8,6 +8,7 @@ import {
   behaviorConfigSchema,
   canMutateAsRole,
   feedbackConfigSchema,
+  serviceStepLibrarySchema,
   tenantSettingsInput,
 } from "@mylivepet/types";
 
@@ -177,5 +178,80 @@ export async function updateBehaviorConfig(
 
   revalidatePath("/configuracoes");
   revalidatePath("/atendimentos");
+  return { ok: true };
+}
+
+/**
+ * Salva a biblioteca de etapas do atendimento (service_step_template, 0035).
+ * Cada serviço escolhe as suas em service_type.step_ids, então renomear aqui
+ * reflete em todos os serviços de uma vez.
+ *
+ * Diferente das outras configurações, esta não vive em tenant.settings: é
+ * tabela com RLS `is_staff`, então grava com o client do usuário — sem service
+ * role e sem o read-modify-write do jsonb.
+ */
+export async function updateStepLibrary(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(
+      typeof formData.get("config") === "string" ? (formData.get("config") as string) : "",
+    );
+  } catch {
+    return { ok: false, error: "Dados inválidos" };
+  }
+  const parsed = serviceStepLibrarySchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  const supabase = await createClient();
+  const tenant = await getActiveTenant(supabase);
+  if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
+  if (!canMutateAsRole(tenant.role))
+    return { ok: false, error: "Seu acesso é somente leitura" };
+
+  const steps = parsed.data.steps;
+  const keep = new Set(steps.map((s) => s.id));
+
+  // Só apaga o que esta tela carregou e o usuário tirou da lista — nunca "tudo
+  // que não está na lista". Sem isso, um formulário aberto antes de a biblioteca
+  // carregar apagaria o trabalho de todo mundo num clique, e o trigger
+  // service_step_template_detach (0035) levaria junto o checklist dos serviços.
+  const toDelete = parsed.data.known_ids.filter((id) => !keep.has(id));
+  if (toDelete.length > 0) {
+    const { error: delError } = await supabase
+      .from("service_step_template")
+      .delete()
+      .eq("tenant_id", tenant.tenantId)
+      .in("id", toDelete);
+    if (delError) return { ok: false, error: delError.message };
+  }
+
+  // Upsert por id: cria as novas e renomeia/reordena as existentes.
+  if (steps.length > 0) {
+    const { error } = await supabase.from("service_step_template").upsert(
+      steps.map((s, position) => ({
+        id: s.id,
+        tenant_id: tenant.tenantId,
+        label: s.label,
+        position,
+      })),
+      { onConflict: "id" },
+    );
+    // Trocar dois rótulos entre si num único save viola o índice único no meio
+    // da instrução; o caminho é salvar em dois passos.
+    if (error)
+      return {
+        ok: false,
+        error:
+          error.code === "23505" ? "Já existe uma etapa com esse nome" : error.message,
+      };
+  }
+
+  revalidatePath("/configuracoes");
+  revalidatePath("/servicos"); // o dialog de serviço lista a biblioteca
   return { ok: true };
 }

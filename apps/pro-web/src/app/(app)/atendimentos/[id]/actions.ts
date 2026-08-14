@@ -118,26 +118,40 @@ export async function startAppointment(formData: FormData) {
   if (appt?.service_type_id) {
     const { data: service } = await supabase
       .from("service_type")
-      .select("default_steps")
+      .select("step_ids")
       .eq("id", appt.service_type_id)
       .single();
-    const defaultSteps = service?.default_steps ?? [];
-    if (defaultSteps.length > 0) {
+    const stepIds = service?.step_ids ?? [];
+    if (stepIds.length > 0) {
       const { count } = await supabase
         .from("appointment_step")
         .select("id", { count: "exact", head: true })
         .eq("appointment_id", id);
       if ((count ?? 0) === 0) {
-        await supabase.from("appointment_step").insert(
-          defaultSteps.map((label, position) => ({
+        // Resolve id -> rótulo na biblioteca (0035). O label gravado aqui é
+        // SNAPSHOT: renomear a etapa depois não mexe neste atendimento.
+        const { data: templates } = await supabase
+          .from("service_step_template")
+          .select("id, label")
+          .in("id", stepIds);
+        const labelById = new Map((templates ?? []).map((t) => [t.id, t.label]));
+
+        // A ordem vem de stepIds, não da ordem devolvida pelo .in(). Um id sem
+        // rótulo é ignorado e a posição é recontada, para o checklist não nascer
+        // com um passo em branco nem com buraco na numeração.
+        const rows = stepIds
+          .map((stepId) => labelById.get(stepId))
+          .filter((label): label is string => !!label)
+          .map((label, position) => ({
             tenant_id: appt.tenant_id,
             appointment_id: id,
             label,
             position,
             done: false,
             done_at: null,
-          })),
-        );
+          }));
+
+        if (rows.length > 0) await supabase.from("appointment_step").insert(rows);
       }
     }
   }

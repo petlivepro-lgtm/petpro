@@ -6,12 +6,14 @@ import {
   feedbackConfigSchema,
   type BehaviorCategory,
   type FeedbackField,
+  type ServiceStepTemplate,
 } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { SettingsForm, type TenantSettings } from "./settings-form";
 import { FeedbackSettingsForm } from "./feedback-settings-form";
 import { BehaviorSettingsForm } from "./behavior-settings-form";
+import { StepLibraryForm } from "./step-library-form";
 
 export default async function ConfiguracoesPage() {
   const supabase = await createClient();
@@ -49,11 +51,33 @@ export default async function ConfiguracoesPage() {
     ? behaviorParsed.data.categories
     : [];
 
+  // Biblioteca de etapas + quem usa cada uma, para o form avisar antes de remover
+  // uma etapa que está no checklist de algum serviço.
+  const [{ data: stepRows }, { data: serviceRows }] = await Promise.all([
+    supabase
+      .from("service_step_template")
+      .select("id, label")
+      .eq("tenant_id", tenant.tenantId)
+      .order("position"),
+    supabase
+      .from("service_type")
+      .select("name, step_ids")
+      .eq("tenant_id", tenant.tenantId)
+      .order("name"),
+  ]);
+
+  const stepUsage: Record<string, string[]> = {};
+  for (const service of serviceRows ?? []) {
+    for (const stepId of service.step_ids ?? []) {
+      (stepUsage[stepId] ??= []).push(service.name);
+    }
+  }
+
   return (
     <>
       <PageHeader
         title="Configurações"
-        subtitle="Dados do petshop, formulários de avaliação e câmeras."
+        subtitle="Dados do petshop, etapas do atendimento, formulários de avaliação e câmeras."
       />
 
       <TabbedSections
@@ -62,6 +86,16 @@ export default async function ConfiguracoesPage() {
             id: "petshop",
             label: "Petshop",
             content: <SettingsForm tenant={initial} />,
+          },
+          {
+            id: "etapas",
+            label: "Etapas",
+            content: (
+              <StepLibraryForm
+                steps={(stepRows ?? []) as ServiceStepTemplate[]}
+                usage={stepUsage}
+              />
+            ),
           },
           {
             id: "boletim",
