@@ -25,6 +25,7 @@ import { AppointmentStatusBadge } from "@/components/status-badge";
 import { FinishAppointmentDialog } from "@/components/finish-appointment-dialog";
 import { AppointmentChecklist } from "@/components/appointment-checklist";
 import { StartAppointmentDialog } from "@/components/start-appointment-dialog";
+import { SwitchCameraDialog } from "@/components/switch-camera-dialog";
 import { BehaviorReportDetail } from "@/components/behavior-report-view";
 import {
   BEHAVIOR_REPORT_SELECT,
@@ -72,11 +73,20 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
   const camera = appt.camera as unknown as { room_label: string } | null;
   const status = appt.status as AppointmentStatus;
 
-  // Câmeras ativas para o dialog de início (só busca quando dá para iniciar).
+  // Câmeras ativas para os dialogs de início e de troca de sala.
   const canStart = status === "CONFIRMED" || status === "CHECKED_IN";
-  const { data: cameras } = canStart
-    ? await supabase.from("camera").select("id, room_label").eq("active", true).order("room_label")
-    : { data: null };
+  const live = status === "IN_PROGRESS";
+  const { data: cameras } =
+    canStart || live
+      ? await supabase.from("camera").select("id, room_label").eq("active", true).order("room_label")
+      : { data: null };
+
+  // Salas por onde o pet passou — uma sessão por câmera usada (0034).
+  const { data: cameraSessions } = await supabase
+    .from("appointment_camera_session")
+    .select("id, started_at, camera:camera_id(room_label)")
+    .eq("appointment_id", id)
+    .order("started_at", { ascending: true });
 
   const { data: steps } = await supabase
     .from("appointment_step")
@@ -116,12 +126,23 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
   events.push({ key: "ag", title: "Agendado", time: appt.scheduled_at, icon: <CalendarClock className="h-4 w-4" />, color: "#1D4E5F" });
   if (appt.started_at)
     events.push({ key: "ini", title: "Atendimento iniciado", time: appt.started_at, icon: <Play className="h-4 w-4" />, color: "#FF6A00" });
-  // Apenas passos concluídos entram na timeline; os pendentes vivem no checklist.
+
+  // Miolo cronológico: passos concluídos (os pendentes vivem no checklist) e as
+  // trocas de sala, intercalados — é o que mostra o pet indo do banho à tosa.
+  const middle: Ev[] = [];
   (steps ?? [])
     .filter((s) => s.done_at != null)
     .forEach((s) =>
-      events.push({ key: s.id, title: s.label, time: s.done_at, icon: <ListChecks className="h-4 w-4" />, color: "#1D6E84" }),
+      middle.push({ key: s.id, title: s.label, time: s.done_at, icon: <ListChecks className="h-4 w-4" />, color: "#1D6E84" }),
     );
+  (cameraSessions ?? []).forEach((s) => {
+    const room = (s.camera as unknown as { room_label: string } | null)?.room_label;
+    if (!room) return;
+    middle.push({ key: s.id, title: `Transmitindo da ${room}`, time: s.started_at, icon: <Video className="h-4 w-4" />, color: "#FF6A00" });
+  });
+  middle.sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""));
+  events.push(...middle);
+
   if (appt.finished_at)
     events.push({ key: "fim", title: "Atendimento finalizado", time: appt.finished_at, icon: <Check className="h-4 w-4" />, color: "#2E7D5B" });
 
@@ -240,11 +261,20 @@ export default async function AtendimentoPage({ params }: { params: Promise<{ id
 
             {status === "IN_PROGRESS" && (
               <div className="space-y-4">
-                {camera && (
-                  <p className="flex items-center gap-2 text-sm font-medium text-orange">
-                    <Video className="h-4 w-4" /> Ao vivo para o tutor — {camera.room_label}
-                  </p>
-                )}
+                <div className="space-y-2">
+                  {camera ? (
+                    <p className="flex items-center gap-2 text-sm font-medium text-orange">
+                      <Video className="h-4 w-4" /> Ao vivo para o tutor — {camera.room_label}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-neutral">Sem transmissão para o tutor.</p>
+                  )}
+                  <SwitchCameraDialog
+                    appointmentId={id}
+                    cameras={cameras ?? []}
+                    currentCameraId={appt.camera_id}
+                  />
+                </div>
                 <AppointmentChecklist
                   appointmentId={id}
                   steps={(steps ?? []).map((s) => ({ id: s.id, label: s.label, done: s.done }))}

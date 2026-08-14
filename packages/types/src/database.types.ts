@@ -160,6 +160,55 @@ export type Database = {
           },
         ]
       }
+      appointment_camera_session: {
+        Row: {
+          appointment_id: string
+          camera_id: string
+          ended_at: string | null
+          id: string
+          started_at: string
+          tenant_id: string
+        }
+        Insert: {
+          appointment_id: string
+          camera_id: string
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          tenant_id: string
+        }
+        Update: {
+          appointment_id?: string
+          camera_id?: string
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_camera_session_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_camera_session_camera_id_fkey"
+            columns: ["camera_id"]
+            isOneToOne: false
+            referencedRelation: "camera"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_camera_session_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_step: {
         Row: {
           appointment_id: string

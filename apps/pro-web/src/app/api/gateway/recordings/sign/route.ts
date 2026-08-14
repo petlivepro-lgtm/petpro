@@ -31,23 +31,42 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (!camera) return NextResponse.json({ error: "unknown camera" }, { status: 404 });
 
-  // Mapeia o segmento para o atendimento: primeiro o IN_PROGRESS da câmera;
-  // se o segmento chegar logo após a finalização, cai no mais recente das
-  // últimas 24h (não dependemos do relógio do PC do petshop).
-  const { data: inProgress } = await admin
-    .from("appointment")
-    .select("id")
+  // Mapeia o segmento para o atendimento pela sessão de câmera: primeiro a
+  // sessão aberta; se o segmento chegar depois de a sala ser trocada ou o
+  // atendimento finalizado, cai na encerrada mais recente das últimas 24h
+  // (não dependemos do relógio do PC do petshop). É a sessão que mantém a
+  // gravação da sala de banho no atendimento mesmo com o pet já na tosa.
+  const { data: open } = await admin
+    .from("appointment_camera_session")
+    .select("appointment_id")
     .eq("tenant_id", tenantId)
     .eq("camera_id", cameraId)
-    .eq("status", "IN_PROGRESS")
+    .is("ended_at", null)
     .order("started_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  let appointmentId = inProgress?.id;
+  let appointmentId = open?.appointment_id;
   if (!appointmentId) {
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: recent } = await admin
+      .from("appointment_camera_session")
+      .select("appointment_id")
+      .eq("tenant_id", tenantId)
+      .eq("camera_id", cameraId)
+      .gte("ended_at", dayAgo)
+      .order("ended_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    appointmentId = recent?.appointment_id;
+  }
+  if (!appointmentId) {
+    // Rede de segurança do modelo antigo (uma câmera por atendimento, sem
+    // sessão): cobre o atendimento iniciado antes deste deploy e o caso raro
+    // de a sessão não ter sido gravada. Perder o vídeo é pior que atribuí-lo
+    // pela câmera atual.
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: legacy } = await admin
       .from("appointment")
       .select("id")
       .eq("tenant_id", tenantId)
@@ -56,7 +75,7 @@ export async function POST(request: Request) {
       .order("started_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    appointmentId = recent?.id;
+    appointmentId = legacy?.id;
   }
   if (!appointmentId) {
     return NextResponse.json({ error: "no appointment for camera" }, { status: 404 });

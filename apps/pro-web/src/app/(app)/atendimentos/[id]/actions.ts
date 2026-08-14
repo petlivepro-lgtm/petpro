@@ -9,7 +9,11 @@ import {
   PAYMENT_METHODS,
   type PaymentMethod,
 } from "@mylivepet/types";
-import { startCameraStream, stopCameraStream } from "@/lib/camera/mediamtx";
+import {
+  startCameraStream,
+  stopCameraStream,
+  type GatewayResult,
+} from "@/lib/camera/mediamtx";
 
 const BUCKET = "appointment-photos";
 
@@ -42,6 +46,61 @@ async function uploadPhotos(
       urls.push(admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl);
   }
   return urls;
+}
+
+/**
+ * Abre a sessão de câmera do atendimento e liga o stream no gateway.
+ *
+ * A sessão é o histórico das salas por onde o pet passou: sem ela, o segmento
+ * gravado na sala anterior não acharia mais o atendimento depois da troca (o
+ * uploader só conhece a câmera). Ver 0034_appointment_camera_session.sql.
+ */
+async function openCameraSession(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tenantId: string,
+  appointmentId: string,
+  cameraId: string,
+): Promise<GatewayResult> {
+  const { error } = await supabase.from("appointment_camera_session").insert({
+    tenant_id: tenantId,
+    appointment_id: appointmentId,
+    camera_id: cameraId,
+    started_at: new Date().toISOString(),
+  });
+  // Sem sessão o vídeo ainda é gravado — a rota /recordings/sign cai no
+  // appointment.camera_id —, mas a troca de sala perde o histórico.
+  if (error) console.warn(`[camera] falha ao abrir sessão: ${error.message}`);
+  return startCameraStream(tenantId, cameraId);
+}
+
+/** Fecha a sessão aberta do atendimento e desliga a câmera, se ninguém mais a usa. */
+async function closeCameraSession(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tenantId: string,
+  appointmentId: string,
+  cameraId: string | null,
+): Promise<GatewayResult> {
+  await supabase
+    .from("appointment_camera_session")
+    .update({ ended_at: new Date().toISOString() })
+    .eq("appointment_id", appointmentId)
+    .is("ended_at", null);
+
+  if (!cameraId) return { ok: true };
+
+  // Duas transmissões simultâneas na mesma câmera são permitidas — remover o
+  // path do MediaMTX derrubaria o stream do outro atendimento. A contagem vai
+  // pelo service role de propósito: a RLS do colaborador só mostra as sessões
+  // dos atendimentos dele, e ele leria "câmera livre" com um colega no ar.
+  const { count } = await createAdminClient()
+    .from("appointment_camera_session")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("camera_id", cameraId)
+    .is("ended_at", null);
+  if ((count ?? 0) > 0) return { ok: true };
+
+  return stopCameraStream(tenantId, cameraId);
 }
 
 /** Inicia o atendimento: CONFIRMED/CHECKED_IN → IN_PROGRESS. */
@@ -98,13 +157,69 @@ export async function startAppointment(formData: FormData) {
   // Liga stream + gravação no gateway. Best-effort: gateway offline não pode
   // impedir o atendimento de começar — o tutor apenas fica sem o ao vivo.
   if (cameraId && appt) {
-    const result = await startCameraStream(appt.tenant_id, cameraId);
+    const result = await openCameraSession(supabase, appt.tenant_id, id, cameraId);
     if (!result.ok)
       console.warn(`[camera] falha ao ligar stream: ${result.error}`);
   }
 
   revalidatePath(`/atendimentos/${id}`);
   revalidatePath("/atendimentos");
+}
+
+/**
+ * Troca a sala do atendimento em andamento (banho → tosa) ou desliga a
+ * transmissão. Ao contrário do início, aqui o erro do gateway volta para a
+ * tela: quem está com o pet na mão precisa saber que o tutor ficou sem imagem.
+ */
+export type SwitchCameraState = { ok: boolean; error?: string };
+
+export async function switchAppointmentCamera(
+  _prev: SwitchCameraState,
+  formData: FormData,
+): Promise<SwitchCameraState> {
+  const id = str(formData.get("appointment_id"));
+  if (!id) return { ok: false, error: "Atendimento inválido" };
+  const cameraId = str(formData.get("camera_id")) ?? null;
+
+  const supabase = await createClient();
+  const { data: appt } = await supabase
+    .from("appointment")
+    .select("tenant_id, camera_id, status")
+    .eq("id", id)
+    .maybeSingle();
+  if (!appt) return { ok: false, error: "Atendimento não encontrado" };
+  if (appt.status !== "IN_PROGRESS") {
+    return { ok: false, error: "O atendimento não está em andamento" };
+  }
+  if (appt.camera_id === cameraId) return { ok: true };
+
+  const closed = await closeCameraSession(supabase, appt.tenant_id, id, appt.camera_id);
+
+  const { error } = await supabase
+    .from("appointment")
+    .update({ camera_id: cameraId })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/atendimentos/${id}`);
+  revalidatePath("/atendimentos");
+
+  // A troca já está gravada — o tutor migrou de sala pelo Realtime. Se o
+  // gateway recusar, o atendimento continua e só a imagem fica pendente.
+  if (cameraId) {
+    const started = await openCameraSession(supabase, appt.tenant_id, id, cameraId);
+    if (!started.ok) {
+      console.warn(`[camera] falha ao ligar stream da nova sala: ${started.error}`);
+      return { ok: false, error: started.error };
+    }
+  }
+  if (!closed.ok) {
+    console.warn(`[camera] falha ao encerrar a sala anterior: ${closed.error}`);
+    // Sem sala nova não há o que assistir de qualquer jeito, mas a sala antiga
+    // segue gravando — vale avisar em vez de dar a troca por perfeita.
+    if (!cameraId) return { ok: false, error: closed.error };
+  }
+  return { ok: true };
 }
 
 /** Marca/desmarca um passo do checklist como concluído. */
@@ -226,13 +341,11 @@ export async function finishAppointment(
   );
   if (behaviorError) return { ok: false, error: behaviorError };
 
-  // Encerra stream + gravação no gateway (best-effort; o path também é
-  // sobrescrito no próximo atendimento que usar a mesma câmera).
-  if (appt.camera_id) {
-    const result = await stopCameraStream(appt.tenant_id, appt.camera_id);
-    if (!result.ok)
-      console.warn(`[camera] falha ao encerrar stream: ${result.error}`);
-  }
+  // Fecha a sessão de câmera e encerra stream + gravação no gateway
+  // (best-effort; o path também é sobrescrito no próximo atendimento que usar
+  // a mesma câmera).
+  const closed = await closeCameraSession(supabase, appt.tenant_id, id, appt.camera_id);
+  if (!closed.ok) console.warn(`[camera] falha ao encerrar stream: ${closed.error}`);
 
   revalidatePath(`/atendimentos/${id}`);
   revalidatePath("/atendimentos");
