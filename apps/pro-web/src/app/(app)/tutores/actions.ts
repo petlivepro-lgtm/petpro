@@ -32,6 +32,7 @@ export async function createTutor(
     phone: str(formData.get("phone")),
     cpf: str(formData.get("cpf")),
     notes: str(formData.get("notes")),
+    clubinho: formData.get("clubinho") === "on",
   });
   if (!parsed.success) {
     return {
@@ -53,6 +54,7 @@ export async function createTutor(
       phone: parsed.data.phone ?? null,
       cpf: parsed.data.cpf ?? null,
       notes: parsed.data.notes ?? null,
+      clubinho: parsed.data.clubinho,
     })
     .select("id")
     .single();
@@ -110,6 +112,7 @@ export async function updateTutor(
     phone: str(formData.get("phone")),
     cpf: str(formData.get("cpf")),
     notes: str(formData.get("notes")),
+    clubinho: formData.get("clubinho") === "on",
   });
   if (!parsed.success) {
     return {
@@ -132,6 +135,7 @@ export async function updateTutor(
       phone: parsed.data.phone ?? null,
       cpf: parsed.data.cpf ?? null,
       notes: parsed.data.notes ?? null,
+      clubinho: parsed.data.clubinho,
     })
     .eq("id", tutorId)
     .eq("tenant_id", tenant.tenantId);

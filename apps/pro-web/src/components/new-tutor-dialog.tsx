@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import {
   Button,
+  Checkbox,
   Dialog,
   FileInput,
   Input,
@@ -95,6 +96,19 @@ export function NewTutorDialog({
           <div>
             <Label htmlFor="notes">Observações</Label>
             <Input id="notes" name="notes" placeholder="Opcional" />
+          </div>
+          <div className="rounded-xl bg-surface-muted p-4">
+            <Checkbox
+              name="clubinho"
+              label={
+                <span>
+                  Tutor do Clubinho
+                  <span className="block text-xs text-gray-neutral">
+                    Assinante do pacote de serviços mensal.
+                  </span>
+                </span>
+              }
+            />
           </div>
 
           <div className="rounded-xl border border-dashed border-graphite/15 p-4">

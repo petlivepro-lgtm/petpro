@@ -1727,6 +1727,7 @@ export type Database = {
       }
       tutor: {
         Row: {
+          clubinho: boolean
           cpf: string | null
           created_at: string
           email: string | null
@@ -1739,6 +1740,7 @@ export type Database = {
           tenant_id: string
         }
         Insert: {
+          clubinho?: boolean
           cpf?: string | null
           created_at?: string
           email?: string | null
@@ -1751,6 +1753,7 @@ export type Database = {
           tenant_id: string
         }
         Update: {
+          clubinho?: boolean
           cpf?: string | null
           created_at?: string
           email?: string | null

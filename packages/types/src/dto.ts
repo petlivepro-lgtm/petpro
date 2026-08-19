@@ -25,6 +25,9 @@ export const tutorInput = z.object({
       "CPF deve ter 11 dígitos",
     ),
   notes: z.string().optional(),
+  // Assinante do Clubinho (pacote de serviços pago). Chega da action já
+  // convertido para booleano — o FormData de um checkbox devolve "on"/null.
+  clubinho: z.boolean().optional().default(false),
 });
 export type TutorInput = z.infer<typeof tutorInput>;
 

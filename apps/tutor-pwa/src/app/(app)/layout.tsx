@@ -6,6 +6,7 @@ import { getTutorContext } from "@/lib/tutor-context";
 import { BottomNav } from "@/components/bottom-nav";
 import { SideNav } from "@/components/side-nav";
 import { TenantBrand } from "@/components/tenant-brand";
+import { ClubinhoBadge } from "@/components/clubinho-badge";
 
 export default async function AppLayout({
   children,
@@ -31,7 +32,11 @@ export default async function AppLayout({
   }
   return (
     <div className="min-h-screen bg-surface lg:bg-surface-muted">
-      <SideNav tenantName={ctx.tenantName} tenantLogoUrl={ctx.tenantLogoUrl} />
+      <SideNav
+        tenantName={ctx.tenantName}
+        tenantLogoUrl={ctx.tenantLogoUrl}
+        clubinho={ctx.clubinho}
+      />
 
       <div className="lg:ml-64">
         {/* topo só-mobile */}
@@ -48,6 +53,7 @@ export default async function AppLayout({
               name={ctx.tenantName}
               logoUrl={ctx.tenantLogoUrl}
             />
+            <ClubinhoBadge active={ctx.clubinho} className="mt-1.5" />
           </div>
           <Link
             href="/configuracoes"

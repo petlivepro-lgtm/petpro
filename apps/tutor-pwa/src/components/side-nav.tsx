@@ -6,14 +6,17 @@ import { LogOut, Settings } from "lucide-react";
 import { cn, Button } from "@mylivepet/ui";
 import { navItems } from "./nav-items";
 import { TenantBrand } from "./tenant-brand";
+import { ClubinhoBadge } from "./clubinho-badge";
 import { signOut } from "@/app/(app)/actions";
 
 export function SideNav({
   tenantName,
   tenantLogoUrl,
+  clubinho,
 }: {
   tenantName: string;
   tenantLogoUrl: string | null;
+  clubinho: boolean;
 }) {
   const pathname = usePathname();
   return (
@@ -30,6 +33,7 @@ export function SideNav({
             name={tenantName}
             logoUrl={tenantLogoUrl}
           />
+          <ClubinhoBadge active={clubinho} className="mt-2" />
         </div>
         <nav className="space-y-1">
           {navItems.map((item) => {

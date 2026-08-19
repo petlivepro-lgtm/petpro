@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
 import {
   Button,
+  Checkbox,
   CpfInput,
   Dialog,
   Input,
@@ -23,6 +24,7 @@ export function EditTutorDialog({
     phone: string | null;
     cpf: string | null;
     notes: string | null;
+    clubinho: boolean;
   };
 }) {
   const router = useRouter();
@@ -101,8 +103,22 @@ export function EditTutorDialog({
               defaultValue={tutor.notes ?? ""}
             />
           </div>
+          <div className="rounded-xl bg-surface-muted p-4">
+            <Checkbox
+              name="clubinho"
+              defaultChecked={tutor.clubinho}
+              label={
+                <span>
+                  Tutor do Clubinho
+                  <span className="block text-xs text-gray-neutral">
+                    Assinante do pacote de serviços mensal.
+                  </span>
+                </span>
+              }
+            />
+          </div>
 
-          {state.error && <p className="text-sm text-danger">{state.error}</p>}
+          {state.error &&<p className="text-sm text-danger">{state.error}</p>}
           <div className="flex justify-end gap-2">
             <Button
               type="button"

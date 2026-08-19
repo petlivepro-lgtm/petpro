@@ -5,6 +5,7 @@ import {
   Mail,
   Smartphone,
   Contact,
+  Crown,
   ChevronRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -34,7 +35,7 @@ export default async function TutoresPage() {
   const { data: tutores } = await supabase
     .from("tutor")
     .select(
-      "id, full_name, email, phone, cpf, notes, profile_id, pet(id, name, species, breed, photo_path)",
+      "id, full_name, email, phone, cpf, notes, profile_id, clubinho, pet(id, name, species, breed, photo_path)",
     )
     .order("full_name");
 
@@ -87,6 +88,11 @@ export default async function TutoresPage() {
                           <Smartphone className="h-3 w-3" /> App ativo
                         </span>
                       )}
+                      {t.clubinho && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-petrol/10 px-2 py-0.5 text-xs font-medium text-petrol">
+                          <Crown className="h-3 w-3" /> Clubinho
+                        </span>
+                      )}
                     </div>
                     <div className="mt-1 space-y-0.5 text-sm text-gray-neutral">
                       {t.phone && (
@@ -116,6 +122,7 @@ export default async function TutoresPage() {
                         phone: t.phone,
                         cpf: t.cpf,
                         notes: t.notes,
+                        clubinho: t.clubinho,
                       }}
                     />
                     <DeleteTutorDialog
