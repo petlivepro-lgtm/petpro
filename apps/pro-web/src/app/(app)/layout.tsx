@@ -5,9 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { Nav } from "@/components/nav";
 import { MobileNav } from "@/components/mobile-nav";
+import { NotificationBell } from "@/components/notification-bell";
 import { Avatar, Button, EmptyState } from "@mylivepet/ui";
 import { STAFF_ROLE_LABEL } from "@mylivepet/types";
 import { signOut } from "./actions";
+import { listNotifications } from "./notification-actions";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -20,6 +22,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const fullName = (user.user_metadata?.full_name as string | undefined)?.trim();
   const userName = fullName || user.email || "Usuário";
   const isCollaborator = tenant?.role === "COLLABORATOR";
+
+  // Todo mundo com vínculo tem sino: a gestão recebe os pedidos dos tutores e
+  // o colaborador recebe o que entra e sai da agenda dele. Quem separa as duas
+  // caixas é a RPC list_notifications (0042), não esta condição.
+  const showBell = !!tenant;
+  const notifications = showBell ? await listNotifications() : [];
+  const bellHint = isCollaborator
+    ? "Os atendimentos que entram, saem ou mudam de horário na sua agenda aparecem aqui."
+    : "Pedidos de serviço e reservas dos tutores aparecem aqui assim que chegam.";
 
   return (
     <div className="flex min-h-screen bg-surface-muted">
@@ -41,6 +52,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 />
               )}
               <p className="truncate text-sm font-medium text-graphite">{tenant?.tenantName ?? "—"}</p>
+              {showBell && (
+                <div className="ml-auto -mr-1">
+                  <NotificationBell
+                    initial={notifications}
+                    channelName="notificacoes-desktop"
+                    emptyHint={bellHint}
+                  />
+                </div>
+              )}
             </div>
           </div>
           <Nav role={tenant?.role} />
@@ -83,6 +103,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           logoUrl={tenant?.logoUrl ?? null}
           userName={userName}
           role={tenant?.role}
+          bell={
+            showBell ? (
+              <NotificationBell
+                initial={notifications}
+                channelName="notificacoes-mobile"
+                emptyHint={bellHint}
+              />
+            ) : null
+          }
         />
         <main className="flex-1 p-5 md:p-8">
           <div className="mx-auto max-w-6xl">

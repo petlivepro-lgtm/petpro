@@ -22,7 +22,7 @@ try {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@mylivepet/ui", "@mylivepet/types"],
+  transpilePackages: ["@mylivepet/ui", "@mylivepet/types", "@mylivepet/notifications"],
 };
 
 export default nextConfig;

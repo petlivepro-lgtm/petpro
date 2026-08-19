@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
+import { dispatchNotifications } from "@/lib/notify";
 import {
   appointmentStatusUpdate,
   appointmentStatusBatchUpdate,
@@ -23,6 +24,15 @@ export type FormState = { ok: boolean; error?: string };
 async function canMutate(supabase: Awaited<ReturnType<typeof createClient>>) {
   const tenant = await getActiveTenant(supabase);
   return !!tenant && canMutateAsRole(tenant.role);
+}
+
+/**
+ * Mesma checagem, mas devolvendo o tenant — quem mexe na agenda precisa dele
+ * para empurrar o aviso ao colaborador (ver lib/notify.ts).
+ */
+async function tenantIfCanMutate(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const tenant = await getActiveTenant(supabase);
+  return tenant && canMutateAsRole(tenant.role) ? tenant : null;
 }
 
 export async function signOut() {
@@ -98,6 +108,10 @@ export async function createStaffBooking(
     };
   }
 
+  // O agendamento da loja já nasce CONFIRMED: entra direto na agenda do
+  // profissional, que precisa saber sem depender de abrir o painel.
+  await dispatchNotifications(pet.tenant_id);
+
   revalidatePath("/");
   revalidatePath("/atendimentos");
   revalidatePath("/solicitacoes");
@@ -114,11 +128,15 @@ export async function updateAppointmentStatus(formData: FormData) {
   if (!parsed.success) return;
 
   const supabase = await createClient();
-  if (!(await canMutate(supabase))) return;
+  const tenant = await tenantIfCanMutate(supabase);
+  if (!tenant) return;
   await supabase
     .from("appointment")
     .update({ status: parsed.data.status })
     .eq("id", parsed.data.appointment_id);
+
+  // Confirmar ou recusar mexe na agenda do profissional escolhido.
+  await dispatchNotifications(tenant.tenantId);
 
   revalidatePath("/solicitacoes");
   revalidatePath("/atendimentos");
@@ -136,11 +154,14 @@ export async function updateAppointmentsStatus(formData: FormData) {
   if (!parsed.success) return;
 
   const supabase = await createClient();
-  if (!(await canMutate(supabase))) return;
+  const tenant = await tenantIfCanMutate(supabase);
+  if (!tenant) return;
   await supabase
     .from("appointment")
     .update({ status: parsed.data.status })
     .in("id", parsed.data.appointment_ids);
+
+  await dispatchNotifications(tenant.tenantId);
 
   revalidatePath("/solicitacoes");
   revalidatePath("/atendimentos");

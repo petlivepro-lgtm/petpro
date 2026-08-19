@@ -13,11 +13,14 @@ export function MobileNav({
   logoUrl,
   userName,
   role,
+  bell,
 }: {
   tenantName: string;
   logoUrl?: string | null;
   userName: string;
   role?: StaffRole;
+  /** Sino de notificações, montado no layout (server) e só exibido à gestão. */
+  bell?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const isCollaborator = role === "COLLABORATOR";
@@ -36,7 +39,7 @@ export function MobileNav({
 
   return (
     <>
-      {/* Barra superior (apenas mobile): só o botão do menu, à esquerda. */}
+      {/* Barra superior (apenas mobile): menu à esquerda, sino à direita. */}
       <header className="sticky top-0 z-30 flex items-center border-b border-graphite/10 bg-surface px-4 py-3 md:hidden">
         <button
           type="button"
@@ -46,6 +49,7 @@ export function MobileNav({
         >
           <Menu className="h-5 w-5" />
         </button>
+        {bell && <div className="ml-auto">{bell}</div>}
       </header>
 
       {/* Overlay + drawer */}

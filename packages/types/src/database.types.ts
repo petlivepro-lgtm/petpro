@@ -920,6 +920,93 @@ export type Database = {
           },
         ]
       }
+      notification: {
+        Row: {
+          body: string
+          created_at: string
+          href: string | null
+          id: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          meta: Json
+          pushed_at: string | null
+          recipient_profile_id: string | null
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          href?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          meta?: Json
+          pushed_at?: string | null
+          recipient_profile_id?: string | null
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          href?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["notification_kind"]
+          meta?: Json
+          pushed_at?: string | null
+          recipient_profile_id?: string | null
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_recipient_profile_id_fkey"
+            columns: ["recipient_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_read: {
+        Row: {
+          notification_id: string
+          profile_id: string
+          read_at: string
+        }
+        Insert: {
+          notification_id: string
+          profile_id: string
+          read_at?: string
+        }
+        Update: {
+          notification_id?: string
+          profile_id?: string
+          read_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_read_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_read_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_fee_rule: {
         Row: {
           created_at: string
@@ -1464,6 +1551,57 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscription: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_success_at: string | null
+          p256dh: string
+          profile_id: string
+          tenant_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_success_at?: string | null
+          p256dh: string
+          profile_id: string
+          tenant_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_success_at?: string | null
+          p256dh?: string
+          profile_id?: string
+          tenant_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscription_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscription_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recording: {
         Row: {
           appointment_id: string
@@ -1917,6 +2055,7 @@ export type Database = {
       }
     }
     Functions: {
+      br_datetime: { Args: { _ts: string }; Returns: string }
       can_complete_appointment: {
         Args: { p_collaborator_id: string; p_tenant_id: string }
         Returns: boolean
@@ -1943,12 +2082,25 @@ export type Database = {
         Args: { _pet: string; _tenant: string }
         Returns: boolean
       }
+      collaborator_profile: { Args: { _collaborator: string }; Returns: string }
       complete_product_sale: {
         Args: {
           p_installments?: number
           p_payment_method: Database["public"]["Enums"]["payment_method"]
           p_reservation_id: string
           p_terminal_id?: string
+        }
+        Returns: undefined
+      }
+      create_notification: {
+        Args: {
+          _body: string
+          _href: string
+          _kind: Database["public"]["Enums"]["notification_kind"]
+          _meta: Json
+          _recipient?: string
+          _tenant: string
+          _title: string
         }
         Returns: undefined
       }
@@ -1969,6 +2121,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_management: { Args: { _tenant: string }; Returns: boolean }
       is_staff: { Args: { _tenant: string }; Returns: boolean }
       link_collaborator_access: {
         Args: { p_email: string; p_user_id: string }
@@ -1982,6 +2135,19 @@ export type Database = {
         Args: { p_email: string; p_phone_digits: string; p_user_id: string }
         Returns: undefined
       }
+      list_notifications: {
+        Args: { p_limit?: number }
+        Returns: {
+          body: string
+          created_at: string
+          href: string
+          id: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          read: boolean
+          title: string
+        }[]
+      }
+      mark_notifications_read: { Args: { p_ids?: string[] }; Returns: number }
       mark_rejection_seen: {
         Args: { p_reservation_id: string }
         Returns: undefined
@@ -2142,6 +2308,17 @@ export type Database = {
       finance_entry_type: "INCOME" | "EXPENSE"
       finance_refund_kind: "PRODUCT_RETURN" | "SERVICE_REFUND"
       finance_source: "MANUAL" | "APPOINTMENT" | "RESERVATION" | "REFUND"
+      notification_kind:
+        | "BOOKING_REQUESTED"
+        | "BOOKING_CANCELLED"
+        | "RESERVATION_CREATED"
+        | "RESERVATION_CANCELLED"
+        | "RESERVATION_ITEM_CANCELLED"
+        | "FEEDBACK_RECEIVED"
+        | "APPOINTMENT_REQUESTED_FOR_ME"
+        | "APPOINTMENT_ASSIGNED"
+        | "APPOINTMENT_CANCELLED_FOR_ME"
+        | "APPOINTMENT_RESCHEDULED"
       payment_method:
         | "CASH"
         | "PIX"
@@ -2309,6 +2486,18 @@ export const Constants = {
       finance_entry_type: ["INCOME", "EXPENSE"],
       finance_refund_kind: ["PRODUCT_RETURN", "SERVICE_REFUND"],
       finance_source: ["MANUAL", "APPOINTMENT", "RESERVATION", "REFUND"],
+      notification_kind: [
+        "BOOKING_REQUESTED",
+        "BOOKING_CANCELLED",
+        "RESERVATION_CREATED",
+        "RESERVATION_CANCELLED",
+        "RESERVATION_ITEM_CANCELLED",
+        "FEEDBACK_RECEIVED",
+        "APPOINTMENT_REQUESTED_FOR_ME",
+        "APPOINTMENT_ASSIGNED",
+        "APPOINTMENT_CANCELLED_FOR_ME",
+        "APPOINTMENT_RESCHEDULED",
+      ],
       payment_method: [
         "CASH",
         "PIX",

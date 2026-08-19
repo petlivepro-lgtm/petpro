@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
+import { dispatchNotifications } from "@/lib/notify";
 import {
   bookingRequest,
   tutorFeedbackInput,
@@ -59,6 +60,9 @@ export async function requestBooking(formData: FormData) {
     redirect(error.message.includes("SLOT_TAKEN") ? "/agendar?erro=horario" : "/agendar?erro=1");
   }
 
+  // Antes do redirect: redirect() lança, e o push nunca sairia depois dele.
+  await dispatchNotifications(ctx.tenantId);
+
   revalidatePath("/");
   redirect("/?agendado=1");
 }
@@ -94,6 +98,7 @@ export async function submitTutorFeedback(formData: FormData) {
     rating: typeof firstStars?.value === "number" ? firstStars.value : null,
     comment: typeof firstText?.value === "string" ? firstText.value : null,
   });
+  await dispatchNotifications(ctx.tenantId);
   revalidatePath("/");
   revalidatePath("/atendimentos");
 }
@@ -129,6 +134,9 @@ export async function createReservation(formData: FormData) {
     );
   }
 
+  // Antes do redirect: redirect() lança, e o push nunca sairia depois dele.
+  await dispatchNotifications(ctx.tenantId);
+
   revalidatePath("/produtos");
   redirect("/produtos?reservado=1");
 }
@@ -141,6 +149,9 @@ export async function cancelReservationItem(formData: FormData) {
   const supabase = await createClient();
   await supabase.rpc("cancel_reservation_item", { p_item_id: parsed.data.item_id });
 
+  const ctx = await getTutorContext(supabase);
+  if (ctx) await dispatchNotifications(ctx.tenantId);
+
   revalidatePath("/produtos");
 }
 
@@ -151,6 +162,9 @@ export async function cancelReservation(formData: FormData) {
 
   const supabase = await createClient();
   await supabase.rpc("cancel_reservation", { p_reservation_id: parsed.data.reservation_id });
+
+  const ctx = await getTutorContext(supabase);
+  if (ctx) await dispatchNotifications(ctx.tenantId);
 
   revalidatePath("/produtos");
 }

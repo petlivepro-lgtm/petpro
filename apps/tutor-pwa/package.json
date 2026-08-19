@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@mylivepet/notifications": "workspace:*",
     "@mylivepet/types": "workspace:*",
     "@mylivepet/ui": "workspace:*",
     "@supabase/ssr": "0.5.2",
