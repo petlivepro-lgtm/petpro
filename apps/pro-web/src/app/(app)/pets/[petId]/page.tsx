@@ -32,6 +32,7 @@ import {
   BEHAVIOR_BADGE_TONE,
   RESERVATION_STATUS_LABEL,
   behaviorBadgeOf,
+  canMutateAsRole,
   formatBehaviorScore,
   type AppointmentStatus,
   type ReservationStatus,
@@ -43,7 +44,8 @@ import { AppointmentStatusBadge } from "@/components/status-badge";
 import { BehaviorReportView } from "@/components/behavior-report-view";
 import { fetchBehaviorSummaries, fetchPetBehaviorReports } from "@/lib/behavior";
 import { getActiveTenant } from "@/lib/tenant";
-import { createStaffAppointment } from "./actions";
+import { NewAppointmentDialog } from "@/components/new-appointment-dialog";
+import { loadBookingOptions } from "@/lib/booking-options";
 
 const statusColor: Record<AppointmentStatus, string> = {
   REQUESTED: "#F2B84B",
@@ -124,9 +126,16 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
 
   const appointments = appts ?? [];
 
-  const [behaviorReports, summaries] = await Promise.all([
+  // Agendar em nome do tutor é do balcão: VIEWER só lê e o colaborador não agenda.
+  const canBook = !!tenant && !isCollaborator && canMutateAsRole(tenant.role);
+
+  const [behaviorReports, summaries, bookingOptions] = await Promise.all([
     fetchPetBehaviorReports(supabase, petId),
     fetchBehaviorSummaries(supabase, [petId]),
+    // O pet já define o cliente: não precisa da lista de tutores.
+    canBook
+      ? loadBookingOptions(supabase, { includeTutors: false })
+      : Promise.resolve({ tutors: [], services: [], collaborators: [] }),
   ]);
   const summary = summaries.get(petId) ?? null;
   const behaviorBadge = behaviorBadgeOf(
@@ -149,7 +158,6 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
   const age = ageFrom(pet.birth_date);
 
   const tiles = [
-    { label: "Atendimento", icon: <Stethoscope className="h-6 w-6" />, color: "#2D6CDF", action: true },
     { label: "Observação", icon: <MessageSquare className="h-6 w-6" />, color: "#5B6770" },
     { label: "Peso", icon: <Scale className="h-6 w-6" />, color: "#C0892D" },
     { label: "Vacina", icon: <Syringe className="h-6 w-6" />, color: "#F08A24" },
@@ -291,16 +299,18 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
         <>
           <h2 className="mb-3 font-heading text-lg font-semibold text-graphite">Adicionar</h2>
           <ActionGrid className="mb-8">
-            {tiles.map((t) =>
-              t.action ? (
-                <form key={t.label} action={createStaffAppointment}>
-                  <input type="hidden" name="pet_id" value={petId_} />
-                  <ActionTile type="submit" label={t.label} icon={t.icon} color={t.color} className="w-full" />
-                </form>
-              ) : (
-                <ActionTile key={t.label} label={t.label} icon={t.icon} color={t.color} soon />
-              ),
+            {canBook && tenant && (
+              <NewAppointmentDialog
+                tenantId={tenant.tenantId}
+                services={bookingOptions.services}
+                collaborators={bookingOptions.collaborators}
+                fixedPet={{ id: petId_, name: petName }}
+                trigger="tile"
+              />
             )}
+            {tiles.map((t) => (
+              <ActionTile key={t.label} label={t.label} icon={t.icon} color={t.color} soon />
+            ))}
           </ActionGrid>
         </>
       )}

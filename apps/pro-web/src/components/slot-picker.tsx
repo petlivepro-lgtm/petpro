@@ -2,24 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { SlotGrid, type CollaboratorSchedule } from "@mylivepet/ui";
+import { SlotGrid } from "@mylivepet/ui";
 import { createClient } from "@/lib/supabase/client";
-
-export type { CollaboratorSchedule };
-export type Collaborator = {
-  id: string;
-  full_name: string;
-  role_title: string | null;
-  collaborator_schedule: CollaboratorSchedule[];
-};
+import type { BookingCollaborator } from "@/lib/booking-options";
 
 /**
- * Grade de horários do colaborador no dia escolhido (render em SlotGrid, do
- * design system). Aqui mora só a origem dos dados: os slots já reservados no
- * banco (RPC get_busy_slots) e os que outra pessoa está reservando neste
- * momento — estes últimos vêm por Realtime Presence (hold efêmero: some sozinho
- * quando o outro tutor troca de horário, fecha a aba ou perde conexão). A
- * garantia final contra conflito continua no trigger do banco.
+ * Grade de horários do profissional no dia escolhido (render em SlotGrid, do
+ * design system). Busca a ocupação real pela RPC get_busy_slots e escuta o
+ * mesmo canal de Presence que o app do tutor usa (`holds:<colaborador>`): assim
+ * o balcão enxerga o horário que um tutor está segurando neste instante, e
+ * vice-versa. A garantia final contra conflito é o trigger do banco.
  */
 export function SlotPicker({
   tenantId,
@@ -29,25 +21,23 @@ export function SlotPicker({
   onChange,
 }: {
   tenantId: string;
-  collaborator: Collaborator | undefined;
+  collaborator: BookingCollaborator | undefined;
   date: string; // "YYYY-MM-DD" ou ""
   value: string; // ISO do slot escolhido ou ""
   onChange: (iso: string) => void;
 }) {
   const [supabase] = useState(() => createClient());
   const [busy, setBusy] = useState<Set<number>>(new Set());
-  const [held, setHeld] = useState<Set<number>>(new Set()); // slots sendo reservados por OUTROS tutores
+  const [held, setHeld] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const [presenceKey] = useState(() => crypto.randomUUID());
-  // Slot atual sempre acessível ao callback de subscribe (evita closure velha).
   const valueRef = useRef(value);
   valueRef.current = value;
 
   const collaboratorId = collaborator?.id;
 
-  // Ocupação do dia: RPC devolve apenas os instantes já reservados do colaborador.
   useEffect(() => {
     setBusy(new Set());
     if (!collaboratorId || !date) return;
@@ -66,7 +56,9 @@ export function SlotPicker({
       })
       .then(({ data }) => {
         if (cancelled) return;
-        setBusy(new Set((data ?? []).map((iso: string) => new Date(iso).getTime())));
+        setBusy(
+          new Set((data ?? []).map((iso: string) => new Date(iso).getTime())),
+        );
         setLoading(false);
       });
     return () => {
@@ -74,9 +66,6 @@ export function SlotPicker({
     };
   }, [supabase, tenantId, collaboratorId, date]);
 
-  // Canal de presença por colaborador: publica o horário que este tutor está
-  // segurando e observa os que os demais estão segurando. O payload carrega o
-  // ISO completo (com data), então um hold em outro dia não afeta esta grade.
   useEffect(() => {
     setHeld(new Set());
     if (!collaboratorId) return;
@@ -87,7 +76,10 @@ export function SlotPicker({
     channelRef.current = channel;
 
     channel.on("presence", { event: "sync" }, () => {
-      const state = channel.presenceState() as Record<string, Array<{ slot?: string | null }>>;
+      const state = channel.presenceState() as Record<
+        string,
+        Array<{ slot?: string | null }>
+      >;
       const next = new Set<number>();
       for (const [key, metas] of Object.entries(state)) {
         if (key === presenceKey) continue; // ignora o próprio hold
@@ -99,7 +91,8 @@ export function SlotPicker({
     });
 
     channel.subscribe((status) => {
-      if (status === "SUBSCRIBED") channel.track({ slot: valueRef.current || null });
+      if (status === "SUBSCRIBED")
+        channel.track({ slot: valueRef.current || null });
     });
 
     return () => {
@@ -108,7 +101,7 @@ export function SlotPicker({
     };
   }, [supabase, collaboratorId, presenceKey]);
 
-  // Atualiza o hold sempre que o tutor troca (ou limpa) o horário escolhido.
+  // Publica o horário que este atendente está segurando.
   useEffect(() => {
     channelRef.current?.track({ slot: value || null });
   }, [value]);
@@ -122,7 +115,8 @@ export function SlotPicker({
       loading={loading}
       value={value}
       onChange={onChange}
-      heldHint="Horários tracejados estão sendo reservados por outro tutor agora."
+      emptyHint="Escolha o profissional e a data para ver os horários livres."
+      heldHint="Horários tracejados estão sendo reservados agora (por um tutor no app ou outro atendente)."
     />
   );
 }

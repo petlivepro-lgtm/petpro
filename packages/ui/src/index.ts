@@ -6,7 +6,7 @@ export { Input, Label } from "./input";
 export { PasswordInput, type PasswordInputProps } from "./password-input";
 export { Textarea } from "./textarea";
 export { Checkbox } from "./checkbox";
-export { Select } from "./select";
+export { Select, type SelectProps } from "./select";
 export { CurrencyInput } from "./currency-input";
 export { PhoneInput } from "./phone-input";
 export { CpfInput } from "./cpf-input";
@@ -18,6 +18,12 @@ export { ChoiceChips, type ChoiceOption } from "./choice-chips";
 export { RatingStars } from "./rating-stars";
 export { ScaleSelector } from "./scale-selector";
 export { DatePicker } from "./date-picker";
+export {
+  SlotGrid,
+  SLOT_MINUTES,
+  type CollaboratorSchedule,
+} from "./slot-grid";
+export { ServicePicker, type ServiceOption } from "./service-picker";
 export { Avatar } from "./avatar";
 export { PageHeader } from "./page-header";
 export { StatCard } from "./stat-card";

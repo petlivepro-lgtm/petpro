@@ -7,6 +7,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import {
   appointmentStatusUpdate,
   appointmentStatusBatchUpdate,
+  bookingRequest,
   canMutateAsRole,
   paidReservationInput,
   reservationCancel,
@@ -28,6 +29,80 @@ export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+/**
+ * A loja agenda em nome do tutor (telefone, WhatsApp ou balcão). Nasce
+ * CONFIRMED — diferente da solicitação do tutor, que entra como REQUESTED e
+ * precisa de aval. Cada serviço escolhido vira uma linha, todas irmãs pelo
+ * request_group_id (o trigger de slot deixa as irmãs dividirem o horário).
+ */
+export async function createStaffBooking(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = bookingRequest.safeParse({
+    pet_id: formData.get("pet_id"),
+    service_type_ids: formData.getAll("service_type_id"),
+    collaborator_id: formData.get("collaborator_id"),
+    scheduled_at: formData.get("scheduled_at"),
+    notes: formData.get("notes") || undefined,
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos",
+    };
+  }
+
+  const supabase = await createClient();
+  if (!(await canMutate(supabase))) {
+    return { ok: false, error: "Seu acesso é somente leitura" };
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Sessão expirada" };
+
+  // Tenant e tutor vêm do pet (a RLS já limita ao tenant), nunca do formulário.
+  const { data: pet } = await supabase
+    .from("pet")
+    .select("id, tenant_id, tutor_id")
+    .eq("id", parsed.data.pet_id)
+    .maybeSingle();
+  if (!pet) return { ok: false, error: "Pet não encontrado" };
+
+  const requestGroupId = crypto.randomUUID();
+  const { error } = await supabase.from("appointment").insert(
+    parsed.data.service_type_ids.map((serviceTypeId) => ({
+      tenant_id: pet.tenant_id,
+      pet_id: pet.id,
+      tutor_id: pet.tutor_id,
+      service_type_id: serviceTypeId,
+      collaborator_id: parsed.data.collaborator_id,
+      staff_id: user.id,
+      origin: "STAFF" as const,
+      status: "CONFIRMED" as const,
+      scheduled_at: parsed.data.scheduled_at,
+      notes: parsed.data.notes ?? null,
+      request_group_id: requestGroupId,
+    })),
+  );
+  if (error) {
+    // SLOT_TAKEN vem do trigger appointment_slot_guard (migração 0014).
+    return {
+      ok: false,
+      error: error.message.includes("SLOT_TAKEN")
+        ? "Esse horário acabou de ser preenchido. Escolha outro."
+        : error.message,
+    };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/atendimentos");
+  revalidatePath("/solicitacoes");
+  revalidatePath(`/pets/${pet.id}`);
+  return { ok: true };
 }
 
 /** Staff confirma/recusa/avança o status de um atendimento (RLS garante o tenant). */

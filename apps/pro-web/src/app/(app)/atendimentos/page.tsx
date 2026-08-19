@@ -5,6 +5,9 @@ import { fetchAtendimentos, isBucket } from "@/lib/atendimentos";
 import { fetchBehaviorCategories } from "@/lib/behavior";
 import { getActiveTenant } from "@/lib/tenant";
 import { loadPaymentTerminals } from "@/lib/payment-terminals";
+import { loadBookingOptions } from "@/lib/booking-options";
+import { NewAppointmentDialog } from "@/components/new-appointment-dialog";
+import { canMutateAsRole } from "@mylivepet/types";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -25,6 +28,8 @@ export default async function AtendimentosPage({
   // O colaborador vê só a agenda dele — o filtro por profissional não se
   // aplica, e a RLS já devolveria apenas o próprio cadastro.
   const isCollaborator = tenant?.role === "COLLABORATOR";
+  // Agendar em nome do tutor é do balcão: VIEWER só lê e o colaborador não agenda.
+  const canBook = !!tenant && !isCollaborator && canMutateAsRole(tenant.role);
 
   const [
     rows,
@@ -32,6 +37,7 @@ export default async function AtendimentosPage({
     { data: cameras },
     behaviorCategories,
     terminals,
+    bookingOptions,
   ] = await Promise.all([
     fetchAtendimentos(
       supabase,
@@ -57,6 +63,9 @@ export default async function AtendimentosPage({
     tenant
       ? loadPaymentTerminals(supabase, tenant.tenantId, { activeOnly: true })
       : Promise.resolve([]),
+    canBook
+      ? loadBookingOptions(supabase)
+      : Promise.resolve({ tutors: [], services: [], collaborators: [] }),
   ]);
 
   return (
@@ -67,6 +76,16 @@ export default async function AtendimentosPage({
           isCollaborator
             ? "Os atendimentos atribuídos a você."
             : "Agenda e andamento dos serviços."
+        }
+        actions={
+          canBook && tenant ? (
+            <NewAppointmentDialog
+              tenantId={tenant.tenantId}
+              tutors={bookingOptions.tutors}
+              services={bookingOptions.services}
+              collaborators={bookingOptions.collaborators}
+            />
+          ) : undefined
         }
       />
 
