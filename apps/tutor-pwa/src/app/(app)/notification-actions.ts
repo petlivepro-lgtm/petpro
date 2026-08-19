@@ -1,14 +1,17 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getActiveTenant } from "@/lib/tenant";
-import { sendTestPush } from "@mylivepet/notifications";
-import { NOTIFICATION_PAGE_SIZE, type NotificationItem } from "@mylivepet/ui";
+import { getTutorContext } from "@/lib/tutor-context";
+import {
+  NOTIFICATION_PAGE_SIZE,
+  type NotificationItem,
+  type SavePushResult,
+} from "@mylivepet/ui";
 
 /**
- * Lista do sino. A RPC já filtra por tenant e papel de gestão, então não há
- * nada a conferir aqui — quem não é gestão recebe lista vazia.
+ * Lista do sino. A RPC (0040/0042) só devolve o que é endereçado a quem está
+ * logado, então o tutor nunca alcança o mural do petshop nem a caixa de outro
+ * tutor — não há o que filtrar aqui.
  */
 export async function listNotifications(): Promise<NotificationItem[]> {
   const supabase = await createClient();
@@ -26,33 +29,33 @@ export async function markNotificationsRead(ids?: string[]): Promise<void> {
   });
 }
 
-export type SubscribeResult = { ok: boolean; error?: string };
-
 /**
- * Guarda a inscrição de Web Push deste navegador e manda um aviso de teste na
- * sequência, para o gestor ver na hora que deu certo.
+ * Guarda a inscrição de Web Push deste aparelho.
  *
- * O `endpoint` é único no banco: reinscrever o mesmo navegador atualiza a
- * linha existente em vez de acumular duplicatas.
+ * O `endpoint` é único no banco: reinscrever o mesmo navegador atualiza a linha
+ * existente em vez de acumular duplicatas.
+ *
+ * Diferente do painel, aqui não sai um aviso de teste: quem acabou de tocar no
+ * botão está com o app na mão, e a confirmação visual do próprio botão basta.
  */
 export async function savePushSubscription(input: {
   endpoint: string;
   p256dh: string;
   auth: string;
   userAgent?: string;
-}): Promise<SubscribeResult> {
+}): Promise<SavePushResult> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Sessão expirada." };
 
-  const tenant = await getActiveTenant(supabase, user.id);
-  if (!tenant) return { ok: false, error: "Conta sem vínculo com petshop." };
+  const ctx = await getTutorContext(supabase, user.id);
+  if (!ctx) return { ok: false, error: "Conta sem vínculo com petshop." };
 
   const { error } = await supabase.from("push_subscription").upsert(
     {
-      tenant_id: tenant.tenantId,
+      tenant_id: ctx.tenantId,
       profile_id: user.id,
       endpoint: input.endpoint,
       p256dh: input.p256dh,
@@ -63,14 +66,10 @@ export async function savePushSubscription(input: {
   );
   if (error) return { ok: false, error: "Não foi possível salvar a inscrição." };
 
-  // O envio usa service role porque precisa ler o par de chaves da inscrição
-  // recém-gravada e atualizar last_success_at — a RLS do próprio usuário
-  // bastaria para ler, mas não para o dispatcher genérico.
-  await sendTestPush(createAdminClient(), tenant.tenantId, user.id);
   return { ok: true };
 }
 
-/** Desliga os avisos deste navegador (o gestor pode ter vários aparelhos). */
+/** Desliga os avisos deste aparelho (o tutor pode ter celular e computador). */
 export async function removePushSubscription(endpoint: string): Promise<void> {
   const supabase = await createClient();
   await supabase.from("push_subscription").delete().eq("endpoint", endpoint);

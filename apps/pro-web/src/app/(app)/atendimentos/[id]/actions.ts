@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { dispatchNotifications } from "@/lib/notify";
 import {
   behaviorReportInput,
   computeOverallScore,
@@ -413,6 +414,9 @@ export async function finishAppointment(
   );
   if (!closed.ok)
     console.warn(`[camera] falha ao encerrar stream: ${closed.error}`);
+
+  // "Seu pet está pronto" — o aviso que evita o tutor ligar para a loja.
+  await dispatchNotifications(appt.tenant_id);
 
   revalidatePath(`/atendimentos/${id}`);
   revalidatePath("/atendimentos");

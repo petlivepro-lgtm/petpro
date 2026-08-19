@@ -1,14 +1,14 @@
-import type { Database } from "@mylivepet/types/database";
-
-export type NotificationKind = Database["public"]["Enums"]["notification_kind"];
-
 /**
- * Uma linha do sino. Vem pronta da RPC `list_notifications` (0040), que já
- * resolve o "lido" por pessoa e aplica o recorte de tenant/papel.
+ * Tipos e formatação do sino de notificações, compartilhados pelo painel do
+ * petshop e pelo app do tutor. Sem React aqui de propósito — isto é usado
+ * tanto no servidor (montagem inicial) quanto no cliente.
  */
+
+/** Uma linha do sino, no formato que a RPC `list_notifications` devolve. */
 export type NotificationItem = {
   id: string;
-  kind: NotificationKind;
+  /** Valor do enum notification_kind; cada app mapeia para o seu ícone. */
+  kind: string;
   title: string;
   body: string;
   href: string | null;
@@ -24,8 +24,9 @@ export function unreadCount(items: NotificationItem[]): number {
 }
 
 /**
- * "agora", "há 5 min", "há 3 h", "ontem", "12/03" — o gestor só precisa saber
- * se o pedido é de agora ou de ontem; a data cheia fica na tela de destino.
+ * "agora", "há 5 min", "há 3 h", "ontem", "12/03" — quem abre o sino só
+ * precisa saber se é de agora ou de ontem; a data cheia está na tela de
+ * destino.
  */
 export function relativeTime(iso: string, now: Date = new Date()): string {
   const then = new Date(iso);

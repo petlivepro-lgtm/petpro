@@ -7,12 +7,10 @@ import {
   BellOff,
   BellRing,
   CalendarCheck,
-  CalendarClock,
-  CalendarSync,
   CalendarX2,
-  PackagePlus,
+  PackageCheck,
   PackageX,
-  Star,
+  PawPrint,
   X,
 } from "lucide-react";
 import {
@@ -29,36 +27,27 @@ import {
 } from "@/app/(app)/notification-actions";
 
 /**
- * O visual e a mecânica do popover moram em @mylivepet/ui — o app do tutor usa
- * exatamente os mesmos. Aqui ficam só as peças que são deste app: o realtime
- * (que depende do Supabase client daqui), as server actions e os ícones.
+ * O visual e a mecânica do popover moram em @mylivepet/ui, compartilhados com
+ * o painel do petshop. Aqui ficam só as peças deste app: o realtime (que
+ * depende do Supabase client daqui), as server actions e os ícones.
+ *
+ * Os kinds do petshop não aparecem para o tutor — a RLS não os entrega —, então
+ * o mapa cobre só o que é endereçado a ele (0044).
  */
 const ICONS: Record<string, IconComponent> = {
-  // Mural da gestão
-  BOOKING_REQUESTED: CalendarClock,
-  BOOKING_CANCELLED: CalendarX2,
-  RESERVATION_CREATED: PackagePlus,
-  RESERVATION_CANCELLED: PackageX,
-  RESERVATION_ITEM_CANCELLED: PackageX,
-  FEEDBACK_RECEIVED: Star,
-  // Agenda do colaborador (0042)
-  APPOINTMENT_REQUESTED_FOR_ME: CalendarClock,
-  APPOINTMENT_ASSIGNED: CalendarCheck,
-  APPOINTMENT_CANCELLED_FOR_ME: CalendarX2,
-  APPOINTMENT_RESCHEDULED: CalendarSync,
+  BOOKING_CONFIRMED: CalendarCheck,
+  BOOKING_REJECTED: CalendarX2,
+  BOOKING_COMPLETED: PawPrint,
+  RESERVATION_READY: PackageCheck,
+  RESERVATION_REJECTED: PackageX,
 };
 
 export function NotificationBell({
   initial,
-  // Dois pontos de montagem (sidebar no desktop, barra no celular) e só um
-  // visível de cada vez. Cada um assina o seu canal: dois canais de mesmo nome
-  // brigariam pela mesma inscrição.
   channelName = "notificacoes",
-  emptyHint,
 }: {
   initial: NotificationItem[];
   channelName?: string;
-  emptyHint?: string;
 }) {
   const router = useRouter();
 
@@ -66,8 +55,6 @@ export function NotificationBell({
   const items = useRealtimeList(
     initial,
     fetcher,
-    // notification_read entra na lista para o contador zerar nas outras abas
-    // e nos outros aparelhos de quem acabou de ler.
     [{ table: "notification" }, { table: "notification_read" }],
     channelName,
   );
@@ -96,9 +83,10 @@ export function NotificationBell({
       closeIcon={X}
       onOpenItem={openItem}
       onMarkAllRead={markAll}
-      desktopFrom={768}
-      emptyHint={emptyHint}
-      enablePushLabel="Avisar neste aparelho mesmo com o painel fechado"
+      // O app do tutor troca de layout em lg, e não em md como o painel.
+      desktopFrom={1024}
+      emptyHint="Avisos do petshop sobre seus agendamentos e reservas aparecem aqui."
+      enablePushLabel="Avisar neste aparelho mesmo com o app fechado"
       push={{
         vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
         save: savePushSubscription,

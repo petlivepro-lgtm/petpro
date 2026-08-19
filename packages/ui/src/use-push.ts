@@ -1,28 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import {
-  savePushSubscription,
-  removePushSubscription,
-} from "@/app/(app)/notification-actions";
+import * as React from "react";
 
 /**
- * Estados possíveis do aviso do navegador, do ponto de vista do gestor:
+ * Estados do aviso do navegador, do ponto de vista de quem usa:
  *
- * - `checking`  — ainda perguntando ao navegador (evita piscar o botão)
+ * - `checking`    — ainda perguntando ao navegador (evita piscar o botão)
  * - `unsupported` — navegador sem Web Push, ou iPhone fora da tela de início
- * - `off`       — dá para ativar
- * - `on`        — este navegador está inscrito
- * - `blocked`   — a permissão foi negada; só nas configurações do navegador
+ * - `off`         — dá para ativar
+ * - `on`          — este aparelho está inscrito
+ * - `blocked`     — permissão negada; só nas configurações do navegador
  */
 export type PushState = "checking" | "unsupported" | "off" | "on" | "blocked";
 
-/**
- * A chave VAPID vem em base64url; o navegador quer os bytes crus.
- * O buffer é criado explicitamente para o tipo casar com `BufferSource` —
- * um Uint8Array genérico poderia estar sobre SharedArrayBuffer, que a API de
- * push não aceita.
- */
+export type SavePushResult = { ok: boolean; error?: string };
+
+export type UsePushOptions = {
+  /** Chave VAPID pública (NEXT_PUBLIC_...), em base64url. */
+  vapidPublicKey?: string;
+  /** Caminho do service worker servido na raiz do app. */
+  swPath?: string;
+  /** Server action que grava a inscrição. */
+  save: (input: {
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    userAgent?: string;
+  }) => Promise<SavePushResult>;
+  /** Server action que apaga a inscrição deste aparelho. */
+  remove: (endpoint: string) => Promise<void>;
+};
+
+/** A chave VAPID vem em base64url; o navegador quer os bytes crus. O buffer é
+ * criado explicitamente para o tipo casar com `BufferSource` — um Uint8Array
+ * genérico poderia estar sobre SharedArrayBuffer, que a API não aceita. */
 function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
   const raw = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
@@ -43,15 +54,20 @@ function supported(): boolean {
 /**
  * Liga/desliga o Web Push deste navegador.
  *
- * A inscrição é por aparelho, não por conta: o dono pode ativar no PC da loja
- * e no próprio celular, e cada um vira uma linha em push_subscription.
+ * A inscrição é por aparelho, não por conta: a mesma pessoa pode ativar no PC
+ * e no celular, e cada um vira uma linha em push_subscription.
  */
-export function usePush() {
-  const [state, setState] = useState<PushState>("checking");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function usePush({
+  vapidPublicKey,
+  swPath = "/sw.js",
+  save,
+  remove,
+}: UsePushOptions) {
+  const [state, setState] = React.useState<PushState>("checking");
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     let cancelled = false;
 
     (async () => {
@@ -64,7 +80,7 @@ export function usePush() {
         return;
       }
       try {
-        const reg = await navigator.serviceWorker.register("/sw.js");
+        const reg = await navigator.serviceWorker.register(swPath);
         const sub = await reg.pushManager.getSubscription();
         if (!cancelled) setState(sub ? "on" : "off");
       } catch {
@@ -75,9 +91,9 @@ export function usePush() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [swPath]);
 
-  const enable = useCallback(async () => {
+  const enable = React.useCallback(async () => {
     setError(null);
     setBusy(true);
     try {
@@ -88,13 +104,12 @@ export function usePush() {
       }
       if (permission !== "granted") return;
 
-      const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!key) {
+      if (!vapidPublicKey) {
         setError("Avisos do navegador não configurados no servidor.");
         return;
       }
 
-      const reg = await navigator.serviceWorker.register("/sw.js");
+      const reg = await navigator.serviceWorker.register(swPath);
       await navigator.serviceWorker.ready;
 
       // Reaproveita a inscrição existente: pedir outra ao mesmo navegador
@@ -103,7 +118,7 @@ export function usePush() {
         (await reg.pushManager.getSubscription()) ??
         (await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(key),
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
         }));
 
       const json = sub.toJSON();
@@ -112,7 +127,7 @@ export function usePush() {
         return;
       }
 
-      const result = await savePushSubscription({
+      const result = await save({
         endpoint: sub.endpoint,
         p256dh: json.keys.p256dh,
         auth: json.keys.auth,
@@ -128,16 +143,16 @@ export function usePush() {
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [save, swPath, vapidPublicKey]);
 
-  const disable = useCallback(async () => {
+  const disable = React.useCallback(async () => {
     setError(null);
     setBusy(true);
     try {
-      const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+      const reg = await navigator.serviceWorker.getRegistration(swPath);
       const sub = await reg?.pushManager.getSubscription();
       if (sub) {
-        await removePushSubscription(sub.endpoint);
+        await remove(sub.endpoint);
         await sub.unsubscribe();
       }
       setState("off");
@@ -146,7 +161,7 @@ export function usePush() {
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [remove, swPath]);
 
   return { state, busy, error, enable, disable };
 }

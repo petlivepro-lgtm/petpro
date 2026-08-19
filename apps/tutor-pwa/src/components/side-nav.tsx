@@ -13,10 +13,13 @@ export function SideNav({
   tenantName,
   tenantLogoUrl,
   clubinho,
+  bell,
 }: {
   tenantName: string;
   tenantLogoUrl: string | null;
   clubinho: boolean;
+  /** Sino de notificações, montado no layout (server component). */
+  bell?: React.ReactNode;
 }) {
   const pathname = usePathname();
   return (
@@ -28,12 +31,13 @@ export function SideNav({
             alt="MyLivePet"
             className="h-20 w-auto"
           />
-          <TenantBrand
-            className="mt-4"
-            name={tenantName}
-            logoUrl={tenantLogoUrl}
-          />
-          <ClubinhoBadge active={clubinho} className="mt-2" />
+          <div className="mt-4 flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <TenantBrand name={tenantName} logoUrl={tenantLogoUrl} />
+              <ClubinhoBadge active={clubinho} className="mt-2" />
+            </div>
+            {bell && <div className="-mr-1 shrink-0">{bell}</div>}
+          </div>
         </div>
         <nav className="space-y-1">
           {navItems.map((item) => {

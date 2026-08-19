@@ -7,6 +7,8 @@ import { BottomNav } from "@/components/bottom-nav";
 import { SideNav } from "@/components/side-nav";
 import { TenantBrand } from "@/components/tenant-brand";
 import { ClubinhoBadge } from "@/components/clubinho-badge";
+import { NotificationBell } from "@/components/notification-bell";
+import { listNotifications } from "./notification-actions";
 
 export default async function AppLayout({
   children,
@@ -30,12 +32,20 @@ export default async function AppLayout({
     await supabase.auth.signOut();
     redirect("/login?erro=acesso");
   }
+
+  // O que o petshop respondeu sobre os pedidos deste tutor (0044). A RPC já
+  // recorta por destinatário, então nunca vem nada de outra pessoa.
+  const notifications = await listNotifications();
+
   return (
     <div className="min-h-screen bg-surface lg:bg-surface-muted">
       <SideNav
         tenantName={ctx.tenantName}
         tenantLogoUrl={ctx.tenantLogoUrl}
         clubinho={ctx.clubinho}
+        bell={
+          <NotificationBell initial={notifications} channelName="notificacoes-desktop" />
+        }
       />
 
       <div className="lg:ml-64">
@@ -55,13 +65,16 @@ export default async function AppLayout({
             />
             <ClubinhoBadge active={ctx.clubinho} className="mt-1.5" />
           </div>
-          <Link
-            href="/configuracoes"
-            aria-label="Configurações"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-graphite hover:bg-surface-muted"
-          >
-            <Settings className="h-5 w-5" />
-          </Link>
+          <div className="flex shrink-0 items-center gap-1">
+            <NotificationBell initial={notifications} channelName="notificacoes-mobile" />
+            <Link
+              href="/configuracoes"
+              aria-label="Configurações"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-graphite hover:bg-surface-muted"
+            >
+              <Settings className="h-5 w-5" />
+            </Link>
+          </div>
         </header>
 
         <main className="px-5 pb-24 pt-4 lg:px-8 lg:pb-10 lg:pt-8">

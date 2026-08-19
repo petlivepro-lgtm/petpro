@@ -175,11 +175,15 @@ export async function confirmReservation(formData: FormData) {
   if (!parsed.success) return;
 
   const supabase = await createClient();
-  if (!(await canMutate(supabase))) return;
+  const tenant = await tenantIfCanMutate(supabase);
+  if (!tenant) return;
   await supabase
     .from("product_reservation")
     .update({ status: "PICKED" })
     .eq("id", parsed.data.reservation_id);
+
+  // "Está separado, pode buscar" — o aviso mais útil para o tutor.
+  await dispatchNotifications(tenant.tenantId);
 
   revalidatePath("/solicitacoes");
   revalidatePath("/produtos");
@@ -267,6 +271,10 @@ export async function rejectReservation(
     p_reason: parsed.data.reason,
   });
   if (error) return { ok: false, error: error.message };
+
+  // O motivo continua no banner dentro do app; isto alcança quem está fora.
+  const tenant = await getActiveTenant(supabase);
+  if (tenant) await dispatchNotifications(tenant.tenantId);
 
   revalidatePath("/solicitacoes");
   revalidatePath("/produtos");
