@@ -40,6 +40,7 @@ import {
 import { RatingStars } from "@mylivepet/ui";
 import { PetTabs } from "@/components/pet-tabs";
 import { PetPhotoDialog } from "@/components/pet-photo-dialog";
+import { EditPetDialog } from "@/components/edit-pet-dialog";
 import { AppointmentStatusBadge } from "@/components/status-badge";
 import { BehaviorReportView } from "@/components/behavior-report-view";
 import { fetchBehaviorSummaries, fetchPetBehaviorReports } from "@/lib/behavior";
@@ -128,6 +129,8 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
 
   // Agendar em nome do tutor é do balcão: VIEWER só lê e o colaborador não agenda.
   const canBook = !!tenant && !isCollaborator && canMutateAsRole(tenant.role);
+  // Corrigir o cadastro também é do balcão — canMutateAsRole já exclui COLLABORATOR.
+  const canEdit = !!tenant && canMutateAsRole(tenant.role);
 
   const [behaviorReports, summaries, bookingOptions] = await Promise.all([
     fetchPetBehaviorReports(supabase, petId),
@@ -244,7 +247,7 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
       {/* Cabeçalho da ficha */}
       <Card className="mb-6">
         <div className="flex flex-wrap items-start gap-4">
-          <div className="flex flex-col items-center gap-1.5">
+          <div className="relative shrink-0">
             <Avatar name={petName} src={pet.photo_path} size="xl" />
             <PetPhotoDialog petId={petId_} petName={petName} photoPath={pet.photo_path} />
           </div>
@@ -252,9 +255,28 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-heading text-2xl font-bold text-graphite">{pet.name}</h1>
               {emAtendimento && <StatusChip tone="brand">Em atendimento</StatusChip>}
+              {canEdit && tutor && (
+                <div className="ml-auto">
+                  <EditPetDialog
+                    pet={{
+                      id: petId_,
+                      tutor_id: tutor.id,
+                      name: petName,
+                      species: pet.species,
+                      breed: pet.breed,
+                      size: pet.size,
+                      birth_date: pet.birth_date,
+                      notes: pet.notes,
+                    }}
+                  />
+                </div>
+              )}
             </div>
             {meta && <p className="text-sm text-gray-neutral">{meta}</p>}
             {age && <p className="text-sm text-gray-neutral">{age}</p>}
+            {pet.notes && (
+              <p className="mt-2 whitespace-pre-line text-sm text-graphite">{pet.notes}</p>
+            )}
 
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
               {summary?.averageScore !== null && summary !== null ? (

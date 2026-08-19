@@ -28,12 +28,15 @@ export function PetPhotoDialog({
 
   return (
     <>
+      {/* Badge no canto do avatar — o pai precisa ser `relative`. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-neutral transition-colors hover:text-orange"
+        title={photoPath ? "Alterar foto" : "Adicionar foto"}
+        aria-label={`${photoPath ? "Alterar" : "Adicionar"} foto de ${petName}`}
+        className="absolute -bottom-1 -right-1 rounded-full border border-graphite/10 bg-surface p-1.5 text-gray-neutral shadow-card transition-colors hover:bg-orange/10 hover:text-orange"
       >
-        <Camera className="h-4 w-4" /> {photoPath ? "Alterar foto" : "Adicionar foto"}
+        <Camera className="h-3.5 w-3.5" />
       </button>
 
       <Dialog
