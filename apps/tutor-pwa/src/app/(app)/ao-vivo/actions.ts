@@ -8,6 +8,13 @@ import { signCameraReadJwt } from "@/lib/camera-jwt";
 
 const RECORDINGS_BUCKET = "recordings";
 const STREAM_TOKEN_TTL_SECONDS = 15 * 60;
+const RECORDING_URL_TTL_SECONDS = 60 * 60;
+/**
+ * Quantas partes o player assina de uma vez. O link vale 1h, então pré-assinar
+ * o atendimento inteiro faria as últimas partes vencerem antes de tocar — o
+ * player pede a parte atual e a seguinte, e renova conforme avança.
+ */
+const MAX_SIGNED_PARTS = 4;
 
 export type LiveStreamState =
   | { status: "none" } // nenhum atendimento do tutor em andamento com câmera
@@ -136,40 +143,75 @@ export async function grantCameraConsent(): Promise<{ ok: boolean; error?: strin
  * URL assinada (1h) para assistir a uma gravação. A posse é validada pela RLS
  * (recording_tutor_select) e o acesso fica no audit_log ("recording.view").
  */
-export async function getRecordingUrl(
-  recordingId: string,
-): Promise<{ url?: string; error?: string }> {
+export async function getRecordingUrls(
+  recordingIds: string[],
+): Promise<{ urls?: Record<string, string>; error?: string }> {
+  if (recordingIds.length === 0) return { urls: {} };
+  const ids = recordingIds.slice(0, MAX_SIGNED_PARTS);
+
   const supabase = await createClient();
   const ctx = await getTutorContext(supabase);
   if (!ctx) return { error: "Sessão inválida" };
 
   // Consulta com o client do usuário: a RLS só devolve gravações dos
   // atendimentos do próprio tutor.
-  const { data: recording } = await supabase
+  const { data: recordings } = await supabase
     .from("recording")
     .select("id, storage_path, retain_until")
-    .eq("id", recordingId)
-    .maybeSingle();
-  if (!recording) return { error: "Gravação não encontrada" };
-  if (recording.retain_until && new Date(recording.retain_until) < new Date()) {
-    return { error: "Gravação expirada" };
-  }
+    .in("id", ids);
+  if (!recordings?.length) return { error: "Gravação não encontrada" };
+
+  const now = new Date();
+  const live = recordings.filter((r) => !r.retain_until || new Date(r.retain_until) >= now);
+  if (live.length === 0) return { error: "Gravação expirada" };
 
   const admin = createAdminClient();
   const { data, error } = await admin.storage
     .from(RECORDINGS_BUCKET)
-    .createSignedUrl(recording.storage_path, 60 * 60);
+    .createSignedUrls(
+      live.map((r) => r.storage_path),
+      RECORDING_URL_TTL_SECONDS,
+    );
   if (error || !data) return { error: "Não foi possível gerar o link" };
+
+  const idByPath = new Map(live.map((r) => [r.storage_path, r.id]));
+  const urls: Record<string, string> = {};
+  for (const signed of data) {
+    const id = signed.path ? idByPath.get(signed.path) : undefined;
+    if (id && signed.signedUrl) urls[id] = signed.signedUrl;
+  }
+  if (Object.keys(urls).length === 0) return { error: "Não foi possível gerar o link" };
+
+  return { urls };
+}
+
+/**
+ * Registra que o tutor assistiu esta parte. Fica fora de `getRecordingUrls` de
+ * propósito: o player pré-assina a parte seguinte para emendar sem engasgo, e
+ * a trilha de auditoria precisa dizer o que foi visto — não o que foi
+ * carregado por precaução.
+ */
+export async function logRecordingView(recordingId: string): Promise<void> {
+  const supabase = await createClient();
+  const ctx = await getTutorContext(supabase);
+  if (!ctx) return;
+
+  // Confere pela RLS que a gravação é mesmo de um atendimento deste tutor
+  // antes de escrever com o service role.
+  const { data: recording } = await supabase
+    .from("recording")
+    .select("id")
+    .eq("id", recordingId)
+    .maybeSingle();
+  if (!recording) return;
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  await admin.from("audit_log").insert({
+  await createAdminClient().from("audit_log").insert({
     tenant_id: ctx.tenantId,
     actor_id: user?.id ?? null,
     action: "recording.view",
     target: `recording:${recording.id}`,
   });
-
-  return { url: data.signedUrl };
 }

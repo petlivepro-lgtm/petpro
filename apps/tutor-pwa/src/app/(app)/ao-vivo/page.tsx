@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
 import { LiveSection } from "@/components/live-section";
-import { RecordingsList, type RecordingRow } from "@/components/recordings-list";
+import { RecordingsList } from "@/components/recordings-list";
+import { RECORDING_FETCH_LIMIT, RECORDING_SELECT, groupRecordings } from "@/lib/recordings";
 import { getLiveStream } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -13,30 +14,16 @@ export default async function AoVivoPage() {
 
   const initial = await getLiveStream();
 
-  // Gravações ainda dentro da retenção (RLS: só as dos atendimentos do tutor).
+  // Gravações ainda dentro da retenção (RLS: só as dos atendimentos do tutor),
+  // agrupadas por atendimento — ver lib/recordings.
   const { data } = await supabase
     .from("recording")
-    .select(
-      "id, created_at, retain_until, duration_sec, appointment:appointment_id(pet:pet_id(name), service_type(name))",
-    )
+    .select(RECORDING_SELECT)
     .gt("retain_until", new Date().toISOString())
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(RECORDING_FETCH_LIMIT);
 
-  const recordings: RecordingRow[] = (data ?? []).map((r) => {
-    const appt = r.appointment as unknown as {
-      pet: { name: string } | null;
-      service_type: { name: string } | null;
-    } | null;
-    return {
-      id: r.id,
-      created_at: r.created_at,
-      retain_until: r.retain_until,
-      duration_sec: r.duration_sec,
-      petName: appt?.pet?.name ?? "Seu pet",
-      serviceName: appt?.service_type?.name ?? "Atendimento",
-    };
-  });
+  const recordings = groupRecordings(data);
 
   return (
     <div className="space-y-5 lg:max-w-3xl">
