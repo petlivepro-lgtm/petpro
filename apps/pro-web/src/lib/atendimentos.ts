@@ -5,7 +5,7 @@ import type { AppointmentStatus } from "@mylivepet/types";
 // Colunas da tela de Atendimentos — reutilizadas no render inicial (server) e no
 // refetch em tempo real (client), garantindo o mesmo shape nos dois lados.
 export const ATENDIMENTO_SELECT =
-  "id, status, origin, scheduled_at, started_at, finished_at, pet(id, name, photo_path), tutor(full_name), service_type(name, price_cents), collaborator(id, full_name)";
+  "id, status, origin, scheduled_at, started_at, finished_at, pet(id, name, photo_path), tutor(full_name), service_type(id, name, price_cents, duration_min, color_hex), collaborator(id, full_name)";
 
 type RawAtendimento = {
   id: string;
@@ -16,7 +16,13 @@ type RawAtendimento = {
   finished_at: string | null;
   pet: { id: string; name: string; photo_path: string | null } | null;
   tutor: { full_name: string } | null;
-  service_type: { name: string; price_cents: number } | null;
+  service_type: {
+    id: string;
+    name: string;
+    price_cents: number;
+    duration_min: number;
+    color_hex: string | null;
+  } | null;
   collaborator: { id: string; full_name: string } | null;
 };
 
@@ -31,9 +37,14 @@ export type AtendimentoRow = {
   petName: string;
   petPhoto: string | null;
   tutorName: string | null;
+  serviceId: string | null;
   serviceName: string;
   /** Preço do serviço, para prever o líquido ao finalizar (0036). */
   servicePriceCents: number | null;
+  /** Duração cadastrada, usada para desenhar o card na grade da agenda. */
+  serviceDurationMin: number | null;
+  /** Cor escolhida no cadastro do serviço; nula = a UI deriva do id. */
+  serviceColorHex: string | null;
   collaboratorId: string | null;
   collaboratorName: string | null;
 };
@@ -50,8 +61,11 @@ export function mapAtendimentos(rows: RawAtendimento[]): AtendimentoRow[] {
     petName: a.pet?.name ?? "Pet",
     petPhoto: a.pet?.photo_path ?? null,
     tutorName: a.tutor?.full_name ?? null,
+    serviceId: a.service_type?.id ?? null,
     serviceName: a.service_type?.name ?? "Serviço",
     servicePriceCents: a.service_type?.price_cents ?? null,
+    serviceDurationMin: a.service_type?.duration_min ?? null,
+    serviceColorHex: a.service_type?.color_hex ?? null,
     collaboratorId: a.collaborator?.id ?? null,
     collaboratorName: a.collaborator?.full_name ?? null,
   }));
@@ -148,42 +162,6 @@ export async function fetchAtendimentos(
   for (const row of all) byId.set(row.id, row);
 
   return mapAtendimentos([...byId.values()]);
-}
-
-// ---- Abas ------------------------------------------------------------------
-
-export type Bucket = "hoje" | "proximos" | "historico";
-
-export const BUCKET_LABEL: Record<Bucket, string> = {
-  hoje: "Hoje",
-  proximos: "Próximos",
-  historico: "Histórico",
-};
-
-export function isBucket(v: string | undefined): v is Bucket {
-  return v === "hoje" || v === "proximos" || v === "historico";
-}
-
-const ACTIVE_STATUSES: AppointmentStatus[] = [
-  "REQUESTED",
-  "CONFIRMED",
-  "CHECKED_IN",
-];
-
-/**
- * Hoje: agendado para o dia corrente ou em andamento (não some se atrasou).
- * Próximos: futuro (ou sem data) e ainda ativo. Histórico: o resto.
- */
-export function bucketOf(row: AtendimentoRow, todayKey: string): Bucket {
-  if (row.status === "IN_PROGRESS") return "hoje";
-  if (!row.scheduledAt) {
-    return ACTIVE_STATUSES.includes(row.status) ? "proximos" : "historico";
-  }
-  const key = dayKey(new Date(row.scheduledAt));
-  if (key === todayKey) return "hoje";
-  if (key > todayKey)
-    return ACTIVE_STATUSES.includes(row.status) ? "proximos" : "historico";
-  return "historico";
 }
 
 // ---- Agrupamento por dia ---------------------------------------------------

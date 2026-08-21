@@ -1,7 +1,7 @@
 import {
   LayoutDashboard,
   CalendarClock,
-  ClipboardList,
+  CalendarDays,
   Users,
   UsersRound,
   Package,
@@ -39,8 +39,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/solicitacoes", label: "Solicitações", icon: CalendarClock, roles: MANAGEMENT_ROLES },
   {
     href: "/atendimentos",
-    label: "Atendimentos",
-    icon: ClipboardList,
+    label: "Agenda",
+    icon: CalendarDays,
     roles: [...MANAGEMENT_ROLES, "COLLABORATOR"],
   },
   { href: "/pets", label: "Pets", icon: PawPrint, roles: ["COLLABORATOR"] },

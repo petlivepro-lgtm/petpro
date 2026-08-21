@@ -30,6 +30,8 @@ function parse(formData: FormData) {
     price_cents: toCents(formData.get("price")),
     duration_min: toInt(formData.get("duration_min")),
     active: formData.get("active") === "on",
+    // Cor do serviço na agenda; vazio = a UI deriva do id.
+    color_hex: str(formData.get("color_hex")),
     // Ids da biblioteca de etapas, na ordem enviada pelo dialog.
     step_ids: formData
       .getAll("step_ids")
@@ -66,6 +68,7 @@ export async function createServiceType(_prev: FormState, formData: FormData): P
     price_cents: parsed.data.price_cents,
     duration_min: parsed.data.duration_min,
     active: parsed.data.active ?? true,
+    color_hex: parsed.data.color_hex ?? null,
     step_ids: parsed.data.step_ids ?? [],
   });
   if (error) return { ok: false, error: stepError(error) };
@@ -92,6 +95,7 @@ export async function updateServiceType(_prev: FormState, formData: FormData): P
       price_cents: parsed.data.price_cents,
       duration_min: parsed.data.duration_min,
       active: parsed.data.active ?? true,
+      color_hex: parsed.data.color_hex ?? null,
       step_ids: parsed.data.step_ids ?? [],
     })
     .eq("id", id);

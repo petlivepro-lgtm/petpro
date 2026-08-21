@@ -5,6 +5,7 @@ import { Clock, ListChecks, Scissors, SearchX } from "lucide-react";
 import { Button, Card, EmptyState, StatusChip } from "@mylivepet/ui";
 import { formatBRL, type ServiceStepTemplate } from "@mylivepet/types";
 import { ServiceDialog, type ServiceRow } from "@/components/service-dialog";
+import { serviceColor } from "@/lib/agenda-colors";
 import { DeleteServiceDialog } from "@/components/delete-service-dialog";
 import {
   CatalogToolbar,
@@ -93,8 +94,16 @@ function ServicesCards({
       {services.map((service) => (
         <Card key={service.id} className="flex flex-col">
           <div className="flex items-start justify-between gap-2">
-            <p className="font-heading font-semibold text-graphite">
-              {service.name}
+            <p className="flex min-w-0 items-center gap-2 font-heading font-semibold text-graphite">
+              {/* A mesma cor que identifica o serviço na agenda. */}
+              <span
+                aria-hidden
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{
+                  background: serviceColor(service.id, service.color_hex),
+                }}
+              />
+              <span className="truncate">{service.name}</span>
             </p>
             <StatusChip tone={service.active ? "success" : "danger"}>
               {service.active ? "Ativo" : "Inativo"}
@@ -168,7 +177,13 @@ function ServicesTable({
               >
                 <td className="px-5 py-4">
                   <div className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange/10 text-orange">
+                    <span
+                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                      style={{
+                        background: `${serviceColor(service.id, service.color_hex)}1A`,
+                        color: serviceColor(service.id, service.color_hex),
+                      }}
+                    >
                       <Scissors className="h-4 w-4" />
                     </span>
                     <div>

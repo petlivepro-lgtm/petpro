@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { cn } from "./cn";
+import { ColorPickerPopover } from "./color-picker-popover";
+import { isLightHex, normalizeHex } from "./color-utils";
 
 export type ColorOption = {
   /** Nome exibido ao lado do círculo e gravado no banco. */
@@ -18,6 +20,18 @@ type Props = {
   allowEmpty?: boolean;
   /** Cores que existem no catálogo mas estão indisponíveis (sem estoque). */
   disabledColors?: readonly string[];
+  /**
+   * Acrescenta no fim da fileira um botão que abre o seletor livre. Opt-in
+   * porque nem toda cor é um hex solto: a variação de produto guarda nome +
+   * hex juntos e o app do tutor escolhe pelo nome, então lá cor livre criaria
+   * uma variação sem legenda.
+   */
+  allowCustom?: boolean;
+  /** Cor escolhida fora da paleta, em "#RRGGBB". */
+  customValue?: string | null;
+  onCustomChange?: (hex: string) => void;
+  /** Texto da prévia dentro do seletor (o nome do serviço). */
+  customPreviewLabel?: string;
   className?: string;
   "aria-label"?: string;
 };
@@ -35,9 +49,22 @@ export function ColorSwatchInput({
   onChange,
   allowEmpty = true,
   disabledColors,
+  allowCustom = false,
+  customValue,
+  onCustomChange,
+  customPreviewLabel,
   className,
   "aria-label": ariaLabel,
 }: Props) {
+  const [pickerOpen, setPickerOpen] = React.useState(false);
+  const customRef = React.useRef<HTMLButtonElement>(null);
+  const custom = customValue ? normalizeHex(customValue) : null;
+  // A cor livre só fica "acesa" quando não é nenhuma da paleta — senão o
+  // swatch nomeado e o botão apareceriam selecionados ao mesmo tempo.
+  const customSelected =
+    custom != null &&
+    !options.some((o) => o.hex.toUpperCase() === custom);
+
   return (
     <div
       role="radiogroup"
@@ -85,7 +112,7 @@ export function ColorSwatchInput({
                 <svg
                   viewBox="0 0 20 20"
                   fill="none"
-                  className={cn("h-3 w-3", isLight(option.hex) && "text-graphite")}
+                  className={cn("h-3 w-3", isLightHex(option.hex) && "text-graphite")}
                 >
                   <path
                     d="m5 10.5 3.5 3.5L15 7"
@@ -101,20 +128,70 @@ export function ColorSwatchInput({
           </button>
         );
       })}
+
+      {allowCustom && (
+        <>
+          <button
+            ref={customRef}
+            type="button"
+            onClick={() => setPickerOpen((v) => !v)}
+            aria-haspopup="dialog"
+            aria-expanded={pickerOpen}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 text-xs font-medium transition-colors",
+              customSelected
+                ? "border-orange bg-orange/10 text-graphite"
+                : "border-graphite/15 bg-surface text-graphite hover:border-orange/40",
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-graphite/20 text-white",
+                customSelected && "ring-2 ring-orange ring-offset-1",
+              )}
+              style={
+                customSelected
+                  ? { backgroundColor: custom! }
+                  : {
+                      backgroundImage:
+                        "conic-gradient(#DC2626,#FACC15,#16A34A,#2563EB,#7C3AED,#DC2626)",
+                    }
+              }
+            >
+              {customSelected && (
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  className={cn("h-3 w-3", isLightHex(custom!) && "text-graphite")}
+                >
+                  <path
+                    d="m5 10.5 3.5 3.5L15 7"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </span>
+            {customSelected ? custom : "Outra cor"}
+          </button>
+
+          <ColorPickerPopover
+            open={pickerOpen}
+            anchorRef={customRef}
+            value={custom}
+            previewLabel={customPreviewLabel}
+            onClose={() => setPickerOpen(false)}
+            onChange={(hex) => onCustomChange?.(hex)}
+          />
+        </>
+      )}
     </div>
   );
 }
 
 function isMulticolor(name: string): boolean {
   return name.toLowerCase() === "colorido";
-}
-
-/** Luminância aproximada: define se o check vai branco ou grafite. */
-function isLight(hex: string): boolean {
-  const v = hex.replace("#", "");
-  if (v.length !== 6) return false;
-  const r = parseInt(v.slice(0, 2), 16);
-  const g = parseInt(v.slice(2, 4), 16);
-  const b = parseInt(v.slice(4, 6), 16);
-  return (r * 299 + g * 587 + b * 114) / 1000 > 160;
 }

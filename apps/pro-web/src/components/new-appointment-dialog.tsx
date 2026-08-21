@@ -40,6 +40,9 @@ export function NewAppointmentDialog({
   tutors = [],
   fixedPet,
   trigger = "button",
+  open: controlledOpen,
+  onOpenChange,
+  defaultSlot,
 }: {
   tenantId: string;
   services: ServiceOption[];
@@ -48,10 +51,18 @@ export function NewAppointmentDialog({
   tutors?: BookingTutor[];
   /** Ficha do pet: cliente e pet já definidos. */
   fixedPet?: { id: string; name: string };
-  trigger?: "button" | "tile";
+  /** "none" para quem já tem o próprio gatilho e controla `open`. */
+  trigger?: "button" | "tile" | "none";
+  /** Abre o diálogo de fora (célula vazia da agenda). Sem isso, é interno. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** "YYYY-MM-DDTHH:mm" do horário clicado na agenda. */
+  defaultSlot?: string;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
 
   const [tutorId, setTutorId] = useState("");
   const [petId, setPetId] = useState(fixedPet?.id ?? "");
@@ -97,6 +108,16 @@ export function NewAppointmentDialog({
     router.refresh();
   }, [state.ok, router, fixedPet?.id]);
 
+  // Clicou numa célula vazia da agenda: o diálogo já abre no dia certo, e o
+  // horário exato fica pronto no campo de encaixe — a grade do profissional
+  // continua mandando em quem não marcar "encaixe".
+  useEffect(() => {
+    if (!open || !defaultSlot) return;
+    setDate(defaultSlot.slice(0, 10));
+    setFreeSlot(defaultSlot);
+    setSlot("");
+  }, [open, defaultSlot]);
+
   const toggle = (id: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -107,7 +128,7 @@ export function NewAppointmentDialog({
 
   return (
     <>
-      {trigger === "tile" ? (
+      {trigger === "none" ? null : trigger === "tile" ? (
         <ActionTile
           label="Atendimento"
           icon={<Stethoscope className="h-6 w-6" />}

@@ -14,6 +14,16 @@ export { FileInput } from "./file-input";
 export { PhotoGalleryInput } from "./photo-gallery-input";
 export { PhotoGallery } from "./photo-gallery";
 export { ColorSwatchInput, type ColorOption } from "./color-swatch-input";
+export { ColorPickerPopover } from "./color-picker-popover";
+export {
+  hexToHsv,
+  hsvToHex,
+  isLightHex,
+  luminance,
+  normalizeHex,
+  readableInk,
+  type Hsv,
+} from "./color-utils";
 export { ChoiceChips, type ChoiceOption } from "./choice-chips";
 export { RatingStars } from "./rating-stars";
 export { ScaleSelector } from "./scale-selector";

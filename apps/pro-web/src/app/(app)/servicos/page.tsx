@@ -11,7 +11,7 @@ export default async function ServicosPage() {
   const [{ data }, { data: stepRows }] = await Promise.all([
     supabase
       .from("service_type")
-      .select("id, name, description, price_cents, duration_min, active, step_ids")
+      .select("id, name, description, price_cents, duration_min, active, color_hex, step_ids")
       .order("name"),
     supabase
       .from("service_step_template")

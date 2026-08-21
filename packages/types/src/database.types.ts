@@ -1701,6 +1701,7 @@ export type Database = {
       service_type: {
         Row: {
           active: boolean
+          color_hex: string | null
           created_at: string
           default_steps: string[]
           description: string | null
@@ -1713,6 +1714,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          color_hex?: string | null
           created_at?: string
           default_steps?: string[]
           description?: string | null
@@ -1725,6 +1727,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          color_hex?: string | null
           created_at?: string
           default_steps?: string[]
           description?: string | null

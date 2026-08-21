@@ -311,6 +311,11 @@ export const serviceTypeInput = z.object({
   price_cents: z.number().int().min(0),
   duration_min: z.number().int().positive("Informe a duração em minutos"),
   active: z.boolean().optional(),
+  // Cor do serviço na agenda, em "#RRGGBB". Ausente = a UI deriva do id.
+  color_hex: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Cor inválida")
+    .optional(),
   // Etapas escolhidas na biblioteca, na ordem em que viram checklist.
   step_ids: z
     .array(z.string().uuid())

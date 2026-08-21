@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
 import { BottomNav } from "@/components/bottom-nav";
@@ -8,6 +6,7 @@ import { SideNav } from "@/components/side-nav";
 import { TenantBrand } from "@/components/tenant-brand";
 import { ClubinhoBadge } from "@/components/clubinho-badge";
 import { NotificationBell } from "@/components/notification-bell";
+import { ProfileMenu } from "@/components/profile-menu";
 import { listNotifications } from "./notification-actions";
 
 export default async function AppLayout({
@@ -67,13 +66,9 @@ export default async function AppLayout({
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <NotificationBell initial={notifications} channelName="notificacoes-mobile" />
-            <Link
-              href="/configuracoes"
-              aria-label="Configurações"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-graphite hover:bg-surface-muted"
-            >
-              <Settings className="h-5 w-5" />
-            </Link>
+            {/* Conta: Configurações e Sair. No desktop os dois já estão no pé
+                da barra lateral. */}
+            <ProfileMenu fullName={ctx.fullName} />
           </div>
         </header>
 

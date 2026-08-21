@@ -7,6 +7,7 @@ import { ArrowDown, ArrowUp, ChevronRight, Pencil, Plus, Trash2 } from "lucide-r
 import {
   Button,
   Checkbox,
+  ColorSwatchInput,
   CurrencyInput,
   Dialog,
   Input,
@@ -19,6 +20,7 @@ import {
   updateServiceType,
   type FormState,
 } from "@/app/(app)/servicos/actions";
+import { AGENDA_COLORS, colorNameOf } from "@/lib/agenda-colors";
 
 export type ServiceRow = {
   id: string;
@@ -27,6 +29,8 @@ export type ServiceRow = {
   price_cents: number;
   duration_min: number;
   active: boolean;
+  /** Cor do serviço na agenda, em "#RRGGBB"; nula = derivada do id. */
+  color_hex: string | null;
   /** Etapas escolhidas na biblioteca do petshop (Configurações → Etapas). */
   step_ids: string[];
 };
@@ -42,6 +46,12 @@ export function ServiceDialog({
   const isEdit = !!service;
   const [open, setOpen] = useState(false);
   const [stepIds, setStepIds] = useState<string[]>(service?.step_ids ?? []);
+  // O hex é a fonte da verdade, não o nome da paleta: com o seletor livre
+  // existe cor sem nome nenhum. O nome é derivado só para acender o swatch
+  // certo — fora da paleta ele vem nulo, que é o sinal de "é uma cor livre".
+  const [colorHex, setColorHex] = useState<string | null>(
+    service?.color_hex ?? null,
+  );
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     isEdit ? updateServiceType : createServiceType,
     { ok: false },
@@ -54,10 +64,14 @@ export function ServiceDialog({
     }
   }, [state, router]);
 
-  // Sincroniza os passos com o serviço sempre que o diálogo é aberto.
+  // Sincroniza os passos e a cor com o serviço sempre que o diálogo é aberto.
   useEffect(() => {
-    if (open) setStepIds(service?.step_ids ?? []);
+    if (!open) return;
+    setStepIds(service?.step_ids ?? []);
+    setColorHex(service?.color_hex ?? null);
   }, [open, service]);
+
+  const colorName = useMemo(() => colorNameOf(colorHex), [colorHex]);
 
   const byId = useMemo(
     () => new Map(library.map((s) => [s.id, s] as const)),
@@ -142,6 +156,27 @@ export function ServiceDialog({
                 placeholder="60"
               />
             </div>
+          </div>
+
+          <div>
+            <Label>Cor na agenda</Label>
+            <p className="mb-2 text-xs text-gray-neutral">
+              Identifica o serviço no calendário e na legenda. Sem escolher,
+              a agenda usa uma cor automática, sempre a mesma.
+            </p>
+            {colorHex && (
+              <input type="hidden" name="color_hex" value={colorHex} />
+            )}
+            <ColorSwatchInput
+              aria-label="Cor do serviço na agenda"
+              options={AGENDA_COLORS}
+              value={colorName}
+              onChange={(option) => setColorHex(option?.hex ?? null)}
+              allowCustom
+              customValue={colorHex}
+              onCustomChange={setColorHex}
+              customPreviewLabel={service?.name || "Serviço"}
+            />
           </div>
 
           <Checkbox
