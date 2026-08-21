@@ -25,11 +25,36 @@ export const tutorInput = z.object({
       "CPF deve ter 11 dígitos",
     ),
   notes: z.string().optional(),
-  // Assinante do Clubinho (pacote de serviços pago). Chega da action já
-  // convertido para booleano — o FormData de um checkbox devolve "on"/null.
-  clubinho: z.boolean().optional().default(false),
+  // O Clubinho saiu daqui: virou assinatura por pet (0047) e `tutor.clubinho`
+  // passou a ser um cache derivado que só o banco escreve.
 });
 export type TutorInput = z.infer<typeof tutorInput>;
+
+function isValidIsoDate(value: string) {
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function todayInBrazil() {
+  const parts = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
+export const petBirthDateInput = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de nascimento inválida")
+  .refine(isValidIsoDate, "Data de nascimento inválida")
+  .refine(
+    (value) => value <= todayInBrazil(),
+    "A data de nascimento não pode estar no futuro",
+  );
 
 export const petInput = z.object({
   tutor_id: z.string().uuid(),
@@ -37,7 +62,7 @@ export const petInput = z.object({
   species: z.string().optional(),
   breed: z.string().optional(),
   size: z.enum(["pequeno", "medio", "grande"]).optional(),
-  birth_date: z.string().optional(),
+  birth_date: petBirthDateInput.optional(),
   notes: z.string().optional(),
 });
 export type PetInput = z.infer<typeof petInput>;

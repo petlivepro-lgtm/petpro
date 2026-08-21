@@ -1,6 +1,7 @@
 export * from "./enums";
 export * from "./dto";
 export * from "./behavior";
+export * from "./clubinho";
 export * from "./finance";
 export * from "./phone";
 export * from "./cpf";

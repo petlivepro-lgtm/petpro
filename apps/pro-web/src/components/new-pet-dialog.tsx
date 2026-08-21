@@ -66,7 +66,7 @@ export function NewPetDialog({ tutorId, tutorName }: { tutorId: string; tutorNam
           </div>
           <div>
             <Label htmlFor="birth_date">Nascimento</Label>
-            <DatePicker id="birth_date" name="birth_date" mode="date" />
+            <DatePicker id="birth_date" name="birth_date" mode="date" max="today" />
           </div>
           <div>
             <Label htmlFor="photo">Foto</Label>

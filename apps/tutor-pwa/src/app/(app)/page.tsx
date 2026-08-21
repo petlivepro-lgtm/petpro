@@ -9,6 +9,8 @@ import { REJECTION_NOTICE_SELECT, rejectedSince } from "@/lib/produtos";
 import { fetchBehaviorSummaries } from "@/lib/behavior";
 import { PetsRow } from "@/components/pets-row";
 import { RejectionNotices, type RejectionNotice } from "@/components/rejection-notice";
+import { ClubinhoCard } from "@/components/clubinho-card";
+import { loadMyClubinho, syncClubinhoPeriods } from "@/lib/clubinho";
 
 function formatDate(v: string | null) {
   if (!v) return "—";
@@ -52,6 +54,12 @@ export default async function HomePage({
     .is("rejection_seen_at", null)
     .order("rejected_at", { ascending: false });
 
+  // Clubinho dos pets. A renovação roda antes da leitura porque esta é a tela
+  // onde o tutor confere o saldo — sem isso ele veria o ciclo vencido até
+  // alguém do petshop abrir o painel.
+  await syncClubinhoPeriods(supabase, ctx.tenantId);
+  const clubinho = await loadMyClubinho(supabase, ctx.tutorId);
+
   // Média do boletim para o card de cada pet; o boletim completo vive na ficha.
   const summaries = await fetchBehaviorSummaries(
     supabase,
@@ -85,6 +93,22 @@ export default async function HomePage({
         <h1 className="font-heading text-xl font-bold text-graphite lg:text-2xl">Meus pets</h1>
         <PetsRow pets={petRows} selectedId={selected?.id ?? null} />
       </section>
+
+      {clubinho.length > 0 && (
+        <section>
+          <h2 className="font-heading text-lg font-semibold text-graphite">
+            Meu Clubinho
+          </h2>
+          <p className="text-sm text-gray-neutral">
+            Quanto ainda cabe no ciclo de cada pet.
+          </p>
+          <div className="mt-3 flex snap-x gap-3 overflow-x-auto pb-1">
+            {clubinho.map((subscription) => (
+              <ClubinhoCard key={subscription.id} subscription={subscription} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="font-heading text-lg font-semibold text-graphite">

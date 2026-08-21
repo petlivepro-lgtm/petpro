@@ -6,18 +6,15 @@ import { LogOut, Settings } from "lucide-react";
 import { cn, Button } from "@mylivepet/ui";
 import { navItems } from "./nav-items";
 import { TenantBrand } from "./tenant-brand";
-import { ClubinhoBadge } from "./clubinho-badge";
 import { signOut } from "@/app/(app)/actions";
 
 export function SideNav({
   tenantName,
   tenantLogoUrl,
-  clubinho,
   bell,
 }: {
   tenantName: string;
   tenantLogoUrl: string | null;
-  clubinho: boolean;
   /** Sino de notificações, montado no layout (server component). */
   bell?: React.ReactNode;
 }) {
@@ -34,7 +31,6 @@ export function SideNav({
           <div className="mt-4 flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <TenantBrand name={tenantName} logoUrl={tenantLogoUrl} />
-              <ClubinhoBadge active={clubinho} className="mt-2" />
             </div>
             {bell && <div className="-mr-1 shrink-0">{bell}</div>}
           </div>

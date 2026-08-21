@@ -4,7 +4,6 @@ import { getTutorContext } from "@/lib/tutor-context";
 import { BottomNav } from "@/components/bottom-nav";
 import { SideNav } from "@/components/side-nav";
 import { TenantBrand } from "@/components/tenant-brand";
-import { ClubinhoBadge } from "@/components/clubinho-badge";
 import { NotificationBell } from "@/components/notification-bell";
 import { ProfileMenu } from "@/components/profile-menu";
 import { listNotifications } from "./notification-actions";
@@ -41,7 +40,6 @@ export default async function AppLayout({
       <SideNav
         tenantName={ctx.tenantName}
         tenantLogoUrl={ctx.tenantLogoUrl}
-        clubinho={ctx.clubinho}
         bell={
           <NotificationBell initial={notifications} channelName="notificacoes-desktop" />
         }
@@ -62,7 +60,6 @@ export default async function AppLayout({
               name={ctx.tenantName}
               logoUrl={ctx.tenantLogoUrl}
             />
-            <ClubinhoBadge active={ctx.clubinho} className="mt-1.5" />
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <NotificationBell initial={notifications} channelName="notificacoes-mobile" />

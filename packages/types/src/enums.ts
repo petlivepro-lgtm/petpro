@@ -209,6 +209,7 @@ export const FINANCE_SOURCES = [
   "APPOINTMENT",
   "RESERVATION",
   "REFUND",
+  "CLUBINHO",
 ] as const;
 export type FinanceSource = (typeof FINANCE_SOURCES)[number];
 
@@ -222,12 +223,18 @@ export const FINANCE_MOVEMENT_KIND_LABEL: Record<FinanceMovementKind, string> =
     REFUND: "Estorno",
   };
 
-export const FINANCE_ORIGINS = ["SERVICE", "PRODUCT", "MANUAL"] as const;
+export const FINANCE_ORIGINS = [
+  "SERVICE",
+  "PRODUCT",
+  "CLUBINHO",
+  "MANUAL",
+] as const;
 export type FinanceOrigin = (typeof FINANCE_ORIGINS)[number];
 
 export const FINANCE_ORIGIN_LABEL: Record<FinanceOrigin, string> = {
   SERVICE: "Serviço",
   PRODUCT: "Produto",
+  CLUBINHO: "Clubinho",
   MANUAL: "Manual",
 };
 
@@ -235,6 +242,7 @@ export const FINANCE_ORIGIN_LABEL: Record<FinanceOrigin, string> = {
 export const FINANCE_CATEGORIES = [
   "servico",
   "produto",
+  "clubinho",
   "salario",
   "aluguel",
   "insumo",
@@ -245,6 +253,7 @@ export type FinanceCategory = (typeof FINANCE_CATEGORIES)[number];
 export const FINANCE_CATEGORY_LABEL: Record<FinanceCategory, string> = {
   servico: "Serviço",
   produto: "Produto",
+  clubinho: "Clubinho",
   salario: "Salário",
   aluguel: "Aluguel",
   insumo: "Insumo",
@@ -325,3 +334,89 @@ export const RESERVATION_STATUS_LABEL: Record<ReservationStatus, string> = {
   CANCELLED: "Cancelado",
   REJECTED: "Recusado",
 };
+
+// --- Clubinho (supabase/migrations/0047_clubinho_plans.sql) ---
+
+/**
+ * Intervalo em que a mensalidade é cobrada e os créditos voltam a encher.
+ * Não é a frequência das idas ao banho: o "plano quinzenal" que o petshop
+ * vende (banho a cada 15 dias) é um plano MENSAL com 2 banhos.
+ */
+export const CLUBINHO_CYCLES = [
+  "WEEKLY",
+  "BIWEEKLY",
+  "MONTHLY",
+  "BIMONTHLY",
+  "QUARTERLY",
+  "SEMIANNUAL",
+  "ANNUAL",
+  "CUSTOM",
+] as const;
+export type ClubinhoCycle = (typeof CLUBINHO_CYCLES)[number];
+
+export const CLUBINHO_CYCLE_LABEL: Record<ClubinhoCycle, string> = {
+  WEEKLY: "Semanal",
+  BIWEEKLY: "Quinzenal",
+  MONTHLY: "Mensal",
+  BIMONTHLY: "Bimestral",
+  QUARTERLY: "Trimestral",
+  SEMIANNUAL: "Semestral",
+  ANNUAL: "Anual",
+  CUSTOM: "Personalizado",
+};
+
+/** Como o ciclo aparece na frase "renova a cada ...". */
+export const CLUBINHO_CYCLE_EVERY: Record<ClubinhoCycle, string> = {
+  WEEKLY: "7 dias",
+  BIWEEKLY: "15 dias",
+  MONTHLY: "mês",
+  BIMONTHLY: "2 meses",
+  QUARTERLY: "3 meses",
+  SEMIANNUAL: "6 meses",
+  ANNUAL: "ano",
+  CUSTOM: "período",
+};
+
+export const CLUBINHO_SUBSCRIPTION_STATUSES = [
+  "ACTIVE",
+  "PAUSED",
+  "CANCELLED",
+  "EXPIRED",
+] as const;
+export type ClubinhoSubscriptionStatus =
+  (typeof CLUBINHO_SUBSCRIPTION_STATUSES)[number];
+
+export const CLUBINHO_STATUS_LABEL: Record<ClubinhoSubscriptionStatus, string> =
+  {
+    ACTIVE: "Ativa",
+    PAUSED: "Pausada",
+    CANCELLED: "Cancelada",
+    EXPIRED: "Encerrada",
+  };
+
+/** Status que ainda ocupam a vaga única do pet (espelha o índice parcial). */
+export const CLUBINHO_OPEN_STATUSES = [
+  "ACTIVE",
+  "PAUSED",
+] as const satisfies readonly ClubinhoSubscriptionStatus[];
+
+export function isClubinhoOpen(status: ClubinhoSubscriptionStatus): boolean {
+  return (
+    CLUBINHO_OPEN_STATUSES as readonly ClubinhoSubscriptionStatus[]
+  ).includes(status);
+}
+
+/**
+ * Rótulo do ciclo com os dias do personalizado ("Personalizado · 20 dias").
+ * O `cycle_days` só é significativo em CUSTOM — nos demais o banco fixa o
+ * intervalo em clubinho_cycle_interval.
+ */
+export function clubinhoCycleLabel(
+  cycle: ClubinhoCycle,
+  cycleDays?: number | null,
+): string {
+  if (cycle !== "CUSTOM") return CLUBINHO_CYCLE_LABEL[cycle];
+  return cycleDays
+    ? `Personalizado · ${cycleDays} dia${cycleDays > 1 ? "s" : ""}`
+    : "Personalizado";
+}

@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   CalendarClock,
   CalendarDays,
+  Crown,
   Users,
   UsersRound,
   Package,
@@ -47,6 +48,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/tutores", label: "Tutores & Pets", icon: Users, roles: MANAGEMENT_ROLES },
   { href: "/colaboradores", label: "Colaboradores", icon: UsersRound, roles: MANAGEMENT_ROLES },
   { href: "/servicos", label: "Serviços", icon: Scissors, roles: MANAGEMENT_ROLES },
+  { href: "/clubinho", label: "Clubinho", icon: Crown, roles: MANAGEMENT_ROLES },
   { href: "/produtos", label: "Produtos", icon: Package, roles: MANAGEMENT_ROLES },
   { href: "/financeiro", label: "Gestão", icon: Wallet, roles: MANAGEMENT_ROLES },
 ];

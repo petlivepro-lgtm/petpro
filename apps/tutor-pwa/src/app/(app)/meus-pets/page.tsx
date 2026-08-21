@@ -9,7 +9,10 @@ import {
   formatBehaviorScore,
 } from "@mylivepet/types";
 import { fetchBehaviorSummaries } from "@/lib/behavior";
+import { loadMyClubinho, syncClubinhoPeriods } from "@/lib/clubinho";
 import { PetDialog, type PetRow } from "@/components/pet-dialog";
+import { ClubinhoBadge } from "@/components/clubinho-badge";
+import { DeletePetDialog } from "@/components/delete-pet-dialog";
 
 const SIZE_LABEL: Record<string, string> = {
   pequeno: "Pequeno",
@@ -29,10 +32,29 @@ export default async function MeusPetsPage() {
     .order("name");
 
   const list = (pets ?? []) as PetRow[];
-  const summaries = await fetchBehaviorSummaries(
-    supabase,
-    list.map((p) => p.id),
-  );
+
+  // Renova os ciclos vencidos antes de ler o saldo — mesma rotina da home
+  // (ver syncClubinhoPeriods).
+  await syncClubinhoPeriods(supabase, ctx.tenantId);
+  const [summaries, clubinho, { data: appts }] = await Promise.all([
+    fetchBehaviorSummaries(
+      supabase,
+      list.map((p) => p.id),
+    ),
+    loadMyClubinho(supabase, ctx.tutorId),
+    // Quantos atendimentos cada pet já teve. É o que decide se o tutor ainda
+    // pode excluir a ficha sozinho (pet_delete_guard, 0051) — e o número
+    // aparece no aviso, para "tem histórico" não soar arbitrário.
+    supabase
+      .from("appointment")
+      .select("pet_id")
+      .eq("tutor_id", ctx.tutorId),
+  ]);
+  const clubinhoByPet = new Map(clubinho.map((s) => [s.pet_id, s] as const));
+  const appointmentsByPet = new Map<string, number>();
+  for (const row of appts ?? []) {
+    appointmentsByPet.set(row.pet_id, (appointmentsByPet.get(row.pet_id) ?? 0) + 1);
+  }
 
   return (
     <div className="space-y-5 lg:max-w-3xl">
@@ -67,6 +89,10 @@ export default async function MeusPetsPage() {
                     .filter(Boolean)
                     .join(" · ") || "Pet"}
                 </p>
+                <ClubinhoBadge
+                  subscription={clubinhoByPet.get(p.id)}
+                  className="mt-1.5"
+                />
                 {summary?.averageScore != null ? (
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                     <RatingStars value={Math.round(summary.averageScore)} size="sm" />
@@ -85,7 +111,15 @@ export default async function MeusPetsPage() {
                   <p className="mt-1.5 text-xs text-gray-neutral">Ainda sem boletim</p>
                 )}
               </Link>
-              <PetDialog pet={p} />
+              <div className="flex shrink-0 items-center">
+                <PetDialog pet={p} />
+                <DeletePetDialog
+                  petId={p.id}
+                  petName={p.name}
+                  appointmentCount={appointmentsByPet.get(p.id) ?? 0}
+                  hasClubinho={clubinhoByPet.has(p.id)}
+                />
+              </div>
             </Card>
           );
         })}

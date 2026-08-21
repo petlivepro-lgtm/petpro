@@ -20,6 +20,7 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
+          clubinho_credit_id: string | null
           collaborator_id: string | null
           completed_by: string | null
           created_at: string
@@ -46,6 +47,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          clubinho_credit_id?: string | null
           collaborator_id?: string | null
           completed_by?: string | null
           created_at?: string
@@ -72,6 +74,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          clubinho_credit_id?: string | null
           collaborator_id?: string | null
           completed_by?: string | null
           created_at?: string
@@ -106,6 +109,13 @@ export type Database = {
             columns: ["cancelled_by"]
             isOneToOne: false
             referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_clubinho_credit_id_fkey"
+            columns: ["clubinho_credit_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_credit"
             referencedColumns: ["id"]
           },
           {
@@ -427,6 +437,465 @@ export type Database = {
           },
         ]
       }
+      clubinho_credit: {
+        Row: {
+          id: string
+          period_id: string
+          quantity_total: number
+          quantity_used: number
+          service_name: string
+          service_type_id: string | null
+          subscription_id: string
+          tenant_id: string
+        }
+        Insert: {
+          id?: string
+          period_id: string
+          quantity_total: number
+          quantity_used?: number
+          service_name: string
+          service_type_id?: string | null
+          subscription_id: string
+          tenant_id: string
+        }
+        Update: {
+          id?: string
+          period_id?: string
+          quantity_total?: number
+          quantity_used?: number
+          service_name?: string
+          service_type_id?: string | null
+          subscription_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clubinho_credit_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_period"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_credit_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_subscription_view"
+            referencedColumns: ["period_id"]
+          },
+          {
+            foreignKeyName: "clubinho_credit_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_type"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_credit_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_subscription"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_credit_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_subscription_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_credit_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubinho_period: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          installments: number
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          period_end: string
+          period_start: string
+          price_cents: number
+          subscription_id: string
+          tenant_id: string
+          terminal_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          installments?: number
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          period_end: string
+          period_start: string
+          price_cents: number
+          subscription_id: string
+          tenant_id: string
+          terminal_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          installments?: number
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          period_end?: string
+          period_start?: string
+          price_cents?: number
+          subscription_id?: string
+          tenant_id?: string
+          terminal_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clubinho_period_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_period_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_subscription"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_period_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_subscription_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_period_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_period_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terminal"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubinho_plan: {
+        Row: {
+          active: boolean
+          created_at: string
+          cycle: Database["public"]["Enums"]["clubinho_cycle"]
+          cycle_days: number | null
+          description: string | null
+          id: string
+          name: string
+          position: number
+          price_cents: number
+          rollover: boolean
+          tenant_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          cycle?: Database["public"]["Enums"]["clubinho_cycle"]
+          cycle_days?: number | null
+          description?: string | null
+          id?: string
+          name: string
+          position?: number
+          price_cents?: number
+          rollover?: boolean
+          tenant_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          cycle?: Database["public"]["Enums"]["clubinho_cycle"]
+          cycle_days?: number | null
+          description?: string | null
+          id?: string
+          name?: string
+          position?: number
+          price_cents?: number
+          rollover?: boolean
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clubinho_plan_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubinho_plan_item: {
+        Row: {
+          id: string
+          plan_id: string
+          quantity: number
+          service_type_id: string
+          tenant_id: string
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          quantity: number
+          service_type_id: string
+          tenant_id: string
+        }
+        Update: {
+          id?: string
+          plan_id?: string
+          quantity?: number
+          service_type_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clubinho_plan_item_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_plan"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_plan_item_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_type"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_plan_item_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubinho_subscription: {
+        Row: {
+          auto_renew: boolean
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          installments: number
+          notes: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          period_end: string
+          period_start: string
+          pet_id: string
+          plan_id: string
+          price_cents: number
+          started_on: string
+          status: Database["public"]["Enums"]["clubinho_subscription_status"]
+          tenant_id: string
+          terminal_id: string | null
+          tutor_id: string
+        }
+        Insert: {
+          auto_renew?: boolean
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          installments?: number
+          notes?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          period_end: string
+          period_start: string
+          pet_id: string
+          plan_id: string
+          price_cents: number
+          started_on?: string
+          status?: Database["public"]["Enums"]["clubinho_subscription_status"]
+          tenant_id: string
+          terminal_id?: string | null
+          tutor_id: string
+        }
+        Update: {
+          auto_renew?: boolean
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          installments?: number
+          notes?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          period_end?: string
+          period_start?: string
+          pet_id?: string
+          plan_id?: string
+          price_cents?: number
+          started_on?: string
+          status?: Database["public"]["Enums"]["clubinho_subscription_status"]
+          tenant_id?: string
+          terminal_id?: string | null
+          tutor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clubinho_subscription_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "collaborator_pet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_plan"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terminal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "tutor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubinho_usage: {
+        Row: {
+          appointment_id: string | null
+          created_by: string | null
+          credit_id: string
+          id: string
+          service_type_id: string | null
+          subscription_id: string
+          tenant_id: string
+          used_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          created_by?: string | null
+          credit_id: string
+          id?: string
+          service_type_id?: string | null
+          subscription_id: string
+          tenant_id: string
+          used_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          created_by?: string | null
+          credit_id?: string
+          id?: string
+          service_type_id?: string | null
+          subscription_id?: string
+          tenant_id?: string
+          used_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clubinho_usage_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: true
+            referencedRelation: "appointment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_usage_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_usage_credit_id_fkey"
+            columns: ["credit_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_credit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_usage_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_type"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_usage_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_subscription"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_usage_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_subscription_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_usage_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collaborator: {
         Row: {
           access_email: string | null
@@ -625,6 +1094,7 @@ export type Database = {
           amount_cents: number
           appointment_id: string | null
           category: string | null
+          clubinho_period_id: string | null
           created_at: string
           created_by: string | null
           description: string
@@ -650,6 +1120,7 @@ export type Database = {
           amount_cents: number
           appointment_id?: string | null
           category?: string | null
+          clubinho_period_id?: string | null
           created_at?: string
           created_by?: string | null
           description: string
@@ -675,6 +1146,7 @@ export type Database = {
           amount_cents?: number
           appointment_id?: string | null
           category?: string | null
+          clubinho_period_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
@@ -703,6 +1175,20 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "appointment"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_entry_clubinho_period_id_fkey"
+            columns: ["clubinho_period_id"]
+            isOneToOne: true
+            referencedRelation: "clubinho_period"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_entry_clubinho_period_id_fkey"
+            columns: ["clubinho_period_id"]
+            isOneToOne: true
+            referencedRelation: "clubinho_subscription_view"
+            referencedColumns: ["period_id"]
           },
           {
             foreignKeyName: "finance_entry_created_by_fkey"
@@ -1925,6 +2411,92 @@ export type Database = {
       }
     }
     Views: {
+      clubinho_subscription_view: {
+        Row: {
+          auto_renew: boolean | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          created_at: string | null
+          credits: Json | null
+          credits_left: number | null
+          credits_total: number | null
+          credits_used: number | null
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string | null
+          installments: number | null
+          notes: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          period_end: string | null
+          period_id: string | null
+          period_start: string | null
+          pet_id: string | null
+          pet_name: string | null
+          pet_photo_path: string | null
+          pet_species: string | null
+          plan_active: boolean | null
+          plan_cycle: Database["public"]["Enums"]["clubinho_cycle"] | null
+          plan_cycle_days: number | null
+          plan_id: string | null
+          plan_name: string | null
+          plan_price_cents: number | null
+          plan_rollover: boolean | null
+          price_cents: number | null
+          started_on: string | null
+          status:
+            | Database["public"]["Enums"]["clubinho_subscription_status"]
+            | null
+          tenant_id: string | null
+          terminal_id: string | null
+          tutor_id: string | null
+          tutor_name: string | null
+          tutor_phone: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clubinho_subscription_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "collaborator_pet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_plan"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terminal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "tutor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collaborator_pet: {
         Row: {
           birth_date: string | null
@@ -1962,6 +2534,7 @@ export type Database = {
           amount_cents: number | null
           appointment_id: string | null
           category: string | null
+          clubinho_period_id: string | null
           created_at: string | null
           description: string | null
           fee_cents: number | null
@@ -1993,6 +2566,20 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "appointment"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_entry_clubinho_period_id_fkey"
+            columns: ["clubinho_period_id"]
+            isOneToOne: true
+            referencedRelation: "clubinho_period"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_entry_clubinho_period_id_fkey"
+            columns: ["clubinho_period_id"]
+            isOneToOne: true
+            referencedRelation: "clubinho_subscription_view"
+            referencedColumns: ["period_id"]
           },
           {
             foreignKeyName: "finance_entry_refund_id_fkey"
@@ -2081,6 +2668,30 @@ export type Database = {
         Returns: undefined
       }
       claim_tutor_access: { Args: never; Returns: undefined }
+      clubinho_cycle_interval: {
+        Args: {
+          p_cycle: Database["public"]["Enums"]["clubinho_cycle"]
+          p_days: number
+        }
+        Returns: string
+      }
+      clubinho_open_period: {
+        Args: {
+          p_created_by?: string
+          p_period_start: string
+          p_subscription_id: string
+        }
+        Returns: string
+      }
+      clubinho_resume_subscription: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
+      clubinho_sync_periods: { Args: { p_tenant: string }; Returns: number }
+      clubinho_sync_tutor_flag: {
+        Args: { p_tutor: string }
+        Returns: undefined
+      }
       collab_sees_pet: {
         Args: { _pet: string; _tenant: string }
         Returns: boolean
@@ -2229,6 +2840,10 @@ export type Database = {
         Args: { p_reservation_id: string }
         Returns: undefined
       }
+      save_clubinho_plan: {
+        Args: { p_plan: Json; p_tenant: string }
+        Returns: string
+      }
       save_payment_fee_rules: {
         Args: { p_rules: Json; p_terminal_id: string }
         Returns: undefined
@@ -2288,6 +2903,7 @@ export type Database = {
       tutor_has_usable_password: { Args: { p_email: string }; Returns: boolean }
       tutor_login_status: { Args: { p_identifier: string }; Returns: Json }
       tutor_login_target: { Args: { p_identifier: string }; Returns: Json }
+      tutor_profile: { Args: { _tutor: string }; Returns: string }
       tutor_resolve_identifier: {
         Args: { p_identifier: string }
         Returns: Json
@@ -2307,10 +2923,29 @@ export type Database = {
         | "COMPLETED"
         | "REJECTED"
         | "CANCELLED"
+      clubinho_cycle:
+        | "WEEKLY"
+        | "BIWEEKLY"
+        | "MONTHLY"
+        | "BIMONTHLY"
+        | "QUARTERLY"
+        | "SEMIANNUAL"
+        | "ANNUAL"
+        | "CUSTOM"
+      clubinho_subscription_status:
+        | "ACTIVE"
+        | "PAUSED"
+        | "CANCELLED"
+        | "EXPIRED"
       feedback_direction: "STAFF_TO_TUTOR" | "TUTOR_TO_PETSHOP"
       finance_entry_type: "INCOME" | "EXPENSE"
       finance_refund_kind: "PRODUCT_RETURN" | "SERVICE_REFUND"
-      finance_source: "MANUAL" | "APPOINTMENT" | "RESERVATION" | "REFUND"
+      finance_source:
+        | "MANUAL"
+        | "APPOINTMENT"
+        | "RESERVATION"
+        | "REFUND"
+        | "CLUBINHO"
       notification_kind:
         | "BOOKING_REQUESTED"
         | "BOOKING_CANCELLED"
@@ -2322,6 +2957,11 @@ export type Database = {
         | "APPOINTMENT_ASSIGNED"
         | "APPOINTMENT_CANCELLED_FOR_ME"
         | "APPOINTMENT_RESCHEDULED"
+        | "BOOKING_CONFIRMED"
+        | "BOOKING_REJECTED"
+        | "BOOKING_COMPLETED"
+        | "RESERVATION_READY"
+        | "RESERVATION_REJECTED"
       payment_method:
         | "CASH"
         | "PIX"
@@ -2485,10 +3125,32 @@ export const Constants = {
         "REJECTED",
         "CANCELLED",
       ],
+      clubinho_cycle: [
+        "WEEKLY",
+        "BIWEEKLY",
+        "MONTHLY",
+        "BIMONTHLY",
+        "QUARTERLY",
+        "SEMIANNUAL",
+        "ANNUAL",
+        "CUSTOM",
+      ],
+      clubinho_subscription_status: [
+        "ACTIVE",
+        "PAUSED",
+        "CANCELLED",
+        "EXPIRED",
+      ],
       feedback_direction: ["STAFF_TO_TUTOR", "TUTOR_TO_PETSHOP"],
       finance_entry_type: ["INCOME", "EXPENSE"],
       finance_refund_kind: ["PRODUCT_RETURN", "SERVICE_REFUND"],
-      finance_source: ["MANUAL", "APPOINTMENT", "RESERVATION", "REFUND"],
+      finance_source: [
+        "MANUAL",
+        "APPOINTMENT",
+        "RESERVATION",
+        "REFUND",
+        "CLUBINHO",
+      ],
       notification_kind: [
         "BOOKING_REQUESTED",
         "BOOKING_CANCELLED",
@@ -2500,6 +3162,11 @@ export const Constants = {
         "APPOINTMENT_ASSIGNED",
         "APPOINTMENT_CANCELLED_FOR_ME",
         "APPOINTMENT_RESCHEDULED",
+        "BOOKING_CONFIRMED",
+        "BOOKING_REJECTED",
+        "BOOKING_COMPLETED",
+        "RESERVATION_READY",
+        "RESERVATION_REJECTED",
       ],
       payment_method: [
         "CASH",

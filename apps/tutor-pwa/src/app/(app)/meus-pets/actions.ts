@@ -112,3 +112,35 @@ export async function updatePet(_prev: FormState, formData: FormData): Promise<F
   revalidatePath("/");
   return { ok: true };
 }
+
+/**
+ * Remove um pet do cadastro do tutor.
+ *
+ * O trigger pet_delete_guard (0051) é quem decide de fato: o tutor só apaga
+ * pet sem nenhum atendimento registrado e sem assinatura do Clubinho aberta.
+ * Passado esse ponto o histórico é do petshop tanto quanto dele — o boletim de
+ * comportamento e o registro dos banhos foram escritos por quem atendeu.
+ *
+ * As mensagens do trigger já são escritas para o tutor ler, então sobem para a
+ * tela como estão, sem tradução.
+ */
+export async function deletePet(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = str(formData.get("id"));
+  if (!id) return { ok: false, error: "Pet inválido" };
+
+  const supabase = await createClient();
+  const ctx = await getTutorContext(supabase);
+  if (!ctx) return { ok: false, error: "Sessão inválida" };
+
+  const { error } = await supabase
+    .from("pet")
+    .delete()
+    .eq("id", id)
+    .eq("tutor_id", ctx.tutorId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/meus-pets");
+  revalidatePath("/configuracoes");
+  revalidatePath("/");
+  return { ok: true };
+}

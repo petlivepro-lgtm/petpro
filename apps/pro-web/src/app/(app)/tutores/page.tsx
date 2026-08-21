@@ -29,13 +29,16 @@ import { NewPetDialog } from "@/components/new-pet-dialog";
 import { DeleteTutorDialog } from "@/components/delete-tutor-dialog";
 import { EditTutorDialog } from "@/components/edit-tutor-dialog";
 import { fetchBehaviorSummaries } from "@/lib/behavior";
+import { getActiveTenant } from "@/lib/tenant";
+import { loadClubinhoSubscriptions } from "@/lib/clubinho";
 
 export default async function TutoresPage() {
   const supabase = await createClient();
+  const tenant = await getActiveTenant(supabase);
   const { data: tutores } = await supabase
     .from("tutor")
     .select(
-      "id, full_name, email, phone, cpf, notes, profile_id, clubinho, pet(id, name, species, breed, photo_path)",
+      "id, full_name, email, phone, cpf, notes, profile_id, pet(id, name, species, breed, photo_path)",
     )
     .order("full_name");
 
@@ -46,6 +49,17 @@ export default async function TutoresPage() {
   const summaries = await fetchBehaviorSummaries(
     supabase,
     list.flatMap((t) => ((t.pet as { id: string }[]) ?? []).map((p) => p.id)),
+  );
+
+  // Selo do Clubinho por pet — o único que existe. Um selo no tutor diria
+  // apenas que ALGUM pet dele assina, e quem atende precisa saber qual: o
+  // pacote é do pet, e é dele que o banho sai.
+  const clubinhoByPet = new Map(
+    tenant
+      ? (await loadClubinhoSubscriptions(supabase, tenant.tenantId)).map(
+          (sub) => [sub.pet_id, sub] as const,
+        )
+      : [],
   );
 
   return (
@@ -88,11 +102,6 @@ export default async function TutoresPage() {
                           <Smartphone className="h-3 w-3" /> App ativo
                         </span>
                       )}
-                      {t.clubinho && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-petrol/10 px-2 py-0.5 text-xs font-medium text-petrol">
-                          <Crown className="h-3 w-3" /> Clubinho
-                        </span>
-                      )}
                     </div>
                     <div className="mt-1 space-y-0.5 text-sm text-gray-neutral">
                       {t.phone && (
@@ -122,7 +131,6 @@ export default async function TutoresPage() {
                         phone: t.phone,
                         cpf: t.cpf,
                         notes: t.notes,
-                        clubinho: t.clubinho,
                       }}
                     />
                     <DeleteTutorDialog
@@ -134,6 +142,7 @@ export default async function TutoresPage() {
                 </div>
                 <div className="mt-4 space-y-2 border-t border-graphite/5 pt-4">
                   {pets.map((p) => {
+                    const clubinho = clubinhoByPet.get(p.id) ?? null;
                     const summary = summaries.get(p.id) ?? null;
                     const average = summary?.averageScore ?? null;
                     const count = summary?.reportCount ?? 0;
@@ -154,6 +163,21 @@ export default async function TutoresPage() {
                             {p.breed ?? p.species ?? "Pet"}
                           </p>
                         </div>
+                        {clubinho && (
+                          <span
+                            title={
+                              clubinho.status === "ACTIVE"
+                                ? `${clubinho.plan_name} · ${clubinho.credits_left} serviço(s) no ciclo`
+                                : `${clubinho.plan_name} · pausado`
+                            }
+                            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-petrol/10 px-2 py-0.5 text-xs font-medium text-petrol"
+                          >
+                            <Crown className="h-3 w-3" />
+                            {clubinho.status === "ACTIVE"
+                              ? clubinho.credits_left
+                              : "pausado"}
+                          </span>
+                        )}
                         {average !== null ? (
                           <div className="flex shrink-0 items-center gap-2">
                             {badge && (

@@ -100,7 +100,13 @@ export function PetDialog({ pet }: { pet?: PetRow }) {
             </div>
             <div>
               <Label htmlFor="birth_date">Nascimento</Label>
-              <DatePicker id="birth_date" name="birth_date" mode="date" defaultValue={pet?.birth_date} />
+              <DatePicker
+                id="birth_date"
+                name="birth_date"
+                mode="date"
+                max="today"
+                defaultValue={pet?.birth_date}
+              />
             </div>
           </div>
 

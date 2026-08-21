@@ -5,7 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveTenant } from "@/lib/tenant";
 import { uploadPetPhoto } from "@/lib/pet-photo";
-import { canMutateAsRole, tutorInput, petInput } from "@mylivepet/types";
+import {
+  canMutateAsRole,
+  tutorInput,
+  petBirthDateInput,
+  petInput,
+} from "@mylivepet/types";
 
 export type FormState = {
   ok: boolean;
@@ -32,13 +37,24 @@ export async function createTutor(
     phone: str(formData.get("phone")),
     cpf: str(formData.get("cpf")),
     notes: str(formData.get("notes")),
-    clubinho: formData.get("clubinho") === "on",
   });
   if (!parsed.success) {
     return {
       ok: false,
       error: parsed.error.issues[0]?.message ?? "Dados inválidos",
     };
+  }
+
+  const petName = str(formData.get("pet_name"));
+  const petBirthDate = str(formData.get("pet_birth_date"));
+  if (petName) {
+    const parsedBirthDate = petBirthDateInput.optional().safeParse(petBirthDate);
+    if (!parsedBirthDate.success) {
+      return {
+        ok: false,
+        error: parsedBirthDate.error.issues[0]?.message ?? "Data de nascimento inválida",
+      };
+    }
   }
 
   const supabase = await createClient();
@@ -54,7 +70,6 @@ export async function createTutor(
       phone: parsed.data.phone ?? null,
       cpf: parsed.data.cpf ?? null,
       notes: parsed.data.notes ?? null,
-      clubinho: parsed.data.clubinho,
     })
     .select("id")
     .single();
@@ -62,7 +77,6 @@ export async function createTutor(
     return { ok: false, error: error?.message ?? "Falha ao salvar" };
 
   // Primeiro pet (opcional)
-  const petName = str(formData.get("pet_name"));
   if (petName) {
     const petParsed = petInput.safeParse({
       tutor_id: tutor.id,
@@ -74,7 +88,7 @@ export async function createTutor(
         | "medio"
         | "grande"
         | undefined,
-      birth_date: str(formData.get("pet_birth_date")),
+      birth_date: petBirthDate,
     });
     if (petParsed.success) {
       let photoPath: string | null = null;
@@ -112,7 +126,6 @@ export async function updateTutor(
     phone: str(formData.get("phone")),
     cpf: str(formData.get("cpf")),
     notes: str(formData.get("notes")),
-    clubinho: formData.get("clubinho") === "on",
   });
   if (!parsed.success) {
     return {
@@ -135,7 +148,6 @@ export async function updateTutor(
       phone: parsed.data.phone ?? null,
       cpf: parsed.data.cpf ?? null,
       notes: parsed.data.notes ?? null,
-      clubinho: parsed.data.clubinho,
     })
     .eq("id", tutorId)
     .eq("tenant_id", tenant.tenantId);
@@ -193,6 +205,45 @@ export async function createPet(
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/tutores");
+  return { ok: true };
+}
+
+/**
+ * Exclui um pet e, em cascata, o histórico de atendimento dele: checklist,
+ * fotos, boletins de comportamento, sessões de câmera e a assinatura do
+ * Clubinho com os ciclos e o saldo.
+ *
+ * O financeiro NÃO some junto — finance_entry solta o vínculo em vez de
+ * apagar a linha (on delete set null), então as receitas continuam no caixa e
+ * no fechamento do mês. É a diferença que o diálogo precisa explicar.
+ *
+ * Pet em atendimento é recusado pelo trigger pet_delete_guard (0051): ele está
+ * fisicamente na loja, e excluir seria perder o registro do que está em curso.
+ */
+export async function deletePet(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const id = str(formData.get("pet_id"));
+  if (!id) return { ok: false, error: "Pet inválido" };
+
+  const supabase = await createClient();
+  const tenant = await getActiveTenant(supabase);
+  if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
+  if (!canMutateAsRole(tenant.role))
+    return { ok: false, error: "Seu acesso é somente leitura" };
+
+  const { error } = await supabase
+    .from("pet")
+    .delete()
+    .eq("id", id)
+    .eq("tenant_id", tenant.tenantId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/tutores");
+  revalidatePath("/pets");
+  revalidatePath("/atendimentos");
+  revalidatePath("/clubinho");
   return { ok: true };
 }
 

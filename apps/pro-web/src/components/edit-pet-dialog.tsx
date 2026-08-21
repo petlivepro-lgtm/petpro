@@ -119,6 +119,7 @@ export function EditPetDialog({
               id="edit-pet-birth-date"
               name="birth_date"
               mode="date"
+              max="today"
               defaultValue={pet.birth_date}
             />
           </div>

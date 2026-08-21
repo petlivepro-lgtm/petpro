@@ -7,9 +7,11 @@ import { dispatchNotifications } from "@/lib/notify";
 import {
   behaviorReportInput,
   computeOverallScore,
+  creditForService,
   PAYMENT_METHODS,
   type PaymentMethod,
 } from "@mylivepet/types";
+import { loadPetSubscription } from "@/lib/clubinho";
 import {
   startCameraStream,
   stopCameraStream,
@@ -326,6 +328,48 @@ async function saveBehaviorReport(
   return error?.message;
 }
 
+/**
+ * Saldo do Clubinho aplicável a este atendimento, ou null quando não há.
+ *
+ * Consultado pelo diálogo de finalização no momento em que ele abre, e não
+ * embutido na lista da agenda: são dezenas de linhas na tela e só uma vai ser
+ * finalizada por vez — carregar o saldo de todas seria uma consulta por pet
+ * para jogar fora.
+ */
+export type ClubinhoCoverage = {
+  creditId: string;
+  planName: string;
+  serviceName: string;
+  quantityLeft: number;
+  quantityTotal: number;
+  periodEnd: string | null;
+};
+
+export async function fetchClubinhoCoverage(
+  appointmentId: string,
+): Promise<ClubinhoCoverage | null> {
+  const supabase = await createClient();
+  const { data: appt } = await supabase
+    .from("appointment")
+    .select("pet_id, service_type_id")
+    .eq("id", appointmentId)
+    .maybeSingle();
+  if (!appt?.service_type_id) return null;
+
+  const subscription = await loadPetSubscription(supabase, appt.pet_id);
+  const credit = creditForService(subscription, appt.service_type_id);
+  if (!credit || !subscription) return null;
+
+  return {
+    creditId: credit.credit_id,
+    planName: subscription.plan_name,
+    serviceName: credit.service_name,
+    quantityLeft: credit.quantity_left,
+    quantityTotal: credit.quantity_total,
+    periodEnd: subscription.current_period_end,
+  };
+}
+
 /** Finaliza o atendimento: fotos + boletim de comportamento + status COMPLETED. */
 export type FinishAppointmentState = { ok: boolean; error?: string };
 
@@ -335,8 +379,17 @@ export async function finishAppointment(
 ): Promise<FinishAppointmentState> {
   const id = str(formData.get("appointment_id"));
   if (!id) return { ok: false, error: "Atendimento inválido" };
+
+  // Coberto pelo Clubinho: o banho já foi pago na mensalidade, então não há
+  // forma de pagamento a informar. O trigger appointment_clubinho (0047) é
+  // quem debita o saldo e barra a conclusão se o crédito não servir.
+  const clubinhoCreditId = str(formData.get("clubinho_credit_id")) ?? null;
+
   const paymentMethod = str(formData.get("payment_method"));
-  if (!PAYMENT_METHODS.includes(paymentMethod as PaymentMethod)) {
+  if (
+    !clubinhoCreditId &&
+    !PAYMENT_METHODS.includes(paymentMethod as PaymentMethod)
+  ) {
     return { ok: false, error: "Informe a forma de pagamento" };
   }
 
@@ -351,7 +404,7 @@ export async function finishAppointment(
     Number.isFinite(parsedInstallments) && parsedInstallments > 1
       ? parsedInstallments
       : 1;
-  if (installments > 1 && paymentMethod !== "CREDIT_CARD") {
+  if (!clubinhoCreditId && installments > 1 && paymentMethod !== "CREDIT_CARD") {
     return { ok: false, error: "Só o crédito pode ser parcelado" };
   }
 
@@ -380,9 +433,12 @@ export async function finishAppointment(
     .update({
       status: "COMPLETED",
       finished_at: new Date().toISOString(),
-      payment_method: paymentMethod as PaymentMethod,
-      terminal_id: terminalId,
-      installments,
+      payment_method: clubinhoCreditId
+        ? null
+        : (paymentMethod as PaymentMethod),
+      terminal_id: clubinhoCreditId ? null : terminalId,
+      installments: clubinhoCreditId ? 1 : installments,
+      clubinho_credit_id: clubinhoCreditId,
       completed_by: user.id,
       ...(photos.length > 0 ? { photos } : {}),
     })
@@ -422,5 +478,6 @@ export async function finishAppointment(
   revalidatePath("/atendimentos");
   revalidatePath("/financeiro");
   revalidatePath(`/pets/${appt.pet_id}`);
+  if (clubinhoCreditId) revalidatePath("/clubinho");
   return { ok: true };
 }

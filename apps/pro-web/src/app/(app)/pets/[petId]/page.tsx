@@ -13,6 +13,7 @@ import {
   Pill,
   FlaskConical,
   CalendarClock,
+  Crown,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -41,12 +42,23 @@ import { RatingStars } from "@mylivepet/ui";
 import { PetTabs } from "@/components/pet-tabs";
 import { PetPhotoDialog } from "@/components/pet-photo-dialog";
 import { EditPetDialog } from "@/components/edit-pet-dialog";
+import { DeletePetDialog } from "@/components/delete-pet-dialog";
 import { AppointmentStatusBadge } from "@/components/status-badge";
 import { BehaviorReportView } from "@/components/behavior-report-view";
 import { fetchBehaviorSummaries, fetchPetBehaviorReports } from "@/lib/behavior";
 import { getActiveTenant } from "@/lib/tenant";
 import { NewAppointmentDialog } from "@/components/new-appointment-dialog";
 import { loadBookingOptions } from "@/lib/booking-options";
+import { loadPaymentTerminals } from "@/lib/payment-terminals";
+import {
+  loadClubinhoPlans,
+  loadPetSubscription,
+  syncClubinhoPeriods,
+} from "@/lib/clubinho";
+import { ClubinhoBalance } from "@/components/clubinho-balance";
+import { ClubinhoSubscriptionDialog } from "@/components/clubinho-subscription-dialog";
+import { ClubinhoStatusActions } from "@/components/clubinho-status-actions";
+import { CLUBINHO_STATUS_LABEL, clubinhoCycleLabel, formatBRL } from "@mylivepet/types";
 
 const statusColor: Record<AppointmentStatus, string> = {
   REQUESTED: "#F2B84B",
@@ -146,6 +158,9 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
     summary?.reportCount ?? 0,
   );
   const emAtendimento = appointments.some((a) => a.status === "IN_PROGRESS");
+  // O guard de exclusão (0051) barra as duas situações em que o pet está na
+  // loja agora, não só a que acende o selo "Em atendimento".
+  const naLoja = appointments.some((a) => a.status === "CHECKED_IN");
 
   // Reserva de produtos é dado comercial: fora do escopo do colaborador.
   const { data: reservas } =
@@ -156,6 +171,25 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
           .eq("tutor_id", tutor.id)
           .order("created_at", { ascending: false })
       : { data: [] };
+
+  // Clubinho: dado comercial, então fora do escopo do colaborador. A renovação
+  // roda antes da leitura porque esta é uma das telas onde o saldo é
+  // consultado (ver syncClubinhoPeriods).
+  const showClubinho = !!tenant && !isCollaborator;
+  if (showClubinho) await syncClubinhoPeriods(supabase, tenant!.tenantId);
+  const [subscription, clubinhoPlans, clubinhoTerminals] = showClubinho
+    ? await Promise.all([
+        loadPetSubscription(supabase, petId),
+        canEdit
+          ? loadClubinhoPlans(supabase, tenant!.tenantId, { activeOnly: true })
+          : Promise.resolve([]),
+        canEdit
+          ? loadPaymentTerminals(supabase, tenant!.tenantId, {
+              activeOnly: true,
+            })
+          : Promise.resolve([]),
+      ])
+    : [null, [], []];
 
   const meta = [pet.breed, pet.species, pet.size].filter(Boolean).join(" · ");
   const age = ageFrom(pet.birth_date);
@@ -256,7 +290,7 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
               <h1 className="font-heading text-2xl font-bold text-graphite">{pet.name}</h1>
               {emAtendimento && <StatusChip tone="brand">Em atendimento</StatusChip>}
               {canEdit && tutor && (
-                <div className="ml-auto">
+                <div className="ml-auto flex items-center">
                   <EditPetDialog
                     pet={{
                       id: petId_,
@@ -268,6 +302,14 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
                       birth_date: pet.birth_date,
                       notes: pet.notes,
                     }}
+                  />
+                  <DeletePetDialog
+                    petId={petId_}
+                    petName={petName}
+                    appointmentCount={appointments.length}
+                    behaviorReportCount={behaviorReports.length}
+                    hasClubinho={!!subscription}
+                    inProgress={emAtendimento || naLoja}
                   />
                 </div>
               )}
@@ -315,6 +357,80 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
           </div>
         </div>
       </Card>
+
+      {/* Clubinho: o saldo é do pet, então é aqui que ele mora */}
+      {showClubinho && (subscription || clubinhoPlans.length > 0) && (
+        <Card className="mb-6">
+          {subscription ? (
+            <>
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-graphite/5 pb-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Crown className="h-4 w-4 shrink-0 text-petrol" />
+                    <p className="font-heading font-semibold text-graphite">
+                      {subscription.plan_name}
+                    </p>
+                    {subscription.status !== "ACTIVE" && (
+                      <StatusChip tone="warning">
+                        {CLUBINHO_STATUS_LABEL[subscription.status]}
+                      </StatusChip>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-sm text-gray-neutral">
+                    {formatBRL(subscription.price_cents)} ·{" "}
+                    {clubinhoCycleLabel(
+                      subscription.plan_cycle,
+                      subscription.plan_cycle_days,
+                    )}
+                  </p>
+                </div>
+                {canEdit && (
+                  <div className="flex shrink-0 items-center">
+                    <ClubinhoSubscriptionDialog
+                      subscription={subscription}
+                      plans={clubinhoPlans}
+                      terminals={clubinhoTerminals}
+                    />
+                    <ClubinhoStatusActions subscription={subscription} />
+                  </div>
+                )}
+              </div>
+              <ClubinhoBalance subscription={subscription} className="pt-3" />
+            </>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Crown className="h-5 w-5 shrink-0 text-petrol" />
+                <div>
+                  <p className="font-heading font-semibold text-graphite">
+                    Fora do Clubinho
+                  </p>
+                  <p className="text-sm text-gray-neutral">
+                    O pacote é por pet: assinar aqui não mexe nos outros pets do
+                    tutor.
+                  </p>
+                </div>
+              </div>
+              {canEdit && (
+                <ClubinhoSubscriptionDialog
+                  plans={clubinhoPlans}
+                  pets={[
+                    {
+                      id: petId_,
+                      name: petName,
+                      tutor_name: tutor?.full_name ?? "",
+                    },
+                  ]}
+                  presetPetId={petId_}
+                  terminals={clubinhoTerminals}
+                  trigger="cta"
+                  size="sm"
+                />
+              )}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Grade Adicionar — abrir atendimento é do balcão, não do colaborador */}
       {!isCollaborator && (

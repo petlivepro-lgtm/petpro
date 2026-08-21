@@ -2,9 +2,10 @@
 
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Crown } from "lucide-react";
 import {
   Button,
+  Checkbox,
   Dialog,
   Label,
   PhotoGalleryInput,
@@ -24,7 +25,9 @@ import {
   type PaymentTerminalDTO,
 } from "@mylivepet/types";
 import {
+  fetchClubinhoCoverage,
   finishAppointment,
+  type ClubinhoCoverage,
   type FinishAppointmentState,
 } from "@/app/(app)/atendimentos/[id]/actions";
 import { PaymentFields } from "@/components/payment-fields";
@@ -50,6 +53,10 @@ export function FinishAppointmentDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [scores, setScores] = useState<Record<string, number>>({});
+  // Saldo do Clubinho: consultado só ao abrir, porque a lista da agenda mostra
+  // dezenas de atendimentos e só um é finalizado por vez.
+  const [coverage, setCoverage] = useState<ClubinhoCoverage | null>(null);
+  const [useClubinho, setUseClubinho] = useState(false);
   const [state, formAction, pending] = useActionState<
     FinishAppointmentState,
     FormData
@@ -61,6 +68,28 @@ export function FinishAppointmentDialog({
     setScores({});
     router.refresh();
   }, [state.ok, router]);
+
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    setCoverage(null);
+    setUseClubinho(false);
+    fetchClubinhoCoverage(appointmentId)
+      .then((found) => {
+        if (!alive) return;
+        setCoverage(found);
+        // Vem marcado quando há saldo: se o pet assina o pacote, cobrar de
+        // novo no balcão é o erro provável, não o contrário.
+        setUseClubinho(!!found && found.quantityLeft > 0);
+      })
+      .catch(() => {
+        // Falha aqui só significa "sem Clubinho nesta tela": o atendimento
+        // segue finalizável pelo caminho normal.
+      });
+    return () => {
+      alive = false;
+    };
+  }, [open, appointmentId]);
 
   // Só as categorias efetivamente pontuadas viram resposta, com snapshot de
   // rótulo/inversão para o boletim seguir legível se a config mudar depois.
@@ -105,11 +134,54 @@ export function FinishAppointmentDialog({
             value={JSON.stringify(responses)}
           />
 
-          <PaymentFields
-            idPrefix={`appointment-${appointmentId}`}
-            terminals={terminals}
-            amountCents={priceCents}
-          />
+          {coverage && (
+            <div className="rounded-xl border border-petrol/25 bg-petrol/5 p-4">
+              <div className="flex gap-3">
+                <Crown className="mt-0.5 h-5 w-5 shrink-0 text-petrol" />
+                <div className="min-w-0 flex-1">
+                  {coverage.quantityLeft > 0 ? (
+                    <Checkbox
+                      checked={useClubinho}
+                      onChange={(e) => setUseClubinho(e.target.checked)}
+                      label={
+                        <span>
+                          Descontar do {coverage.planName}
+                          <span className="block text-xs text-gray-neutral">
+                            Restam {coverage.quantityLeft} de{" "}
+                            {coverage.quantityTotal} {coverage.serviceName} no
+                            ciclo. Sem cobrança no balcão — a mensalidade já
+                            entrou no financeiro.
+                          </span>
+                        </span>
+                      }
+                    />
+                  ) : (
+                    <p className="text-sm text-graphite">
+                      O saldo de {coverage.serviceName} do {coverage.planName}{" "}
+                      acabou neste ciclo.
+                      <span className="block text-xs text-gray-neutral">
+                        Este atendimento é cobrado à parte.
+                      </span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {useClubinho && coverage ? (
+            <input
+              type="hidden"
+              name="clubinho_credit_id"
+              value={coverage.creditId}
+            />
+          ) : (
+            <PaymentFields
+              idPrefix={`appointment-${appointmentId}`}
+              terminals={terminals}
+              amountCents={priceCents}
+            />
+          )}
 
           <div>
             <Label>Fotos do pet (até 5)</Label>

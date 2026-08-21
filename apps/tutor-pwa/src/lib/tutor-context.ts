@@ -7,7 +7,6 @@ export type TutorContext = {
   tenantName: string;
   tenantLogoUrl: string | null;
   fullName: string;
-  clubinho: boolean;
 };
 
 /**
@@ -29,7 +28,7 @@ export async function getTutorContext(
 
   const { data, error } = await supabase
     .from("tutor")
-    .select("id, full_name, clubinho, tenant:tenant_id (id, name, settings)")
+    .select("id, full_name, tenant:tenant_id (id, name, settings)")
     .eq("profile_id", profileId)
     .limit(1)
     .maybeSingle();
@@ -51,6 +50,5 @@ export async function getTutorContext(
         ? logoPath
         : null,
     fullName: data.full_name,
-    clubinho: data.clubinho,
   };
 }

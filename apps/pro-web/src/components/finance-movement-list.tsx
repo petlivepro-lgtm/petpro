@@ -24,6 +24,7 @@ import {
   Textarea,
 } from "@mylivepet/ui";
 import {
+  FINANCE_ORIGIN_LABEL,
   formatBRL,
   formatCpfBR,
   PAYMENT_METHODS,
@@ -336,13 +337,7 @@ function MovementDetail({
         />
         <DetailField
           label="Origem"
-          value={
-            movement.movement_origin === "SERVICE"
-              ? "Serviço"
-              : movement.movement_origin === "PRODUCT"
-                ? "Produto"
-                : "Manual"
-          }
+          value={FINANCE_ORIGIN_LABEL[movement.movement_origin] ?? "Manual"}
         />
       </div>
 

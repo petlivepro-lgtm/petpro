@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ChevronRight, CreditCard, Video } from "lucide-react";
+import { ChevronRight, CreditCard, Crown, Video } from "lucide-react";
 import { Card, PageHeader, TabbedSections } from "@mylivepet/ui";
 import {
   behaviorConfigSchema,
@@ -80,7 +80,7 @@ export default async function ConfiguracoesPage() {
     <>
       <PageHeader
         title="Configurações"
-        subtitle="Dados do petshop, etapas do atendimento, formulários de avaliação, maquininhas e câmeras."
+        subtitle="Dados do petshop, etapas do atendimento, formulários de avaliação, planos do Clubinho, maquininhas e câmeras."
       />
 
       <TabbedSections
@@ -109,6 +109,18 @@ export default async function ConfiguracoesPage() {
             id: "avaliacao",
             label: "Avaliação do tutor",
             content: <FeedbackSettingsForm fields={feedbackFields} />,
+          },
+          {
+            id: "clubinho",
+            label: "Clubinho",
+            content: (
+              <SectionLink
+                href="/configuracoes/clubinho"
+                icon={<Crown className="h-5 w-5 text-orange" />}
+                title="Planos do Clubinho"
+                description="Pacotes recorrentes de serviços: valor, de quanto em quanto tempo renovam e quantos banhos entregam por ciclo."
+              />
+            ),
           },
           {
             id: "maquininhas",
