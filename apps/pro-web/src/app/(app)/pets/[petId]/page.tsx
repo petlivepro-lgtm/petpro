@@ -52,10 +52,14 @@ import { loadBookingOptions } from "@/lib/booking-options";
 import { loadPaymentTerminals } from "@/lib/payment-terminals";
 import {
   loadClubinhoPlans,
+  loadClubinhoSchedules,
   loadPetSubscription,
-  syncClubinhoPeriods,
+  loadSchedulePreview,
+  syncClubinho,
 } from "@/lib/clubinho";
 import { ClubinhoBalance } from "@/components/clubinho-balance";
+import { ClubinhoScheduleList } from "@/components/clubinho-schedule-list";
+import { ClubinhoScheduleDialog } from "@/components/clubinho-schedule-dialog";
 import { ClubinhoSubscriptionDialog } from "@/components/clubinho-subscription-dialog";
 import { ClubinhoStatusActions } from "@/components/clubinho-status-actions";
 import { CLUBINHO_STATUS_LABEL, clubinhoCycleLabel, formatBRL } from "@mylivepet/types";
@@ -176,7 +180,7 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
   // roda antes da leitura porque esta é uma das telas onde o saldo é
   // consultado (ver syncClubinhoPeriods).
   const showClubinho = !!tenant && !isCollaborator;
-  if (showClubinho) await syncClubinhoPeriods(supabase, tenant!.tenantId);
+  if (showClubinho) await syncClubinho(supabase, tenant!.tenantId);
   const [subscription, clubinhoPlans, clubinhoTerminals] = showClubinho
     ? await Promise.all([
         loadPetSubscription(supabase, petId),
@@ -190,6 +194,16 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
           : Promise.resolve([]),
       ])
     : [null, [], []];
+
+  // Horários fixos e as datas que eles produzem no ciclo corrente.
+  const [clubinhoSchedules, clubinhoOccurrences] = subscription
+    ? await Promise.all([
+        loadClubinhoSchedules(supabase, [subscription.id]).then(
+          (map) => map.get(subscription.id) ?? [],
+        ),
+        loadSchedulePreview(supabase, subscription.id),
+      ])
+    : [[], []];
 
   const meta = [pet.breed, pet.species, pet.size].filter(Boolean).join(" · ");
   const age = ageFrom(pet.birth_date);
@@ -396,6 +410,19 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
                 )}
               </div>
               <ClubinhoBalance subscription={subscription} className="pt-3" />
+
+              <ClubinhoScheduleList
+                schedules={clubinhoSchedules}
+                occurrences={clubinhoOccurrences}
+                petId={petId_}
+                canManage={canEdit && subscription.status === "ACTIVE"}
+                className="mt-3 border-t border-graphite/5 pt-3"
+              >
+                <ClubinhoScheduleDialog
+                  subscription={subscription}
+                  collaborators={bookingOptions.collaborators}
+                />
+              </ClubinhoScheduleList>
             </>
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-3">

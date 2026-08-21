@@ -3,9 +3,12 @@ import {
   CLUBINHO_CYCLES,
   CLUBINHO_SUBSCRIPTION_STATUSES,
   PAYMENT_METHODS,
+  WEEKDAYS,
+  WEEKDAY_LABEL,
   type ClubinhoCycle,
   type ClubinhoSubscriptionStatus,
   type PaymentMethod,
+  type Weekday,
 } from "./enums";
 
 // DTOs e validações do Clubinho (supabase/migrations/0047_clubinho_plans.sql).
@@ -171,6 +174,86 @@ export const clubinhoSubscriptionUpdateInput = z.object({
 export type ClubinhoSubscriptionUpdateInput = z.infer<
   typeof clubinhoSubscriptionUpdateInput
 >;
+
+// --- Horário fixo --------------------------------------------------------
+
+/**
+ * O combinado: "toda sexta às 11h, banho e tosa, com a Ana".
+ * `start_time` chega do Postgres como "11:00:00".
+ */
+export type ClubinhoScheduleDTO = {
+  id: string;
+  subscription_id: string;
+  weekday: Weekday;
+  start_time: string;
+  service_type_id: string;
+  service_name: string;
+  collaborator_id: string;
+  collaborator_name: string;
+  active: boolean;
+};
+
+/**
+ * Uma data do ciclo, com o motivo quando não virou agendamento. Vem de
+ * clubinho_schedule_preview (0052) — a regra de orçamento mora no SQL para a
+ * tela não sair do sincronismo com a materialização.
+ */
+export const CLUBINHO_OCCURRENCE_STATES = [
+  "BOOKED",
+  "DONE",
+  "CANCELLED",
+  "CONFLICT",
+  "NO_CREDIT",
+] as const;
+export type ClubinhoOccurrenceState =
+  (typeof CLUBINHO_OCCURRENCE_STATES)[number];
+
+export type ClubinhoOccurrenceDTO = {
+  schedule_id: string;
+  occurs_at: string;
+  service_name: string;
+  collaborator_name: string;
+  appointment_id: string | null;
+  state: ClubinhoOccurrenceState;
+};
+
+export const CLUBINHO_OCCURRENCE_LABEL: Record<
+  ClubinhoOccurrenceState,
+  string
+> = {
+  BOOKED: "Agendado",
+  DONE: "Concluído",
+  CANCELLED: "Cancelado",
+  CONFLICT: "Não agendado",
+  NO_CREDIT: "Fora do pacote",
+};
+
+export const clubinhoScheduleInput = z.object({
+  subscription_id: z.string().uuid(),
+  weekday: z.coerce
+    .number()
+    .int()
+    .refine(
+      (v): v is Weekday => (WEEKDAYS as readonly number[]).includes(v),
+      "Escolha o dia da semana",
+    ),
+  // "HH:mm" vindo do <select> de horários; o Postgres aceita como time.
+  start_time: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Escolha o horário"),
+  service_type_id: z.string().uuid("Escolha o serviço"),
+  collaborator_id: z.string().uuid("Escolha o profissional"),
+});
+export type ClubinhoScheduleInput = z.infer<typeof clubinhoScheduleInput>;
+
+/** "Toda sexta às 11:00" — como o combinado é lido em qualquer tela. */
+export function formatSchedule(schedule: {
+  weekday: number;
+  start_time: string;
+}): string {
+  const day = WEEKDAY_LABEL[schedule.weekday as Weekday] ?? "";
+  return `Toda ${day.toLowerCase()} às ${schedule.start_time.slice(0, 5)}`;
+}
 
 // --- Ajudantes de leitura ------------------------------------------------
 

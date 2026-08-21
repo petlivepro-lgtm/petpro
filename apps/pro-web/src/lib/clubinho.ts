@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   ClubinhoCreditDTO,
+  ClubinhoOccurrenceDTO,
   ClubinhoPlanDTO,
+  ClubinhoScheduleDTO,
   ClubinhoSubscriptionDTO,
   Database,
 } from "@mylivepet/types";
@@ -34,6 +36,24 @@ export async function syncClubinhoPeriods(
     p_tenant: tenantId,
   });
   if (error) console.warn(`[clubinho] renovação adiada: ${error.message}`);
+}
+
+/**
+ * Renova os ciclos e, em seguida, transforma os horários fixos nos
+ * agendamentos do ciclo.
+ *
+ * A ordem importa: a materialização procura o saldo do ciclo corrente, e num
+ * ciclo que acabou de vencer esse saldo só existe depois da renovação.
+ */
+export async function syncClubinho(
+  supabase: SupabaseClient<Database>,
+  tenantId: string,
+): Promise<void> {
+  await syncClubinhoPeriods(supabase, tenantId);
+  const { error } = await supabase.rpc("clubinho_materialize_bookings", {
+    p_tenant: tenantId,
+  });
+  if (error) console.warn(`[clubinho] agendamentos adiados: ${error.message}`);
 }
 
 /** Planos do petshop, com os serviços de cada um e quantos pets já assinam. */
@@ -133,6 +153,70 @@ export async function loadPetSubscription(
     .in("status", ["ACTIVE", "PAUSED"])
     .maybeSingle();
   return data ? toSubscription(data) : null;
+}
+
+const SCHEDULE_SELECT =
+  "id, subscription_id, weekday, start_time, service_type_id, collaborator_id, active, service_type(name), collaborator(full_name)";
+
+/**
+ * Os horários fixos das assinaturas informadas, agrupados por assinatura.
+ *
+ * Recebe a lista de ids em vez de buscar por tenant porque as duas telas que
+ * usam isso já carregaram as assinaturas — a da ficha do pet tem uma só.
+ */
+export async function loadClubinhoSchedules(
+  supabase: SupabaseClient<Database>,
+  subscriptionIds: string[],
+): Promise<Map<string, ClubinhoScheduleDTO[]>> {
+  const bySubscription = new Map<string, ClubinhoScheduleDTO[]>();
+  if (subscriptionIds.length === 0) return bySubscription;
+
+  const { data } = await supabase
+    .from("clubinho_schedule")
+    .select(SCHEDULE_SELECT)
+    .in("subscription_id", subscriptionIds)
+    .eq("active", true)
+    .order("weekday")
+    .order("start_time");
+
+  for (const row of data ?? []) {
+    const list = bySubscription.get(row.subscription_id) ?? [];
+    list.push({
+      id: row.id,
+      subscription_id: row.subscription_id,
+      weekday: row.weekday as ClubinhoScheduleDTO["weekday"],
+      start_time: row.start_time,
+      service_type_id: row.service_type_id,
+      service_name:
+        (row.service_type as { name: string } | null)?.name ?? "Serviço",
+      collaborator_id: row.collaborator_id,
+      collaborator_name:
+        (row.collaborator as { full_name: string } | null)?.full_name ??
+        "Profissional",
+      active: row.active,
+    });
+    bySubscription.set(row.subscription_id, list);
+  }
+  return bySubscription;
+}
+
+/**
+ * As datas do ciclo com o estado de cada uma (agendada, conflito, fora do
+ * pacote). A regra vive na RPC de propósito — repetir a conta de orçamento
+ * aqui seria pedir para as duas versões divergirem.
+ */
+export async function loadSchedulePreview(
+  supabase: SupabaseClient<Database>,
+  subscriptionId: string,
+): Promise<ClubinhoOccurrenceDTO[]> {
+  const { data, error } = await supabase.rpc("clubinho_schedule_preview", {
+    p_subscription: subscriptionId,
+  });
+  if (error) {
+    console.warn(`[clubinho] prévia indisponível: ${error.message}`);
+    return [];
+  }
+  return (data ?? []) as ClubinhoOccurrenceDTO[];
 }
 
 /**

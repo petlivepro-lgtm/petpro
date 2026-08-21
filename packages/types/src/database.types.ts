@@ -21,6 +21,7 @@ export type Database = {
           cancelled_at: string | null
           cancelled_by: string | null
           clubinho_credit_id: string | null
+          clubinho_schedule_id: string | null
           collaborator_id: string | null
           completed_by: string | null
           created_at: string
@@ -48,6 +49,7 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           clubinho_credit_id?: string | null
+          clubinho_schedule_id?: string | null
           collaborator_id?: string | null
           completed_by?: string | null
           created_at?: string
@@ -75,6 +77,7 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           clubinho_credit_id?: string | null
+          clubinho_schedule_id?: string | null
           collaborator_id?: string | null
           completed_by?: string | null
           created_at?: string
@@ -116,6 +119,13 @@ export type Database = {
             columns: ["clubinho_credit_id"]
             isOneToOne: false
             referencedRelation: "clubinho_credit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_clubinho_schedule_id_fkey"
+            columns: ["clubinho_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_schedule"
             referencedColumns: ["id"]
           },
           {
@@ -680,6 +690,88 @@ export type Database = {
           },
           {
             foreignKeyName: "clubinho_plan_item_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubinho_schedule: {
+        Row: {
+          active: boolean
+          collaborator_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          service_type_id: string
+          start_time: string
+          subscription_id: string
+          tenant_id: string
+          weekday: number
+        }
+        Insert: {
+          active?: boolean
+          collaborator_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          service_type_id: string
+          start_time: string
+          subscription_id: string
+          tenant_id: string
+          weekday: number
+        }
+        Update: {
+          active?: boolean
+          collaborator_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          service_type_id?: string
+          start_time?: string
+          subscription_id?: string
+          tenant_id?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clubinho_schedule_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "collaborator"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_schedule_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_schedule_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_type"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_schedule_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_subscription"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_schedule_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "clubinho_subscription_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_schedule_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenant"
@@ -2675,6 +2767,10 @@ export type Database = {
         }
         Returns: string
       }
+      clubinho_materialize_bookings: {
+        Args: { p_tenant: string }
+        Returns: number
+      }
       clubinho_open_period: {
         Args: {
           p_created_by?: string
@@ -2686,6 +2782,21 @@ export type Database = {
       clubinho_resume_subscription: {
         Args: { p_id: string }
         Returns: undefined
+      }
+      clubinho_schedule_occurrences: {
+        Args: { p_from: string; p_schedule_id: string; p_to: string }
+        Returns: string[]
+      }
+      clubinho_schedule_preview: {
+        Args: { p_subscription: string }
+        Returns: {
+          appointment_id: string
+          collaborator_name: string
+          occurs_at: string
+          schedule_id: string
+          service_name: string
+          state: string
+        }[]
       }
       clubinho_sync_periods: { Args: { p_tenant: string }; Returns: number }
       clubinho_sync_tutor_flag: {

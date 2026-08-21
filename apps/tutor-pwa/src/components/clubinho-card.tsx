@@ -1,6 +1,11 @@
-import { CalendarClock, Crown } from "lucide-react";
+import { CalendarClock, CalendarCheck, Crown } from "lucide-react";
 import { Avatar, Card, cn } from "@mylivepet/ui";
-import { daysUntil, type ClubinhoSubscriptionDTO } from "@mylivepet/types";
+import {
+  daysUntil,
+  formatSchedule,
+  type ClubinhoScheduleDTO,
+  type ClubinhoSubscriptionDTO,
+} from "@mylivepet/types";
 
 function shortDate(iso: string | null): string {
   if (!iso) return "—";
@@ -19,8 +24,11 @@ function shortDate(iso: string | null): string {
  */
 export function ClubinhoCard({
   subscription,
+  schedules = [],
 }: {
   subscription: ClubinhoSubscriptionDTO;
+  /** Horários fixos combinados com o petshop. Só leitura. */
+  schedules?: ClubinhoScheduleDTO[];
 }) {
   const remaining = daysUntil(subscription.current_period_end);
   const paused = subscription.status === "PAUSED";
@@ -105,6 +113,30 @@ export function ClubinhoCard({
               remaining >= 0 &&
               ` · ${remaining} dia${remaining === 1 ? "" : "s"}`}
             {subscription.plan_rollover && " · o que sobrar acumula"}
+          </p>
+        </div>
+      )}
+
+      {schedules.length > 0 && (
+        <div className="mt-3 space-y-1 border-t border-graphite/5 pt-3">
+          {schedules.map((schedule) => (
+            <p
+              key={schedule.id}
+              className="flex items-start gap-1.5 text-xs text-graphite"
+            >
+              <CalendarCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-petrol" />
+              <span>
+                {formatSchedule(schedule)}
+                <span className="block text-gray-neutral">
+                  {schedule.service_name}
+                  {schedule.collaborator_name &&
+                    ` · com ${schedule.collaborator_name}`}
+                </span>
+              </span>
+            </p>
+          ))}
+          <p className="pt-0.5 text-xs text-gray-neutral">
+            Horário combinado com o petshop — para mudar, fale com a loja.
           </p>
         </div>
       )}

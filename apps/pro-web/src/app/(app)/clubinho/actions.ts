@@ -6,6 +6,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import {
   CLUBINHO_SUBSCRIPTION_STATUSES,
   canMutateAsRole,
+  clubinhoScheduleInput,
   clubinhoSubscriptionInput,
   clubinhoSubscriptionUpdateInput,
   type ClubinhoSubscriptionStatus,
@@ -31,6 +32,14 @@ function revalidateClubinho(petId?: string) {
   revalidatePath("/clubinho");
   revalidatePath("/tutores");
   revalidatePath("/financeiro");
+  if (petId) revalidatePath(`/pets/${petId}`);
+}
+
+/** Mudança de horário fixo mexe na agenda do profissional, não no caixa. */
+function revalidateAgenda(petId?: string) {
+  revalidatePath("/clubinho");
+  revalidatePath("/atendimentos");
+  revalidatePath("/");
   if (petId) revalidatePath(`/pets/${petId}`);
 }
 
@@ -263,5 +272,120 @@ export async function setClubinhoSubscriptionStatus(
   }
 
   revalidateClubinho(str(formData.get("pet_id")));
+  return { ok: true };
+}
+
+/**
+ * Cadastra um horário fixo e já materializa os agendamentos do ciclo.
+ *
+ * Materializar aqui, e não só no carregamento da tela, é o que faz o balcão
+ * ver as sextas aparecerem na agenda no mesmo clique em que combinou com o
+ * tutor — em vez de "salvou, agora recarrega".
+ *
+ * As validações de serviço fora do plano e profissional inativo são do
+ * trigger clubinho_schedule_check (0052); as mensagens dele já são escritas
+ * para a tela e sobem como estão.
+ */
+export async function saveClubinhoSchedule(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = clubinhoScheduleInput.safeParse({
+    subscription_id: str(formData.get("subscription_id")),
+    weekday: str(formData.get("weekday")),
+    start_time: str(formData.get("start_time")),
+    service_type_id: str(formData.get("service_type_id")),
+    collaborator_id: str(formData.get("collaborator_id")),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos",
+    };
+  }
+
+  const context = await clubinhoContext();
+  if ("error" in context) return { ok: false, error: context.error };
+  const { supabase, tenant } = context;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { error } = await supabase.from("clubinho_schedule").insert({
+    // tenant_id é reescrito pelo trigger a partir da assinatura; vai aqui só
+    // porque a coluna é NOT NULL.
+    tenant_id: tenant.tenantId,
+    subscription_id: parsed.data.subscription_id,
+    weekday: parsed.data.weekday,
+    start_time: parsed.data.start_time,
+    service_type_id: parsed.data.service_type_id,
+    collaborator_id: parsed.data.collaborator_id,
+    created_by: user?.id ?? null,
+  });
+  if (error) {
+    return {
+      ok: false,
+      error:
+        error.code === "23505"
+          ? "Já existe um horário fixo neste dia e hora para este pet"
+          : error.message,
+    };
+  }
+
+  await supabase.rpc("clubinho_materialize_bookings", {
+    p_tenant: tenant.tenantId,
+  });
+
+  revalidateAgenda(str(formData.get("pet_id")));
+  return { ok: true };
+}
+
+/**
+ * Remove o horário fixo e cancela os agendamentos futuros que ele criou.
+ *
+ * Cancelar junto é deliberado: aqueles agendamentos existem só por causa do
+ * combinado, e a FK do banco é `on delete set null` — sem isso a agenda
+ * ficaria cheia de sextas que ninguém consegue mais explicar nem rastrear.
+ *
+ * O que já começou (check-in, em andamento, concluído) não se toca: o pet
+ * está na loja ou já foi atendido, e isso é histórico.
+ */
+export async function deleteClubinhoSchedule(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const id = str(formData.get("id"));
+  if (!id) return { ok: false, error: "Horário inválido" };
+
+  const context = await clubinhoContext();
+  if ("error" in context) return { ok: false, error: context.error };
+  const { supabase, tenant } = context;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { error: cancelError } = await supabase
+    .from("appointment")
+    .update({
+      status: "CANCELLED",
+      cancelled_at: new Date().toISOString(),
+      cancelled_by: user?.id ?? null,
+      cancellation_reason: "Horário fixo do Clubinho removido",
+    })
+    .eq("clubinho_schedule_id", id)
+    .in("status", ["REQUESTED", "CONFIRMED"])
+    .gte("scheduled_at", new Date().toISOString());
+  if (cancelError) return { ok: false, error: cancelError.message };
+
+  const { error } = await supabase
+    .from("clubinho_schedule")
+    .delete()
+    .eq("id", id)
+    .eq("tenant_id", tenant.tenantId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateAgenda(str(formData.get("pet_id")));
   return { ok: true };
 }

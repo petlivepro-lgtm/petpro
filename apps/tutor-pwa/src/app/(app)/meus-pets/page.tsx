@@ -7,9 +7,14 @@ import {
   BEHAVIOR_BADGE_TONE,
   behaviorBadgeOf,
   formatBehaviorScore,
+  formatSchedule,
 } from "@mylivepet/types";
 import { fetchBehaviorSummaries } from "@/lib/behavior";
-import { loadMyClubinho, syncClubinhoPeriods } from "@/lib/clubinho";
+import {
+  loadMyClubinho,
+  loadMyClubinhoSchedules,
+  syncClubinhoPeriods,
+} from "@/lib/clubinho";
 import { PetDialog, type PetRow } from "@/components/pet-dialog";
 import { ClubinhoBadge } from "@/components/clubinho-badge";
 import { DeletePetDialog } from "@/components/delete-pet-dialog";
@@ -51,6 +56,18 @@ export default async function MeusPetsPage() {
       .eq("tutor_id", ctx.tutorId),
   ]);
   const clubinhoByPet = new Map(clubinho.map((s) => [s.pet_id, s] as const));
+
+  // Combinados por PET (a consulta devolve por assinatura), para o card dizer
+  // quando o pet é atendido sem o tutor precisar abrir a agenda.
+  const schedulesBySubscription = await loadMyClubinhoSchedules(
+    supabase,
+    clubinho.map((s) => s.id),
+  );
+  const schedulesByPet = new Map(
+    clubinho.map(
+      (s) => [s.pet_id, schedulesBySubscription.get(s.id) ?? []] as const,
+    ),
+  );
   const appointmentsByPet = new Map<string, number>();
   for (const row of appts ?? []) {
     appointmentsByPet.set(row.pet_id, (appointmentsByPet.get(row.pet_id) ?? 0) + 1);
@@ -93,6 +110,11 @@ export default async function MeusPetsPage() {
                   subscription={clubinhoByPet.get(p.id)}
                   className="mt-1.5"
                 />
+                {(schedulesByPet.get(p.id) ?? []).map((schedule) => (
+                  <p key={schedule.id} className="text-xs text-petrol">
+                    {formatSchedule(schedule)} · {schedule.service_name}
+                  </p>
+                ))}
                 {summary?.averageScore != null ? (
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                     <RatingStars value={Math.round(summary.averageScore)} size="sm" />

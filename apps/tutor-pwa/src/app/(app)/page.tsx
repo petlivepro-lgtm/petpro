@@ -10,7 +10,11 @@ import { fetchBehaviorSummaries } from "@/lib/behavior";
 import { PetsRow } from "@/components/pets-row";
 import { RejectionNotices, type RejectionNotice } from "@/components/rejection-notice";
 import { ClubinhoCard } from "@/components/clubinho-card";
-import { loadMyClubinho, syncClubinhoPeriods } from "@/lib/clubinho";
+import {
+  loadMyClubinho,
+  loadMyClubinhoSchedules,
+  syncClubinhoPeriods,
+} from "@/lib/clubinho";
 
 function formatDate(v: string | null) {
   if (!v) return "—";
@@ -59,6 +63,10 @@ export default async function HomePage({
   // alguém do petshop abrir o painel.
   await syncClubinhoPeriods(supabase, ctx.tenantId);
   const clubinho = await loadMyClubinho(supabase, ctx.tutorId);
+  const clubinhoSchedules = await loadMyClubinhoSchedules(
+    supabase,
+    clubinho.map((s) => s.id),
+  );
 
   // Média do boletim para o card de cada pet; o boletim completo vive na ficha.
   const summaries = await fetchBehaviorSummaries(
@@ -104,7 +112,11 @@ export default async function HomePage({
           </p>
           <div className="mt-3 flex snap-x gap-3 overflow-x-auto pb-1">
             {clubinho.map((subscription) => (
-              <ClubinhoCard key={subscription.id} subscription={subscription} />
+              <ClubinhoCard
+                key={subscription.id}
+                subscription={subscription}
+                schedules={clubinhoSchedules.get(subscription.id) ?? []}
+              />
             ))}
           </div>
         </section>

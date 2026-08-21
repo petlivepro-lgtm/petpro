@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   ClubinhoCreditDTO,
+  ClubinhoScheduleDTO,
   ClubinhoSubscriptionDTO,
   Database,
 } from "@mylivepet/types";
@@ -50,4 +51,52 @@ export async function loadMyClubinho(
       ? (row.credits as ClubinhoCreditDTO[])
       : [],
   }));
+}
+
+const SCHEDULE_SELECT =
+  "id, subscription_id, weekday, start_time, service_type_id, active, service_type(name), collaborator(full_name)";
+
+/**
+ * Os horários fixos combinados com o petshop, por assinatura.
+ *
+ * Leitura pura: quem organiza a agenda dos profissionais é o petshop, e a RLS
+ * (clubinho_schedule_tutor_read, 0052) só concede select. O tutor vê o
+ * combinado para saber quando levar o pet — remarcar continua sendo conversa
+ * com a loja.
+ */
+export async function loadMyClubinhoSchedules(
+  supabase: SupabaseClient<Database>,
+  subscriptionIds: string[],
+): Promise<Map<string, ClubinhoScheduleDTO[]>> {
+  const bySubscription = new Map<string, ClubinhoScheduleDTO[]>();
+  if (subscriptionIds.length === 0) return bySubscription;
+
+  const { data } = await supabase
+    .from("clubinho_schedule")
+    .select(SCHEDULE_SELECT)
+    .in("subscription_id", subscriptionIds)
+    .eq("active", true)
+    .order("weekday")
+    .order("start_time");
+
+  for (const row of data ?? []) {
+    const list = bySubscription.get(row.subscription_id) ?? [];
+    list.push({
+      id: row.id,
+      subscription_id: row.subscription_id,
+      weekday: row.weekday as ClubinhoScheduleDTO["weekday"],
+      start_time: row.start_time,
+      service_type_id: row.service_type_id,
+      service_name:
+        (row.service_type as { name: string } | null)?.name ?? "Serviço",
+      // O tutor não escolhe o profissional, mas saber quem atende o pet toda
+      // semana é parte do combinado.
+      collaborator_id: "",
+      collaborator_name:
+        (row.collaborator as { full_name: string } | null)?.full_name ?? "",
+      active: row.active,
+    });
+    bySubscription.set(row.subscription_id, list);
+  }
+  return bySubscription;
 }

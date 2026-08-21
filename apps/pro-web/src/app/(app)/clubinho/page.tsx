@@ -18,13 +18,18 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { loadPaymentTerminals } from "@/lib/payment-terminals";
+import { loadBookingOptions } from "@/lib/booking-options";
 import {
   loadClubinhoPlans,
+  loadClubinhoSchedules,
   loadClubinhoSubscriptions,
   loadLegacyClubinhoTutors,
-  syncClubinhoPeriods,
+  loadSchedulePreview,
+  syncClubinho,
 } from "@/lib/clubinho";
 import { ClubinhoBalance } from "@/components/clubinho-balance";
+import { ClubinhoScheduleList } from "@/components/clubinho-schedule-list";
+import { ClubinhoScheduleDialog } from "@/components/clubinho-schedule-dialog";
 import {
   ClubinhoSubscriptionDialog,
   type PetOption,
@@ -58,22 +63,49 @@ export default async function ClubinhoPage() {
   const tenant = await getActiveTenant(supabase);
   if (!tenant) return null;
 
-  // Renova os ciclos vencidos antes de mostrar saldo: sem cron, é aqui que a
-  // rotina acontece (ver syncClubinhoPeriods).
-  await syncClubinhoPeriods(supabase, tenant.tenantId);
+  // Renova os ciclos vencidos e materializa os horários fixos antes de
+  // mostrar qualquer coisa: sem cron, é aqui que a rotina acontece
+  // (ver syncClubinho).
+  await syncClubinho(supabase, tenant.tenantId);
 
-  const [subscriptions, plans, terminals, legacyTutors, { data: petRows }] =
-    await Promise.all([
-      loadClubinhoSubscriptions(supabase, tenant.tenantId),
-      loadClubinhoPlans(supabase, tenant.tenantId, { activeOnly: true }),
-      loadPaymentTerminals(supabase, tenant.tenantId, { activeOnly: true }),
-      loadLegacyClubinhoTutors(supabase, tenant.tenantId),
-      supabase
-        .from("pet")
-        .select("id, name, tutor(full_name)")
-        .eq("tenant_id", tenant.tenantId)
-        .order("name"),
-    ]);
+  const [
+    subscriptions,
+    plans,
+    terminals,
+    legacyTutors,
+    bookingOptions,
+    { data: petRows },
+  ] = await Promise.all([
+    loadClubinhoSubscriptions(supabase, tenant.tenantId),
+    loadClubinhoPlans(supabase, tenant.tenantId, { activeOnly: true }),
+    loadPaymentTerminals(supabase, tenant.tenantId, { activeOnly: true }),
+    loadLegacyClubinhoTutors(supabase, tenant.tenantId),
+    // Só os profissionais interessam aqui; o pet e o serviço já vêm da
+    // assinatura.
+    loadBookingOptions(supabase, { includeTutors: false }),
+    supabase
+      .from("pet")
+      .select("id, name, tutor(full_name)")
+      .eq("tenant_id", tenant.tenantId)
+      .order("name"),
+  ]);
+
+  // Combinados de todas as assinaturas numa consulta; a prévia é por
+  // assinatura (a regra de orçamento é por ciclo) e roda em paralelo.
+  const schedulesBySubscription = await loadClubinhoSchedules(
+    supabase,
+    subscriptions.map((s) => s.id),
+  );
+  const previews = new Map(
+    await Promise.all(
+      subscriptions
+        .filter((s) => schedulesBySubscription.has(s.id))
+        .map(
+          async (s) =>
+            [s.id, await loadSchedulePreview(supabase, s.id)] as const,
+        ),
+    ),
+  );
 
   const canManage = canMutateAsRole(tenant.role);
   const taken = new Set(subscriptions.map((s) => s.pet_id));
@@ -240,6 +272,19 @@ export default async function ClubinhoPage() {
                     subscription={sub}
                     className="border-t border-graphite/5 pt-3"
                   />
+
+                  <ClubinhoScheduleList
+                    schedules={schedulesBySubscription.get(sub.id) ?? []}
+                    occurrences={previews.get(sub.id) ?? []}
+                    petId={sub.pet_id}
+                    canManage={canManage && sub.status === "ACTIVE"}
+                    className="mt-3 border-t border-graphite/5 pt-3"
+                  >
+                    <ClubinhoScheduleDialog
+                      subscription={sub}
+                      collaborators={bookingOptions.collaborators}
+                    />
+                  </ClubinhoScheduleList>
                 </Card>
               ))}
             </div>
