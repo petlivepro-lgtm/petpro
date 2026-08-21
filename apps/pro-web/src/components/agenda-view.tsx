@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
-  ChevronLeft,
-  ChevronRight,
   History,
   Search,
   SlidersHorizontal,
@@ -13,7 +11,6 @@ import {
 } from "lucide-react";
 import {
   Button,
-  DatePicker,
   Dialog,
   Input,
   Label,
@@ -30,6 +27,8 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeList } from "@/lib/use-realtime-list";
 import { AgendaGrid } from "@/components/agenda-grid";
+import { AgendaMonth } from "@/components/agenda-month";
+import { AgendaNav } from "@/components/agenda-nav";
 import { AgendaHistorico } from "@/components/agenda-historico";
 import { NewAppointmentDialog } from "@/components/new-appointment-dialog";
 import type { CameraOption } from "@/components/start-appointment-dialog";
@@ -38,10 +37,9 @@ import type { BookingCollaborator, BookingTutor } from "@/lib/booking-options";
 import type { ServiceOption } from "@mylivepet/ui";
 import {
   addDays,
+  addMonths,
   agendaRange,
   fetchAgenda,
-  formatDayHeading,
-  formatWeekHeading,
   hourBands,
   slotValue,
   weekDays,
@@ -64,9 +62,9 @@ export type LegendService = {
 };
 
 /**
- * A tela de agenda: calendário por dia ou semana, e o histórico em lista como
- * terceiro modo. O modo e a data vivem na URL — dá para mandar o link de um dia
- * específico e o voltar do navegador funciona.
+ * A tela de agenda: calendário por dia, semana ou mês, e o histórico em lista
+ * como quarto modo. O modo e a data vivem na URL — dá para mandar o link de um
+ * dia específico e o voltar do navegador funciona.
  *
  * Busca, status e profissional são estado local e valem nos três modos: quem
  * abriu o filtro por profissional não quer perdê-lo ao pular de dia.
@@ -182,11 +180,14 @@ export function AgendaView({
   // ou mudar de forma a cada letra digitada na busca.
   const hours = useMemo(
     () =>
-      hourBands(
-        schedules,
-        view === "semana" ? weekDays(date) : [date],
-        isCalendar ? rows : [],
-      ),
+      // O mês não tem faixas de horário — a célula lá é o dia inteiro.
+      view === "mes"
+        ? []
+        : hourBands(
+            schedules,
+            view === "semana" ? weekDays(date) : [date],
+            isCalendar ? rows : [],
+          ),
     [schedules, view, date, rows, isCalendar],
   );
 
@@ -211,7 +212,38 @@ export function AgendaView({
   };
 
   const step = (dir: -1 | 1) =>
-    go({ date: addDays(date, view === "semana" ? 7 * dir : dir) });
+    go({
+      date:
+        view === "mes"
+          ? addMonths(date, dir)
+          : addDays(date, view === "semana" ? 7 * dir : dir),
+    });
+
+  // As setas do teclado andam pela agenda como as da tela. Só quando não há
+  // nada em foco que as consuma: dentro da busca ou de um diálogo aberto, elas
+  // são do campo, e virar o mês por baixo seria só confusão.
+  useEffect(() => {
+    if (!isCalendar) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      if (e.metaKey || e.ctrlKey || e.altKey || filtersOpen || slot !== null)
+        return;
+      const el = document.activeElement;
+      if (
+        el instanceof HTMLElement &&
+        (el.isContentEditable ||
+          el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.tagName === "SELECT" ||
+          el.closest("[role='dialog']"))
+      )
+        return;
+      e.preventDefault();
+      step(e.key === "ArrowLeft" ? -1 : 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const updateHistoryDate = (key: "from" | "to", value: string) => {
     if (key === "from" && value && dateTo && value > dateTo) return;
@@ -284,45 +316,12 @@ export function AgendaView({
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         {isCalendar ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1">
-              <NavButton
-                label={view === "semana" ? "Semana anterior" : "Dia anterior"}
-                onClick={() => step(-1)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </NavButton>
-              <NavButton
-                label={view === "semana" ? "Próxima semana" : "Próximo dia"}
-                onClick={() => step(1)}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </NavButton>
-            </div>
-
-            <p className="rounded-xl border border-graphite/10 bg-surface px-4 py-2 font-heading text-sm font-semibold text-graphite">
-              {view === "semana"
-                ? formatWeekHeading(date)
-                : formatDayHeading(date)}
-            </p>
-
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => go({ date: dayKey(new Date()) })}
-            >
-              Hoje
-            </Button>
-
-            <div className="w-40">
-              <DatePicker
-                aria-label="Ir para data"
-                mode="date"
-                value={date}
-                onChange={(value) => value && go({ date: value })}
-              />
-            </div>
-          </div>
+          <AgendaNav
+            view={view}
+            date={date}
+            onStep={step}
+            onGoTo={(next) => go({ date: next })}
+          />
         ) : (
           <p className="font-heading text-sm font-semibold text-graphite">
             Histórico de atendimentos
@@ -347,7 +346,7 @@ export function AgendaView({
             </span>
           ))}
           <div className="ml-auto inline-flex rounded-xl border border-graphite/10 bg-surface p-1">
-            {(["dia", "semana"] as const).map((mode) => (
+            {(["dia", "semana", "mes"] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
@@ -359,7 +358,7 @@ export function AgendaView({
                     : "text-gray-neutral hover:text-graphite",
                 )}
               >
-                {mode === "dia" ? "Dia" : "Semana"}
+                {mode === "dia" ? "Dia" : mode === "semana" ? "Semana" : "Mês"}
               </button>
             ))}
           </div>
@@ -395,6 +394,14 @@ export function AgendaView({
             canConfirm={!isCollaborator}
             hasFilter={hasFilter}
           />
+        ) : view === "mes" ? (
+          // Clicar num dia leva para o modo Dia: a célula do mês é o dia
+          // inteiro, e sem hora não há o que preencher no agendamento.
+          <AgendaMonth
+            date={date}
+            rows={filtered}
+            onOpenDay={(day) => go({ view: "dia", date: day })}
+          />
         ) : (
           <AgendaGrid
             view={view}
@@ -407,12 +414,25 @@ export function AgendaView({
         )}
       </div>
 
+      {/* A mesma paginação do topo, repetida sob a grade: no mês ela é alta o
+          bastante para a barra de cima já ter saído da tela. */}
       {isCalendar && (
-        <p className="mt-4 text-center text-xs text-gray-neutral">
-          {canBook
-            ? "Clique em um horário vazio para adicionar um novo agendamento."
-            : `Mostrando ${range.from === range.to ? "o dia" : "a semana"} selecionado.`}
-        </p>
+        <div className="mt-4 space-y-2">
+          <AgendaNav
+            variant="compact"
+            view={view}
+            date={date}
+            onStep={step}
+            onGoTo={(next) => go({ date: next })}
+          />
+          <p className="text-center text-xs text-gray-neutral">
+            {view === "mes"
+              ? "Clique em um dia para abrir a agenda dele."
+              : canBook
+                ? "Clique em um horário vazio para adicionar um novo agendamento."
+                : `Mostrando ${range.from === range.to ? "o dia" : "a semana"} selecionado.`}
+          </p>
+        </div>
       )}
 
       {/* O agendamento a partir da célula clicada — sem gatilho próprio, quem
@@ -499,26 +519,5 @@ export function AgendaView({
         </div>
       </Dialog>
     </div>
-  );
-}
-
-function NavButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-xl border border-graphite/10 bg-surface text-gray-neutral transition-colors hover:bg-surface-muted hover:text-graphite"
-    >
-      {children}
-    </button>
   );
 }

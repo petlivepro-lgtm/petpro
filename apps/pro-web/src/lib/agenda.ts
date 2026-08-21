@@ -7,11 +7,11 @@ import {
   type AtendimentoRow,
 } from "@/lib/atendimentos";
 
-/** Modos da tela de agenda — o histórico em lista é o terceiro. */
-export type AgendaView = "dia" | "semana" | "historico";
+/** Modos da tela de agenda — o histórico em lista é o quarto. */
+export type AgendaView = "dia" | "semana" | "mes" | "historico";
 
 export function isAgendaView(v: string | undefined): v is AgendaView {
-  return v === "dia" || v === "semana" || v === "historico";
+  return v === "dia" || v === "semana" || v === "mes" || v === "historico";
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -42,6 +42,52 @@ export function weekStart(key: string): string {
 export function weekDays(key: string): string[] {
   const start = weekStart(key);
   return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+}
+
+/**
+ * Anda de mês em mês pelo dia 1º, e não somando 30 dias.
+ *
+ * Somar dias faria 31/01 + 1 mês virar 02/03, e a seta pularia fevereiro
+ * inteiro. Ancorar no primeiro dia do mês é o que mantém a sequência
+ * jan → fev → mar independentemente do dia que estava selecionado.
+ */
+export function addMonths(key: string, months: number): string {
+  const d = parseDayKey(key);
+  return dayKey(new Date(d.getFullYear(), d.getMonth() + months, 1));
+}
+
+/**
+ * Os dias que a grade do mês desenha: do domingo da semana do dia 1º ao
+ * sábado da semana do último dia. São 35 ou 42 casas, e as das pontas caem
+ * nos meses vizinhos — sem elas a primeira e a última semana ficariam
+ * quebradas ao meio.
+ */
+export function monthGridDays(key: string): string[] {
+  const d = parseDayKey(key);
+  const first = dayKey(new Date(d.getFullYear(), d.getMonth(), 1));
+  const last = dayKey(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+  const start = weekStart(first);
+  const end = addDays(weekStart(last), 6);
+
+  const days: string[] = [];
+  for (let day = start; day <= end; day = addDays(day, 1)) days.push(day);
+  return days;
+}
+
+/** O dia pertence ao mês de referência, ou é sobra da semana vizinha? */
+export function isSameMonth(key: string, reference: string): boolean {
+  const a = parseDayKey(key);
+  const b = parseDayKey(reference);
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
+/** "Agosto de 2026" — o rótulo da barra de navegação no modo mês. */
+export function formatMonthHeading(key: string): string {
+  const label = parseDayKey(key).toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
+  return label[0]!.toUpperCase() + label.slice(1);
 }
 
 /** "18/05/2025 - Domingo" — o rótulo da barra de navegação. */
@@ -109,7 +155,7 @@ export async function fetchAgenda(
   );
 }
 
-/** Janela de dias que o modo pede: um dia, ou os sete da semana. */
+/** Janela de dias que o modo pede: um dia, os sete da semana ou a grade do mês. */
 export function agendaRange(
   view: AgendaView,
   date: string,
@@ -117,6 +163,10 @@ export function agendaRange(
   if (view === "semana") {
     const days = weekDays(date);
     return { from: days[0]!, to: days[6]! };
+  }
+  if (view === "mes") {
+    const days = monthGridDays(date);
+    return { from: days[0]!, to: days[days.length - 1]! };
   }
   return { from: date, to: date };
 }
@@ -207,6 +257,31 @@ export function byCell(
     const list = map.get(key);
     if (list) list.push(row);
     else map.set(key, [row]);
+  }
+  return map;
+}
+
+/**
+ * Indexa os atendimentos por DIA, para a grade do mês.
+ *
+ * Separado de `byCell` de propósito: lá a chave é dia|hora, porque a célula é
+ * uma faixa de uma hora. Aqui a célula é o dia inteiro, e estender aquela
+ * função para os dois formatos só acrescentaria um ramo em código que Dia e
+ * Semana já usam bem.
+ */
+export function byDay(rows: AtendimentoRow[]): Map<string, AtendimentoRow[]> {
+  const map = new Map<string, AtendimentoRow[]>();
+  for (const row of rows) {
+    if (!row.scheduledAt) continue;
+    const key = dayKey(new Date(row.scheduledAt));
+    const list = map.get(key);
+    if (list) list.push(row);
+    else map.set(key, [row]);
+  }
+  // Dentro do dia, a ordem é a do relógio — a consulta já vem ordenada, mas a
+  // atualização em tempo real pode inserir uma linha fora de ordem.
+  for (const list of map.values()) {
+    list.sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""));
   }
   return map;
 }
