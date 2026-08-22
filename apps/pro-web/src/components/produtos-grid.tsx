@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Package, SearchX } from "lucide-react";
 import {
   Button,
@@ -53,6 +54,17 @@ export function ProdutosGrid({
 
   const [filter, setFilter] = useState<ProductFilter>("venda");
   const [query, setQuery] = useState("");
+
+  // A busca global (Ctrl+K) manda o nome do item em ?q= — o campo já abre
+  // filtrado, inclusive quando a pessoa já estava nesta página.
+  const urlQuery = useSearchParams().get("q") ?? "";
+  useEffect(() => {
+    if (!urlQuery) return;
+    setQuery(urlQuery);
+    // O item procurado pode ser de uso interno, e a aba padrão é "à venda":
+    // sem abrir em "todos", a busca global levaria a uma lista vazia.
+    setFilter("todos");
+  }, [urlQuery]);
   const [view, setView] = useCatalogView(VIEW_STORAGE_KEY);
 
   const tabs: TabItem[] = useMemo(() => {

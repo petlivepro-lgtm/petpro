@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import { LayoutGrid, List, Search, X } from "lucide-react";
 import { Input, cn } from "@mylivepet/ui";
+// As funções de comparação moram em lib/search-text: as listas de servidor
+// usam as mesmas, e daqui elas não poderiam ser importadas por um Server
+// Component. Reexportadas para não mexer em quem já as importa daqui.
+export {
+  matchesCatalogSearch,
+  normalizeCatalogSearch,
+} from "@/lib/search-text";
 
 export type CatalogView = "cards" | "table";
 
@@ -32,22 +39,6 @@ export function useCatalogView(storageKey: string) {
   return [view, updateView] as const;
 }
 
-export function normalizeCatalogSearch(value: unknown) {
-  return String(value ?? "")
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLocaleLowerCase("pt-BR");
-}
-
-export function matchesCatalogSearch(values: unknown[], query: string) {
-  const terms = normalizeCatalogSearch(query).split(" ").filter(Boolean);
-  if (terms.length === 0) return true;
-
-  const searchableText = normalizeCatalogSearch(values.join(" "));
-  return terms.every((term) => searchableText.includes(term));
-}
 
 export function CatalogToolbar({
   query,

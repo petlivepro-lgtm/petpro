@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
 import { Button, Checkbox, CurrencyInput, Dialog, Input, Label, PhotoGalleryInput, Select } from "@mylivepet/ui";
 import { formatBRL, PRODUCT_CATEGORIES, PRODUCT_CATEGORY_LABEL } from "@mylivepet/types";
+import { useOpenFromUrl } from "@/lib/use-open-from-url";
 import {
   createProduct,
   updateProduct,
@@ -66,6 +67,9 @@ export function ProductDialog({ product }: { product?: ProductRow }) {
   const router = useRouter();
   const isEdit = !!product;
   const [open, setOpen] = useState(false);
+
+  // Só o gatilho de cadastro responde à paleta; com produto é edição.
+  useOpenFromUrl("produto", () => setOpen(true), !product);
   const [forSale, setForSale] = useState(product?.for_sale ?? true);
   const [variants, setVariants] = useState<VariantRow[]>(() =>
     toVariantRows(product?.product_variant),

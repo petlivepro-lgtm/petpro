@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Users, PawPrint, Package, CalendarClock, ArrowRight, Wallet, PackageSearch } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader, StatCard, Card, EmptyState } from "@mylivepet/ui";
+import { SearchTrigger } from "@/components/search-trigger";
 import { AppointmentStatusBadge } from "@/components/status-badge";
 import { ColaboradorDashboard } from "@/components/colaborador-dashboard";
 import { RecentSolicitacoes } from "@/components/recent-solicitacoes";
@@ -116,6 +117,12 @@ export default async function DashboardPage() {
         title="Visão geral"
         subtitle="Cuidado acompanhado com clareza, segurança e responsabilidade."
       />
+
+      {/* A porta de entrada da busca. O atalho vale em todo o painel, mas é
+          aqui que quem ainda não o conhece descobre que ele existe. */}
+      <div className="mb-6 max-w-2xl">
+        <SearchTrigger />
+      </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {cards.map((c) => (

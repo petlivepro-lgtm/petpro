@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Clock, ListChecks, Scissors, SearchX } from "lucide-react";
 import { Button, Card, EmptyState, StatusChip } from "@mylivepet/ui";
 import { formatBRL, type ServiceStepTemplate } from "@mylivepet/types";
@@ -23,6 +24,13 @@ export function ServicosCatalogo({
   library: ServiceStepTemplate[];
 }) {
   const [query, setQuery] = useState("");
+
+  // A busca global (Ctrl+K) manda o nome do item em ?q= — o campo já abre
+  // filtrado, inclusive quando a pessoa já estava nesta página.
+  const urlQuery = useSearchParams().get("q") ?? "";
+  useEffect(() => {
+    if (urlQuery) setQuery(urlQuery);
+  }, [urlQuery]);
   const [view, setView] = useCatalogView(VIEW_STORAGE_KEY);
 
   const visibleServices = useMemo(

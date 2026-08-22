@@ -17,6 +17,7 @@ import {
 } from "@mylivepet/ui";
 import { createStaffBooking, type FormState } from "@/app/(app)/actions";
 import { SlotPicker } from "@/components/slot-picker";
+import { useOpenFromUrl } from "@/lib/use-open-from-url";
 import type { BookingCollaborator, BookingTutor } from "@/lib/booking-options";
 
 /** Data local de hoje em YYYY-MM-DD (limite mínimo do calendário). */
@@ -63,6 +64,14 @@ export function NewAppointmentDialog({
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = onOpenChange ?? setUncontrolledOpen;
+
+  // "Novo agendamento" na paleta chega como ?novo=agendamento. As instâncias
+  // controladas de fora (a célula clicada na grade) já têm quem as abra.
+  useOpenFromUrl(
+    "agendamento",
+    () => setUncontrolledOpen(true),
+    trigger !== "none",
+  );
 
   const [tutorId, setTutorId] = useState("");
   const [petId, setPetId] = useState(fixedPet?.id ?? "");

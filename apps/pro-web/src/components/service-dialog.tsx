@@ -21,6 +21,7 @@ import {
   type FormState,
 } from "@/app/(app)/servicos/actions";
 import { AGENDA_COLORS, colorNameOf } from "@/lib/agenda-colors";
+import { useOpenFromUrl } from "@/lib/use-open-from-url";
 
 export type ServiceRow = {
   id: string;
@@ -45,6 +46,9 @@ export function ServiceDialog({
   const router = useRouter();
   const isEdit = !!service;
   const [open, setOpen] = useState(false);
+
+  // Só o gatilho de cadastro responde à paleta; com serviço é edição.
+  useOpenFromUrl("servico", () => setOpen(true), !service);
   const [stepIds, setStepIds] = useState<string[]>(service?.step_ids ?? []);
   // O hex é a fonte da verdade, não o nome da paleta: com o seletor livre
   // existe cor sem nome nenhum. O nome é derivado só para acender o swatch

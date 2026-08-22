@@ -6,8 +6,16 @@ import { hhmm, scheduleSummary } from "@/lib/collaborator-schedule";
 import { CollaboratorAccessDialog } from "@/components/collaborator-access-dialog";
 import { CollaboratorDialog } from "@/components/collaborator-dialog";
 import { DeleteCollaboratorDialog } from "@/components/delete-collaborator-dialog";
+import { ListFilterChip } from "@/components/list-filter-chip";
+import { matchesCatalogSearch } from "@/lib/search-text";
 
-export default async function ColaboradoresPage() {
+export default async function ColaboradoresPage({
+  searchParams,
+}: {
+  /** `q` vem da busca global (Ctrl+K), que abre a lista já filtrada. */
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const query = ((await searchParams).q ?? "").trim();
   const supabase = await createClient();
   const [{ data }, tenant] = await Promise.all([
     supabase
@@ -19,7 +27,12 @@ export default async function ColaboradoresPage() {
     getActiveTenant(supabase),
   ]);
 
-  const list = data ?? [];
+  const all = data ?? [];
+  const list = query
+    ? all.filter((c) =>
+        matchesCatalogSearch([c.full_name, c.role_title, c.access_email], query),
+      )
+    : all;
   // Mesmo recorte da policy membership_admin: o acesso ao painel acaba
   // criando uma membership.
   const canManageAccess = tenant?.role === "OWNER" || tenant?.role === "MANAGER";
@@ -32,13 +45,29 @@ export default async function ColaboradoresPage() {
         actions={<CollaboratorDialog />}
       />
 
-      {list.length === 0 ? (
-        <EmptyState
-          icon={<UsersRound className="h-6 w-6" />}
-          title="Nenhum colaborador cadastrado"
-          description="Cadastre o primeiro colaborador e os horários dele para os tutores agendarem."
-          action={<CollaboratorDialog />}
+      {query && (
+        <ListFilterChip
+          query={query}
+          clearHref="/colaboradores"
+          count={list.length}
         />
+      )}
+
+      {list.length === 0 ? (
+        query ? (
+          <EmptyState
+            icon={<UsersRound className="h-6 w-6" />}
+            title={`Nenhum colaborador encontrado para “${query}”`}
+            description="Confira a grafia ou limpe o filtro para ver a lista inteira."
+          />
+        ) : (
+          <EmptyState
+            icon={<UsersRound className="h-6 w-6" />}
+            title="Nenhum colaborador cadastrado"
+            description="Cadastre o primeiro colaborador e os horários dele para os tutores agendarem."
+            action={<CollaboratorDialog />}
+          />
+        )
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((c) => {

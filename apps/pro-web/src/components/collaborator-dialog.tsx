@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus, X } from "lucide-react";
 import { Button, Checkbox, Dialog, Input, Label, Select } from "@mylivepet/ui";
+import { useOpenFromUrl } from "@/lib/use-open-from-url";
 import {
   WEEKDAY_LABEL,
   type CollaboratorScheduleInput,
@@ -37,6 +38,9 @@ export function CollaboratorDialog({ collaborator }: { collaborator?: Collaborat
   const router = useRouter();
   const isEdit = !!collaborator;
   const [open, setOpen] = useState(false);
+
+  // Só o gatilho de cadastro responde à paleta; com colaborador é edição.
+  useOpenFromUrl("colaborador", () => setOpen(true), !collaborator);
   const [schedules, setSchedules] = useState<CollaboratorScheduleInput[]>(
     collaborator?.schedules ?? [],
   );

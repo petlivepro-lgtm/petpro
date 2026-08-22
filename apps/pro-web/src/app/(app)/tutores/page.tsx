@@ -31,8 +31,16 @@ import { EditTutorDialog } from "@/components/edit-tutor-dialog";
 import { fetchBehaviorSummaries } from "@/lib/behavior";
 import { getActiveTenant } from "@/lib/tenant";
 import { loadClubinhoSubscriptions } from "@/lib/clubinho";
+import { ListFilterChip } from "@/components/list-filter-chip";
+import { matchesCatalogSearch } from "@/lib/search-text";
 
-export default async function TutoresPage() {
+export default async function TutoresPage({
+  searchParams,
+}: {
+  /** `q` vem da busca global (Ctrl+K), que abre a lista já filtrada. */
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const query = ((await searchParams).q ?? "").trim();
   const supabase = await createClient();
   const tenant = await getActiveTenant(supabase);
   const { data: tutores } = await supabase
@@ -42,7 +50,24 @@ export default async function TutoresPage() {
     )
     .order("full_name");
 
-  const list = tutores ?? [];
+  const all = tutores ?? [];
+  // O filtro é aqui e não na consulta: a lista de um petshop cabe na tela, e
+  // filtrar em memória casa nome do pet junto com nome, telefone e CPF do
+  // tutor sem virar um `or` gigante no PostgREST.
+  const list = query
+    ? all.filter((t) =>
+        matchesCatalogSearch(
+          [
+            t.full_name,
+            t.email,
+            t.phone,
+            t.cpf,
+            ...(((t.pet as { name: string }[]) ?? []).map((p) => p.name)),
+          ],
+          query,
+        ),
+      )
+    : all;
 
   // Média do boletim de cada pet numa query só (a view já agrega). O histórico
   // completo vive na ficha do pet.
@@ -70,13 +95,25 @@ export default async function TutoresPage() {
         actions={<NewTutorDialog />}
       />
 
+      {query && (
+        <ListFilterChip query={query} clearHref="/tutores" count={list.length} />
+      )}
+
       {list.length === 0 ? (
-        <EmptyState
-          icon={<Users className="h-6 w-6" />}
-          title="Nenhum tutor cadastrado ainda"
-          description="Cadastre o primeiro cliente para começar a registrar pets e atendimentos."
-          action={<NewTutorDialog trigger="cta" />}
-        />
+        query ? (
+          <EmptyState
+            icon={<Users className="h-6 w-6" />}
+            title={`Nenhum tutor encontrado para “${query}”`}
+            description="Confira a grafia ou limpe o filtro para ver a lista inteira."
+          />
+        ) : (
+          <EmptyState
+            icon={<Users className="h-6 w-6" />}
+            title="Nenhum tutor cadastrado ainda"
+            description="Cadastre o primeiro cliente para começar a registrar pets e atendimentos."
+            action={<NewTutorDialog trigger="cta" />}
+          />
+        )
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {list.map((t) => {

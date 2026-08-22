@@ -2839,6 +2839,18 @@ export type Database = {
         }
         Returns: string[]
       }
+      global_search: {
+        Args: { p_limit?: number; p_query: string; p_tenant: string }
+        Returns: {
+          amount_cents: number | null
+          extra: string | null
+          id: string
+          kind: string
+          rank: number
+          subtitle: string | null
+          title: string
+        }[]
+      }
       has_staff_role: {
         Args: {
           _roles: Database["public"]["Enums"]["staff_role"][]
@@ -2977,6 +2989,7 @@ export type Database = {
         }
         Returns: Json
       }
+      search_norm: { Args: { p_text: string }; Returns: string }
       search_stock_movements: {
         Args: {
           p_from?: string

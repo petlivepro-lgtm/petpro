@@ -1,5 +1,6 @@
 import { CalendarClock, ClipboardCheck, Star } from "lucide-react";
 import { Card, EmptyState, PageHeader, RatingStars } from "@mylivepet/ui";
+import { SearchTrigger } from "@/components/search-trigger";
 import {
   WEEKDAY_LABEL,
   formatBehaviorScore,
@@ -193,6 +194,13 @@ export async function ColaboradorDashboard({
         title={primeiroNome ? `Olá, ${primeiroNome}` : "Meu dia"}
         subtitle={hojePorExtenso}
       />
+
+      {/* A mesma busca do painel de gestão; a RLS é que decide o que o
+          colaborador encontra nela. */}
+      <div className="mb-6 max-w-2xl">
+        <SearchTrigger />
+      </div>
+
       <ColaboradorDia
         initial={rows}
         cameras={cameras ?? []}

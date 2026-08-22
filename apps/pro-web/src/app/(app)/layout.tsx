@@ -6,6 +6,8 @@ import { getActiveTenant } from "@/lib/tenant";
 import { Nav } from "@/components/nav";
 import { MobileNav } from "@/components/mobile-nav";
 import { NotificationBell } from "@/components/notification-bell";
+import { CommandPalette } from "@/components/command-palette";
+import { SearchTrigger } from "@/components/search-trigger";
 import { Avatar, Button, EmptyState } from "@mylivepet/ui";
 import { STAFF_ROLE_LABEL } from "@mylivepet/types";
 import { signOut } from "./actions";
@@ -63,6 +65,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               )}
             </div>
           </div>
+          {tenant && (
+            <div className="mb-3">
+              <SearchTrigger variant="sidebar" />
+            </div>
+          )}
           <Nav role={tenant?.role} />
         </div>
         <div className="border-t border-graphite/10 pt-3">
@@ -127,6 +134,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </main>
       </div>
+
+      {/* Uma paleta para o painel inteiro: o Ctrl+K precisa responder em
+          qualquer página, e montá-la por página multiplicaria os ouvintes. */}
+      <CommandPalette
+        tenantId={tenant?.tenantId ?? null}
+        role={tenant?.role}
+      />
     </div>
   );
 }

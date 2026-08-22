@@ -16,6 +16,7 @@ import {
 } from "@mylivepet/ui";
 import { SPECIES_OPTIONS } from "@mylivepet/types";
 import { createTutor, type FormState } from "@/app/(app)/tutores/actions";
+import { useOpenFromUrl } from "@/lib/use-open-from-url";
 
 export function NewTutorDialog({
   trigger = "button",
@@ -24,6 +25,9 @@ export function NewTutorDialog({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  // "Novo tutor" na paleta de comandos chega como ?novo=tutor.
+  useOpenFromUrl("tutor", () => setOpen(true));
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     createTutor,
     { ok: false },
