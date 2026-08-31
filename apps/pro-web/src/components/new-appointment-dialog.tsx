@@ -15,6 +15,7 @@ import {
   Textarea,
   type ServiceOption,
 } from "@mylivepet/ui";
+import { weekdayOfDateString, worksOnWeekday } from "@mylivepet/types";
 import { createStaffBooking, type FormState } from "@/app/(app)/actions";
 import { SlotPicker } from "@/components/slot-picker";
 import { useOpenFromUrl } from "@/lib/use-open-from-url";
@@ -92,7 +93,27 @@ export function NewAppointmentDialog({
 
   const tutor = tutors.find((t) => t.id === tutorId);
   const pets = fixedPet ? [] : (tutor?.pet ?? []);
-  const collaborator = collaborators.find((c) => c.id === collaboratorId);
+
+  // A data manda: só entra na lista quem tem expediente naquele dia da semana.
+  // No encaixe não há grade a respeitar, então todos continuam disponíveis.
+  const available = useMemo(() => {
+    if (freeTime) return collaborators;
+    if (!date) return [];
+    const weekday = weekdayOfDateString(date);
+    return collaborators.filter((c) =>
+      worksOnWeekday(c.collaborator_schedule, weekday),
+    );
+  }, [collaborators, date, freeTime]);
+
+  const collaborator = available.find((c) => c.id === collaboratorId);
+
+  // Trocar a data pode invalidar quem já estava escolhido. Declarado antes do
+  // efeito de `defaultSlot` para não desfazer o profissional que ele preenche.
+  useEffect(() => {
+    setCollaboratorId((current) =>
+      available.some((c) => c.id === current) ? current : "",
+    );
+  }, [available]);
 
   // O encaixe vem como horário local; o banco guarda timestamptz.
   const scheduledAt = useMemo(() => {
@@ -254,11 +275,43 @@ export function NewAppointmentDialog({
             )}
           </div>
 
+          {/* A data vem antes do profissional: é ela que define quem atende. */}
+          {freeTime ? (
+            <div>
+              <Label htmlFor="booking-free-slot">Data e hora do encaixe</Label>
+              <DatePicker
+                id="booking-free-slot"
+                mode="datetime"
+                value={freeSlot}
+                onChange={setFreeSlot}
+              />
+            </div>
+          ) : (
+            <div>
+              <Label htmlFor="booking-date">Data</Label>
+              <DatePicker
+                id="booking-date"
+                mode="date"
+                min={todayISO()}
+                value={date}
+                onChange={(v) => {
+                  setDate(v);
+                  setSlot("");
+                }}
+              />
+            </div>
+          )}
+
           <div>
             <Label htmlFor="booking-collaborator">Profissional</Label>
             {collaborators.length === 0 ? (
               <p className="text-sm text-gray-neutral">
                 Cadastre um profissional em Colaboradores para poder agendar.
+              </p>
+            ) : !freeTime && date && available.length === 0 ? (
+              <p className="text-sm text-gray-neutral">
+                Nenhum profissional atende nesta data. Escolha outro dia ou
+                marque o encaixe abaixo.
               </p>
             ) : (
               <Select
@@ -266,6 +319,7 @@ export function NewAppointmentDialog({
                 name="collaborator_id"
                 searchable
                 searchPlaceholder="Buscar profissional..."
+                disabled={!freeTime && !date}
                 value={collaboratorId}
                 onChange={(event) => {
                   setCollaboratorId(event.target.value);
@@ -274,9 +328,11 @@ export function NewAppointmentDialog({
                 required
               >
                 <option value="" disabled>
-                  Selecione o profissional
+                  {freeTime || date
+                    ? "Selecione o profissional"
+                    : "Escolha a data antes"}
                 </option>
-                {collaborators.map((c) => (
+                {available.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.role_title
                       ? `${c.full_name} · ${c.role_title}`
@@ -289,44 +345,24 @@ export function NewAppointmentDialog({
 
           {/* Instante final: slot da grade ou encaixe convertido para ISO. */}
           <input type="hidden" name="scheduled_at" value={scheduledAt} />
+          {/* Encaixe deliberado: a server action só aceita fora da grade assim. */}
+          <input
+            type="hidden"
+            name="off_schedule"
+            value={freeTime ? "1" : ""}
+          />
 
-          {freeTime ? (
+          {!freeTime && (
             <div>
-              <Label htmlFor="booking-free-slot">Data e hora do encaixe</Label>
-              <DatePicker
-                id="booking-free-slot"
-                mode="datetime"
-                value={freeSlot}
-                onChange={setFreeSlot}
+              <Label>Horário</Label>
+              <SlotPicker
+                tenantId={tenantId}
+                collaborator={collaborator}
+                date={date}
+                value={slot}
+                onChange={setSlot}
               />
             </div>
-          ) : (
-            <>
-              <div>
-                <Label htmlFor="booking-date">Data</Label>
-                <DatePicker
-                  id="booking-date"
-                  mode="date"
-                  min={todayISO()}
-                  value={date}
-                  onChange={(v) => {
-                    setDate(v);
-                    setSlot("");
-                  }}
-                />
-              </div>
-
-              <div>
-                <Label>Horário</Label>
-                <SlotPicker
-                  tenantId={tenantId}
-                  collaborator={collaborator}
-                  date={date}
-                  value={slot}
-                  onChange={setSlot}
-                />
-              </div>
-            </>
           )}
 
           <Checkbox

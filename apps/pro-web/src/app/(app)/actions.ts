@@ -10,6 +10,7 @@ import {
   appointmentStatusBatchUpdate,
   bookingRequest,
   canMutateAsRole,
+  isWithinSchedule,
   paidReservationInput,
   reservationCancel,
   reservationReject,
@@ -81,6 +82,27 @@ export async function createStaffBooking(
     .eq("id", parsed.data.pet_id)
     .maybeSingle();
   if (!pet) return { ok: false, error: "Pet não encontrado" };
+
+  // Fora do encaixe, o balcão também respeita o expediente do profissional.
+  const { data: collaborator } = await supabase
+    .from("collaborator")
+    .select("id, collaborator_schedule(weekday, start_time, end_time)")
+    .eq("id", parsed.data.collaborator_id)
+    .eq("tenant_id", pet.tenant_id)
+    .maybeSingle();
+  if (!collaborator) return { ok: false, error: "Profissional não encontrado" };
+
+  const offSchedule = formData.get("off_schedule") === "1";
+  if (
+    !offSchedule &&
+    !isWithinSchedule(collaborator.collaborator_schedule, parsed.data.scheduled_at)
+  ) {
+    return {
+      ok: false,
+      error:
+        'Esse profissional não atende nesse dia e horário. Marque "Encaixe" para agendar assim mesmo.',
+    };
+  }
 
   const requestGroupId = crypto.randomUUID();
   const { error } = await supabase.from("appointment").insert(

@@ -4,6 +4,8 @@ import { BookingForm } from "./booking-form";
 
 const ERROR_MESSAGES: Record<string, string> = {
   horario: "Esse horário acabou de ser reservado por outro tutor. Escolha outro horário.",
+  grade:
+    "Esse profissional não atende no dia e horário escolhidos. Escolha outro horário.",
   "1": "Não foi possível enviar a solicitação. Confira os dados e tente novamente.",
 };
 

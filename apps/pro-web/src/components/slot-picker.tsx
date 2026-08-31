@@ -115,7 +115,7 @@ export function SlotPicker({
       loading={loading}
       value={value}
       onChange={onChange}
-      emptyHint="Escolha o profissional e a data para ver os horários livres."
+      emptyHint="Escolha a data e o profissional para ver os horários livres."
       heldHint="Horários tracejados estão sendo reservados agora (por um tutor no app ou outro atendente)."
     />
   );

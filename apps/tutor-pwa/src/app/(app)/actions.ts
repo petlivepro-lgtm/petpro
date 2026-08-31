@@ -7,6 +7,7 @@ import { getTutorContext } from "@/lib/tutor-context";
 import { dispatchNotifications } from "@/lib/notify";
 import {
   bookingRequest,
+  isWithinSchedule,
   tutorFeedbackInput,
   reservationInput,
   reservationItemCancel,
@@ -38,8 +39,24 @@ export async function requestBooking(formData: FormData) {
   const ctx = await getTutorContext(supabase);
   if (!ctx) redirect("/agendar?erro=1");
 
-  const requestGroupId = crypto.randomUUID();
   const scheduledAt = new Date(parsed.data.scheduled_at).toISOString();
+
+  // O formulário só oferece profissionais e horários dentro do expediente, mas
+  // os campos são adulteráveis: reconfere aqui (e o trigger de 0054 no banco
+  // barra quem tentar inserir direto pela API).
+  const { data: collaborator } = await supabase
+    .from("collaborator")
+    .select("id, collaborator_schedule(weekday, start_time, end_time)")
+    .eq("id", parsed.data.collaborator_id)
+    .eq("tenant_id", ctx.tenantId)
+    .eq("active", true)
+    .maybeSingle();
+  if (!collaborator) redirect("/agendar?erro=1");
+  if (!isWithinSchedule(collaborator.collaborator_schedule, scheduledAt)) {
+    redirect("/agendar?erro=grade");
+  }
+
+  const requestGroupId = crypto.randomUUID();
   const rows = parsed.data.service_type_ids.map((service_type_id) => ({
     tenant_id: ctx.tenantId,
     tutor_id: ctx.tutorId,
@@ -57,7 +74,9 @@ export async function requestBooking(formData: FormData) {
   // SLOT_TAKEN vem do trigger appointment_slot_guard (0014): outro tutor
   // reservou o mesmo colaborador+horário entre a escolha e o envio.
   if (error) {
-    redirect(error.message.includes("SLOT_TAKEN") ? "/agendar?erro=horario" : "/agendar?erro=1");
+    if (error.message.includes("SLOT_TAKEN")) redirect("/agendar?erro=horario");
+    // OFF_SCHEDULE vem do trigger appointment_within_schedule (0054).
+    redirect(error.message.includes("OFF_SCHEDULE") ? "/agendar?erro=grade" : "/agendar?erro=1");
   }
 
   // Antes do redirect: redirect() lança, e o push nunca sairia depois dele.

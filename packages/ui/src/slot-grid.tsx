@@ -1,21 +1,15 @@
 "use client";
 
 import * as React from "react";
+import {
+  SLOT_MINUTES,
+  slotMinutesOfDay,
+  type ScheduleWindow,
+} from "@mylivepet/types";
 
-export type CollaboratorSchedule = {
-  weekday: number; // convenção de Date.getDay() (0=domingo)
-  start_time: string; // "08:00" ou "08:00:00"
-  end_time: string;
-};
-
-/** Tamanho do bloco da grade, em minutos. */
-export const SLOT_MINUTES = 30;
-
-/** "08:00" ou "08:00:00" → minutos desde meia-noite. */
-function toMinutes(t: string): number {
-  const [h, m] = t.split(":");
-  return Number(h) * 60 + Number(m);
-}
+/** As regras de expediente moram em @mylivepet/types (server actions usam as mesmas). */
+export type CollaboratorSchedule = ScheduleWindow;
+export { SLOT_MINUTES };
 
 /** "YYYY-MM-DD" → partes numéricas (o pacote roda com índices checados). */
 function parseDate(date: string): { y: number; mo: number; d: number } {
@@ -44,7 +38,7 @@ export function SlotGrid({
   loading = false,
   value,
   onChange,
-  emptyHint = "Escolha o profissional e a data para ver os horários disponíveis.",
+  emptyHint = "Escolha a data e o profissional para ver os horários disponíveis.",
   heldHint = "Horários tracejados estão sendo reservados por outra pessoa agora.",
 }: {
   /** Janelas de trabalho do profissional; vazio/undefined = nada a mostrar. */
@@ -66,16 +60,7 @@ export function SlotGrid({
   const slots = React.useMemo(() => {
     if (!schedule || !date) return [];
     const { y, mo, d } = parseDate(date);
-    const weekday = new Date(y, mo - 1, d).getDay();
-    const minutes = new Set<number>();
-    for (const range of schedule) {
-      if (range.weekday !== weekday) continue;
-      const start = toMinutes(range.start_time);
-      const end = toMinutes(range.end_time);
-      for (let m = start; m + SLOT_MINUTES <= end; m += SLOT_MINUTES)
-        minutes.add(m);
-    }
-    return [...minutes].sort((a, b) => a - b);
+    return slotMinutesOfDay(schedule, new Date(y, mo - 1, d).getDay());
   }, [schedule, date]);
 
   if (!schedule || !date) {

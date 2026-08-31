@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Card,
@@ -11,6 +11,7 @@ import {
   ServicePicker,
   type ServiceOption,
 } from "@mylivepet/ui";
+import { weekdayOfDateString, worksOnWeekday } from "@mylivepet/types";
 import { requestBooking } from "../actions";
 import { SlotPicker, type Collaborator } from "./slot-picker";
 
@@ -39,13 +40,29 @@ export function BookingForm({
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(services.length === 1 ? [services[0].id] : []),
   );
-  const [collaboratorId, setCollaboratorId] = useState(
-    () => (collaborators.length === 1 ? collaborators[0].id : ""),
-  );
+  const [collaboratorId, setCollaboratorId] = useState("");
   const [date, setDate] = useState("");
   const [slot, setSlot] = useState(""); // ISO do horário escolhido
 
-  const collaborator = collaborators.find((c) => c.id === collaboratorId);
+  // A data manda: só entra na lista quem tem expediente naquele dia da semana.
+  const available = useMemo(() => {
+    if (!date) return [];
+    const weekday = weekdayOfDateString(date);
+    return collaborators.filter((c) =>
+      worksOnWeekday(c.collaborator_schedule, weekday),
+    );
+  }, [collaborators, date]);
+
+  // Trocar a data pode invalidar quem já estava escolhido; com um único
+  // profissional disponível, já deixa marcado.
+  useEffect(() => {
+    setCollaboratorId((current) => {
+      if (available.some((c) => c.id === current)) return current;
+      return available.length === 1 ? available[0].id : "";
+    });
+  }, [available]);
+
+  const collaborator = available.find((c) => c.id === collaboratorId);
 
   const toggle = (id: string) =>
     setSelected((prev) => {
@@ -82,35 +99,6 @@ export function BookingForm({
         </div>
 
         <div>
-          <Label htmlFor="collaborator_id">Profissional</Label>
-          {collaborators.length === 0 ? (
-            <p className="text-sm text-gray-neutral">
-              O petshop ainda não cadastrou profissionais para agendamento.
-            </p>
-          ) : (
-            <Select
-              id="collaborator_id"
-              name="collaborator_id"
-              required
-              value={collaboratorId}
-              onChange={(e) => {
-                setCollaboratorId(e.target.value);
-                setSlot("");
-              }}
-            >
-              <option value="" disabled>
-                Escolha o profissional
-              </option>
-              {collaborators.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.role_title ? `${c.full_name} · ${c.role_title}` : c.full_name}
-                </option>
-              ))}
-            </Select>
-          )}
-        </div>
-
-        <div>
           <Label htmlFor="scheduled_date">Data desejada</Label>
           <DatePicker
             id="scheduled_date"
@@ -122,6 +110,40 @@ export function BookingForm({
               setSlot("");
             }}
           />
+        </div>
+
+        <div>
+          <Label htmlFor="collaborator_id">Profissional</Label>
+          {collaborators.length === 0 ? (
+            <p className="text-sm text-gray-neutral">
+              O petshop ainda não cadastrou profissionais para agendamento.
+            </p>
+          ) : date && available.length === 0 ? (
+            <p className="text-sm text-gray-neutral">
+              Nenhum profissional atende nesta data. Escolha outro dia.
+            </p>
+          ) : (
+            <Select
+              id="collaborator_id"
+              name="collaborator_id"
+              required
+              disabled={!date}
+              value={collaboratorId}
+              onChange={(e) => {
+                setCollaboratorId(e.target.value);
+                setSlot("");
+              }}
+            >
+              <option value="" disabled>
+                {date ? "Escolha o profissional" : "Escolha a data antes"}
+              </option>
+              {available.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.role_title ? `${c.full_name} · ${c.role_title}` : c.full_name}
+                </option>
+              ))}
+            </Select>
+          )}
         </div>
 
         <div>
