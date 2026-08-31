@@ -256,6 +256,20 @@ export const appointmentStatusBatchUpdate = z.object({
   status: z.enum(APPOINTMENT_STATUSES),
 });
 
+// Cancelamento de um agendamento já aceito (petshop ou tutor). Vários ids
+// quando o pedido tem serviços irmãos no mesmo horário; o motivo vai para o
+// outro lado, então é obrigatório — a RPC cancel_appointment (0055) repete
+// esses limites no banco.
+export const appointmentCancel = z.object({
+  appointment_ids: z.array(z.string().uuid()).min(1),
+  reason: z
+    .string()
+    .trim()
+    .min(3, "Escreva o motivo do cancelamento")
+    .max(500, "Motivo muito longo (máx. 500 caracteres)"),
+});
+export type AppointmentCancel = z.infer<typeof appointmentCancel>;
+
 // Autocadastro de petshop (cria tenant + dono OWNER no CRM)
 export const petshopSignup = z.object({
   petshop_name: z.string().min(2, "Informe o nome do petshop"),

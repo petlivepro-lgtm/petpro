@@ -20,6 +20,7 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
+          cancelled_by_role: string | null
           clubinho_credit_id: string | null
           clubinho_schedule_id: string | null
           collaborator_id: string | null
@@ -48,6 +49,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          cancelled_by_role?: string | null
           clubinho_credit_id?: string | null
           clubinho_schedule_id?: string | null
           collaborator_id?: string | null
@@ -76,6 +78,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          cancelled_by_role?: string | null
           clubinho_credit_id?: string | null
           clubinho_schedule_id?: string | null
           collaborator_id?: string | null
@@ -2743,6 +2746,10 @@ export type Database = {
         Returns: boolean
       }
       can_manage_finance: { Args: { p_tenant_id: string }; Returns: boolean }
+      cancel_appointment: {
+        Args: { p_appointment_ids: string[]; p_reason: string }
+        Returns: number
+      }
       cancel_product_reservation: {
         Args: {
           p_reason: string

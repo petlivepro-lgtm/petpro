@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   CalendarClock,
+  CalendarX2,
   Play,
   Check,
   ListChecks,
@@ -25,6 +26,10 @@ import { AppointmentStatusBadge } from "@/components/status-badge";
 import { FinishAppointmentDialog } from "@/components/finish-appointment-dialog";
 import { AppointmentChecklist } from "@/components/appointment-checklist";
 import { StartAppointmentDialog } from "@/components/start-appointment-dialog";
+import {
+  CancelAppointmentDialog,
+  type CancelSibling,
+} from "@/components/cancel-appointment-dialog";
 import { SwitchCameraDialog } from "@/components/switch-camera-dialog";
 import { BehaviorReportDetail } from "@/components/behavior-report-view";
 import {
@@ -35,7 +40,11 @@ import {
 } from "@/lib/behavior";
 import { getActiveTenant } from "@/lib/tenant";
 import { loadPaymentTerminals } from "@/lib/payment-terminals";
-import type { AppointmentStatus, FeedbackResponse } from "@mylivepet/types";
+import {
+  canMutateAsRole,
+  type AppointmentStatus,
+  type FeedbackResponse,
+} from "@mylivepet/types";
 
 function fmt(v: string | null) {
   if (!v) return "—";
@@ -56,7 +65,7 @@ export default async function AtendimentoPage({
   const { data: appt } = await supabase
     .from("appointment")
     .select(
-      "id, status, scheduled_at, started_at, finished_at, notes, photos, camera_id, pet:pet_id(id, name, photo_path), tutor:tutor_id(full_name), service_type(name, price_cents), collaborator(full_name), camera:camera_id(room_label)",
+      "id, status, scheduled_at, started_at, finished_at, notes, photos, camera_id, request_group_id, cancellation_reason, cancelled_at, cancelled_by_role, pet:pet_id(id, name, photo_path), tutor:tutor_id(full_name), service_type(name, price_cents), collaborator(full_name), camera:camera_id(room_label)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -92,6 +101,34 @@ export default async function AtendimentoPage({
 
   // Câmeras ativas para os dialogs de início e de troca de sala.
   const canStart = status === "CONFIRMED" || status === "CHECKED_IN";
+
+  // Cancelar é o mesmo recorte de "ainda não começou" (depois de iniciado o
+  // caminho é finalizar), mas é decisão de balcão: o colaborador inicia e
+  // finaliza atendimento, não desmarca a agenda. A RPC cancel_appointment e a
+  // server action repetem a regra — aqui é só para não oferecer um beco.
+  const tenant =
+    status === "IN_PROGRESS" || canStart
+      ? await getActiveTenant(supabase)
+      : null;
+  const canCancel = canStart && !!tenant && canMutateAsRole(tenant.role);
+
+  // Serviços irmãos do mesmo pedido, para o diálogo oferecer derrubar tudo.
+  const { data: siblingRows } =
+    canCancel && appt.request_group_id
+      ? await supabase
+          .from("appointment")
+          .select("id, service_type(name)")
+          .eq("request_group_id", appt.request_group_id)
+          .in("status", ["CONFIRMED", "CHECKED_IN"])
+          .neq("id", id)
+      : { data: null };
+  const siblings: CancelSibling[] = (siblingRows ?? []).map((row) => ({
+    id: row.id,
+    serviceName:
+      (row.service_type as unknown as { name: string } | null)?.name ??
+      "Serviço",
+  }));
+
   const live = status === "IN_PROGRESS";
   const { data: cameras } =
     canStart || live
@@ -136,9 +173,7 @@ export default async function AtendimentoPage({
   );
 
   // Categorias do boletim para o dialog de finalização (só quando dá para finalizar).
-  const tenant =
-    status === "IN_PROGRESS" ? await getActiveTenant(supabase) : null;
-  const [behaviorCategories, terminals] = tenant
+  const [behaviorCategories, terminals] = tenant && status === "IN_PROGRESS"
     ? await Promise.all([
         fetchBehaviorCategories(supabase, tenant.tenantId),
         loadPaymentTerminals(supabase, tenant.tenantId, { activeOnly: true }),
@@ -210,6 +245,18 @@ export default async function AtendimentoPage({
       time: appt.finished_at,
       icon: <Check className="h-4 w-4" />,
       color: "#2E7D5B",
+    });
+
+  if (status === "CANCELLED")
+    events.push({
+      key: "cancel",
+      title:
+        appt.cancelled_by_role === "TUTOR"
+          ? "Cancelado pelo tutor"
+          : "Cancelado pelo petshop",
+      time: appt.cancelled_at,
+      icon: <CalendarX2 className="h-4 w-4" />,
+      color: "#C0392B",
     });
 
   return (
@@ -391,14 +438,35 @@ export default async function AtendimentoPage({
               </p>
             )}
 
-            {(status === "REQUESTED" ||
-              status === "REJECTED" ||
-              status === "CANCELLED") && (
+            {canCancel && (
+              <CancelAppointmentDialog
+                appointmentId={id}
+                serviceName={service?.name ?? "este serviço"}
+                siblings={siblings}
+                className="mt-2 w-full"
+              />
+            )}
+
+            {(status === "REQUESTED" || status === "REJECTED") && (
               <p className="text-sm text-gray-neutral">
                 {status === "REQUESTED"
                   ? "Confirme esta solicitação em Solicitações para iniciar."
                   : "Atendimento não realizado."}
               </p>
+            )}
+
+            {status === "CANCELLED" && (
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-graphite">
+                  {appt.cancelled_by_role === "TUTOR"
+                    ? "Cancelado pelo tutor"
+                    : "Cancelado pelo petshop"}
+                  {appt.cancelled_at ? ` em ${fmt(appt.cancelled_at)}` : ""}
+                </p>
+                <p className="text-sm text-gray-neutral">
+                  {appt.cancellation_reason ?? "Sem motivo registrado."}
+                </p>
+              </div>
             )}
           </Card>
         </div>

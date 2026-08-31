@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { dispatchNotifications } from "@/lib/notify";
 import {
+  appointmentCancel,
   appointmentStatusUpdate,
   appointmentStatusBatchUpdate,
   bookingRequest,
@@ -187,6 +188,50 @@ export async function updateAppointmentsStatus(formData: FormData) {
 
   revalidatePath("/solicitacoes");
   revalidatePath("/atendimentos");
+}
+
+/**
+ * Cancela um agendamento já aceito, com motivo. Quando o pedido tem serviços
+ * irmãos no mesmo horário (request_group_id), o diálogo manda todos os ids de
+ * uma vez — a RPC cancel_appointment (0055) é quem sabe quem pode cancelar o
+ * quê, e vale igual para o app do tutor.
+ */
+export async function cancelAppointment(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = appointmentCancel.safeParse({
+    appointment_ids: formData.getAll("appointment_ids"),
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos",
+    };
+  }
+
+  const supabase = await createClient();
+  const tenant = await tenantIfCanMutate(supabase);
+  if (!tenant) return { ok: false, error: "Seu acesso é somente leitura" };
+
+  const { error } = await supabase.rpc("cancel_appointment", {
+    p_appointment_ids: parsed.data.appointment_ids,
+    p_reason: parsed.data.reason,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  // O tutor precisa saber que o horário dele caiu (0055), e o profissional
+  // que a agenda abriu (0042).
+  await dispatchNotifications(tenant.tenantId);
+
+  revalidatePath("/");
+  revalidatePath("/atendimentos");
+  revalidatePath("/agenda");
+  for (const id of parsed.data.appointment_ids) {
+    revalidatePath(`/atendimentos/${id}`);
+  }
+  return { ok: true };
 }
 
 /** Staff confirma uma reserva de produtos: marca como separada (PICKED). */

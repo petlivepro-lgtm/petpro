@@ -37,6 +37,7 @@ import {
 const ICONS: Record<string, IconComponent> = {
   BOOKING_CONFIRMED: CalendarCheck,
   BOOKING_REJECTED: CalendarX2,
+  BOOKING_CANCELLED: CalendarX2,
   BOOKING_COMPLETED: PawPrint,
   RESERVATION_READY: PackageCheck,
   RESERVATION_REJECTED: PackageX,

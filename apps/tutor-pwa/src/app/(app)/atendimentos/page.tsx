@@ -20,12 +20,25 @@ function fmt(v: string | null) {
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+const CANCEL_ERRORS: Record<string, string> = {
+  motivo: "Escreva o motivo do cancelamento para o petshop.",
+  cancelamento:
+    "Não foi possível cancelar. O atendimento pode já ter começado — fale com o petshop.",
+  "1": "Não foi possível cancelar. Tente novamente.",
+};
+
 export default async function HistoricoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; pet?: string }>;
+  searchParams: Promise<{
+    from?: string;
+    to?: string;
+    pet?: string;
+    erro?: string;
+    cancelado?: string;
+  }>;
 }) {
-  const { from, to, pet: petId } = await searchParams;
+  const { from, to, pet: petId, erro, cancelado } = await searchParams;
   const fromDate = from && ISO_DATE.test(from) ? from : undefined;
   const toDate = to && ISO_DATE.test(to) ? to : undefined;
 
@@ -36,7 +49,7 @@ export default async function HistoricoPage({
   let query = supabase
     .from("appointment")
     .select(
-      "id, status, scheduled_at, finished_at, photos, pet:pet_id(name), service_type(name), feedback(direction, rating, comment, responses), pet_behavior_report(overall_score, responses, note), appointment_step(id, label, done_at, position)",
+      "id, status, scheduled_at, finished_at, photos, request_group_id, cancellation_reason, cancelled_at, cancelled_by_role, pet:pet_id(name), service_type(name), feedback(direction, rating, comment, responses), pet_behavior_report(overall_score, responses, note), appointment_step(id, label, done_at, position)",
     )
     .eq("tutor_id", ctx.tutorId);
 
@@ -52,6 +65,14 @@ export default async function HistoricoPage({
 
   const rows = data ?? [];
   const hasFilter = Boolean(fromDate || toDate || petId);
+
+  // Um agendamento só pode ser desmarcado pelo app antes de começar e antes do
+  // horário chegar — a RPC cancel_appointment (0055) repete a regra no banco.
+  const now = Date.now();
+  const cancelable = (row: { status: string; scheduled_at: string | null }) =>
+    (row.status === "REQUESTED" || row.status === "CONFIRMED") &&
+    !!row.scheduled_at &&
+    new Date(row.scheduled_at).getTime() > now;
 
   // Formulário de avaliação configurado pelo petshop (vazio → padrão no card).
   const { data: tenantRow } = await supabase
@@ -85,6 +106,18 @@ export default async function HistoricoPage({
           </Link>
         )}
       </header>
+
+      {erro && (
+        <div className="rounded-2xl border border-danger/30 bg-danger/10 p-4 text-sm text-graphite">
+          {CANCEL_ERRORS[erro] ?? CANCEL_ERRORS["1"]}
+        </div>
+      )}
+
+      {cancelado && (
+        <div className="rounded-2xl border border-graphite/10 bg-surface-muted p-4 text-sm text-graphite">
+          Agendamento cancelado. O petshop já foi avisado.
+        </div>
+      )}
 
       <AppointmentsDateFilter from={fromDate} to={toDate} />
 
@@ -123,6 +156,23 @@ export default async function HistoricoPage({
               .sort((x, y) => x.position - y.position)
               .map((s) => ({ id: s.id, label: s.label, doneAtLabel: fmt(s.done_at) }));
             const photos = a.photos ?? [];
+            // Serviços irmãos do mesmo pedido: desmarcar um costuma significar
+            // desmarcar o pedido inteiro, então o card oferece as duas coisas.
+            const siblings = a.request_group_id
+              ? rows
+                  .filter(
+                    (o) =>
+                      o.id !== a.id &&
+                      o.request_group_id === a.request_group_id &&
+                      cancelable(o),
+                  )
+                  .map((o) => ({
+                    id: o.id,
+                    serviceName:
+                      (o.service_type as unknown as { name: string } | null)
+                        ?.name ?? "Serviço",
+                  }))
+              : [];
 
             return (
               <AppointmentHistoryCard
@@ -132,6 +182,17 @@ export default async function HistoricoPage({
                 serviceName={service?.name ?? "Serviço"}
                 status={status}
                 dateLabel={fmt(a.finished_at ?? a.scheduled_at)}
+                canCancel={cancelable(a)}
+                siblings={siblings}
+                cancellation={
+                  status === "CANCELLED"
+                    ? {
+                        reason: a.cancellation_reason,
+                        byTutor: a.cancelled_by_role === "TUTOR",
+                        atLabel: fmt(a.cancelled_at),
+                      }
+                    : null
+                }
                 steps={steps}
                 behavior={behavior}
                 photos={photos}

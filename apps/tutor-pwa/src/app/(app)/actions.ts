@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
 import { dispatchNotifications } from "@/lib/notify";
 import {
+  appointmentCancel,
   bookingRequest,
   isWithinSchedule,
   tutorFeedbackInput,
@@ -84,6 +85,40 @@ export async function requestBooking(formData: FormData) {
 
   revalidatePath("/");
   redirect("/?agendado=1");
+}
+
+/**
+ * Tutor desmarca um agendamento seu, com motivo. Um pedido pode ter vários
+ * serviços no mesmo horário (request_group_id) — o card manda todos os ids
+ * quando o tutor escolhe desmarcar o pedido inteiro.
+ *
+ * Quem decide se pode é a RPC cancel_appointment (0055): o tutor só cancela o
+ * que é dele, ainda não iniciado e antes do horário chegar. O petshop é avisado
+ * pelo gatilho notify_booking_cancelled (0040).
+ */
+export async function cancelBooking(formData: FormData) {
+  const parsed = appointmentCancel.safeParse({
+    appointment_ids: formData.getAll("appointment_ids"),
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) redirect("/atendimentos?erro=motivo");
+
+  const supabase = await createClient();
+  const ctx = await getTutorContext(supabase);
+  if (!ctx) redirect("/atendimentos?erro=1");
+
+  const { error } = await supabase.rpc("cancel_appointment", {
+    p_appointment_ids: parsed.data.appointment_ids,
+    p_reason: parsed.data.reason,
+  });
+  if (error) redirect("/atendimentos?erro=cancelamento");
+
+  // Antes do redirect: redirect() lança, e o push nunca sairia depois dele.
+  await dispatchNotifications(ctx.tenantId);
+
+  revalidatePath("/");
+  revalidatePath("/atendimentos");
+  redirect("/atendimentos?cancelado=1");
 }
 
 /** Tutor avalia um atendimento finalizado (feedback TUTOR_TO_PETSHOP). */

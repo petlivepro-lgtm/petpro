@@ -1,8 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
-import { Card, Badge, PhotoGallery, RatingStars, ScaleSelector } from "@mylivepet/ui";
+import { CalendarX2, ChevronDown } from "lucide-react";
+import {
+  Card,
+  Badge,
+  Button,
+  ChoiceChips,
+  Dialog,
+  Label,
+  PhotoGallery,
+  RatingStars,
+  ScaleSelector,
+  Textarea,
+} from "@mylivepet/ui";
 import {
   formatBehaviorScore,
   type AppointmentStatus,
@@ -11,6 +22,7 @@ import {
   type FeedbackResponse,
 } from "@mylivepet/types";
 import { TutorFeedbackForm } from "@/components/tutor-feedback-form";
+import { cancelBooking } from "@/app/(app)/actions";
 import { TUTOR_APPOINTMENT_STATUS_LABEL } from "@/lib/status-labels";
 
 const tone: Record<AppointmentStatus, React.ComponentProps<typeof Badge>["tone"]> = {
@@ -24,6 +36,13 @@ const tone: Record<AppointmentStatus, React.ComponentProps<typeof Badge>["tone"]
 };
 
 export type HistoryStep = { id: string; label: string; doneAtLabel: string };
+/** Serviço irmão do mesmo pedido, oferecido junto no cancelamento. */
+export type HistorySibling = { id: string; serviceName: string };
+export type HistoryCancellation = {
+  reason: string | null;
+  byTutor: boolean;
+  atLabel: string;
+};
 export type HistoryFeedback = {
   rating: number | null;
   comment: string | null;
@@ -47,6 +66,9 @@ export function AppointmentHistoryCard({
   photos,
   feedbackFields,
   tutorFb,
+  canCancel = false,
+  siblings = [],
+  cancellation = null,
 }: {
   appointmentId: string;
   petName: string;
@@ -58,6 +80,11 @@ export function AppointmentHistoryCard({
   photos: string[];
   feedbackFields: FeedbackField[];
   tutorFb: HistoryFeedback | null;
+  /** Ainda dá para desmarcar pelo app (antes de começar e antes do horário). */
+  canCancel?: boolean;
+  siblings?: HistorySibling[];
+  /** Preenchido quando o atendimento está cancelado. */
+  cancellation?: HistoryCancellation | null;
 }) {
   const [open, setOpen] = useState(false);
   const completed = status === "COMPLETED";
@@ -149,6 +176,28 @@ export function AppointmentHistoryCard({
             </div>
           )}
 
+          {cancellation && (
+            <div className="rounded-xl bg-surface-muted p-3">
+              <p className="text-sm font-medium text-graphite">
+                {cancellation.byTutor
+                  ? "Você cancelou este agendamento"
+                  : "O petshop cancelou este agendamento"}
+                {cancellation.atLabel !== "—" ? ` em ${cancellation.atLabel}` : ""}
+              </p>
+              <p className="text-sm text-gray-neutral">
+                {cancellation.reason ?? "Sem motivo registrado."}
+              </p>
+            </div>
+          )}
+
+          {canCancel && (
+            <CancelBookingButton
+              appointmentId={appointmentId}
+              serviceName={serviceName}
+              siblings={siblings}
+            />
+          )}
+
           {completed && (
             <div className="border-t border-graphite/5 pt-3">
               {tutorFb ? (
@@ -164,6 +213,98 @@ export function AppointmentHistoryCard({
         </div>
       )}
     </Card>
+  );
+}
+
+/**
+ * Desmarca o agendamento informando o motivo — o petshop recebe o aviso e o
+ * horário volta a ficar livre. Quando o pedido tem mais de um serviço no mesmo
+ * horário, o padrão é desmarcar tudo.
+ */
+function CancelBookingButton({
+  appointmentId,
+  serviceName,
+  siblings,
+}: {
+  appointmentId: string;
+  serviceName: string;
+  siblings: HistorySibling[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [scope, setScope] = useState<"all" | "one">("all");
+
+  const total = siblings.length + 1;
+  const ids =
+    siblings.length > 0 && scope === "all"
+      ? [appointmentId, ...siblings.map((s) => s.id)]
+      : [appointmentId];
+
+  return (
+    <>
+      <Button
+        variant="secondary"
+        type="button"
+        className="w-full"
+        onClick={() => setOpen(true)}
+      >
+        <CalendarX2 className="h-4 w-4" /> Cancelar agendamento
+      </Button>
+
+      <Dialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Cancelar agendamento"
+        description="O petshop é avisado com o motivo e o horário fica livre para outra pessoa."
+      >
+        <form action={cancelBooking} className="space-y-4">
+          {ids.map((id) => (
+            <input key={id} type="hidden" name="appointment_ids" value={id} />
+          ))}
+
+          {siblings.length > 0 && (
+            <div>
+              <Label>Este pedido tem {total} serviços no mesmo horário</Label>
+              <ChoiceChips
+                aria-label="O que cancelar"
+                allowEmpty={false}
+                value={scope}
+                onChange={(v) => setScope(v === "one" ? "one" : "all")}
+                options={[
+                  { value: "all", label: `Cancelar os ${total} serviços` },
+                  { value: "one", label: `Cancelar só ${serviceName}` },
+                ]}
+              />
+            </div>
+          )}
+
+          <div>
+            <Label htmlFor={`cancel-reason-${appointmentId}`}>
+              Motivo do cancelamento *
+            </Label>
+            <Textarea
+              id={`cancel-reason-${appointmentId}`}
+              name="reason"
+              required
+              rows={3}
+              maxLength={500}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Ex.: vou viajar nesse dia."
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+              Voltar
+            </Button>
+            <Button type="submit" variant="danger" disabled={reason.trim().length < 3}>
+              Cancelar agendamento
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+    </>
   );
 }
 
