@@ -63,18 +63,20 @@ export default async function AtendimentosPage({
           historyFrom: dateFrom,
           historyTo: dateTo,
         }),
-    isCollaborator
-      ? Promise.resolve({ data: [] })
-      : supabase
-          .from("collaborator")
-          .select("id, full_name")
-          .eq("active", true)
-          .order("full_name"),
+    // Vale para o colaborador também: a RLS devolve só o próprio cadastro, que
+    // é a coluna dele na visão de Dia. O filtro por profissional continua
+    // escondido para ele.
+    supabase
+      .from("collaborator")
+      .select("id, full_name, role_title")
+      .eq("active", true)
+      .order("full_name"),
     // Expediente dos profissionais: é ele que define as faixas de horário da
-    // grade (e o buraco do almoço, quando ninguém trabalha).
+    // grade (e o buraco do almoço, quando ninguém trabalha) e quem ganha coluna
+    // na visão de Dia.
     supabase
       .from("collaborator_schedule")
-      .select("weekday, start_time, end_time"),
+      .select("collaborator_id, weekday, start_time, end_time"),
     supabase
       .from("service_type")
       .select("id, name, color_hex")

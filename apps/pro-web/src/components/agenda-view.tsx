@@ -39,10 +39,12 @@ import {
   addDays,
   addMonths,
   agendaRange,
+  dayColumns,
   fetchAgenda,
   hourBands,
   slotValue,
   weekDays,
+  NO_COLLABORATOR,
   type AgendaView as ViewMode,
   type CollaboratorWindow,
 } from "@/lib/agenda";
@@ -52,7 +54,11 @@ import {
   type AtendimentoRow as Row,
 } from "@/lib/atendimentos";
 
-export type CollaboratorOption = { id: string; full_name: string };
+export type CollaboratorOption = {
+  id: string;
+  full_name: string;
+  role_title?: string | null;
+};
 
 /** Serviço do catálogo, só o que a legenda de cores precisa. */
 export type LegendService = {
@@ -116,7 +122,11 @@ export function AgendaView({
   const [status, setStatus] = useState("");
   const [collaborator, setCollaborator] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [slot, setSlot] = useState<string | null>(null);
+  // A célula clicada: o horário e, na visão de Dia, o profissional da coluna —
+  // quem clicou na coluna do Bruno já disse quem vai atender.
+  const [slot, setSlot] = useState<
+    { at: string; collaboratorId?: string } | null
+  >(null);
 
   const isCalendar = view !== "historico";
   const range = agendaRange(view, date);
@@ -190,6 +200,33 @@ export function AgendaView({
           ),
     [schedules, view, date, rows, isCalendar],
   );
+
+  // As colunas da visão de Dia. Saem da base completa, pelo mesmo motivo das
+  // faixas de horário: a grade não pode mudar de forma a cada letra da busca.
+  //
+  // O filtro por profissional é a exceção, e de propósito: agora que a coluna é
+  // o profissional, filtrar por um deles é pedir a coluna dele — manter as
+  // outras na tela, vazias, não responderia nada. Ele aparece mesmo sem
+  // expediente nem atendimento no dia, senão não daria para agendar ali.
+  const collaboratorColumns = useMemo(() => {
+    if (view !== "dia") return [];
+    const all = dayColumns(collaborators, schedules, rows, date);
+    if (!collaborator) return all;
+
+    const picked = all.filter((c) => c.id === collaborator);
+    if (picked.length > 0) return picked;
+
+    const found = collaborators.find((c) => c.id === collaborator);
+    return found
+      ? [
+          {
+            id: found.id,
+            name: found.full_name,
+            roleTitle: found.role_title ?? null,
+          },
+        ]
+      : [{ id: NO_COLLABORATOR, name: "Sem profissional", roleTitle: null }];
+  }, [view, collaborators, schedules, rows, date, collaborator]);
 
   // Só os serviços que aparecem na janela visível — legenda do catálogo inteiro
   // vira uma parede de bolinhas que ninguém lê.
@@ -408,8 +445,11 @@ export function AgendaView({
             date={date}
             rows={filtered}
             hours={hours}
+            collaboratorColumns={collaboratorColumns}
             canBook={canBook}
-            onPick={(day, hour) => setSlot(slotValue(day, hour))}
+            onPick={(day, hour, collaboratorId) =>
+              setSlot({ at: slotValue(day, hour), collaboratorId })
+            }
           />
         )}
       </div>
@@ -446,7 +486,8 @@ export function AgendaView({
           trigger="none"
           open={slot !== null}
           onOpenChange={(open) => !open && setSlot(null)}
-          defaultSlot={slot ?? undefined}
+          defaultSlot={slot?.at}
+          defaultCollaboratorId={slot?.collaboratorId}
         />
       )}
 

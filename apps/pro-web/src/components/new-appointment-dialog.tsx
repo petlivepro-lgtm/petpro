@@ -44,6 +44,7 @@ export function NewAppointmentDialog({
   open: controlledOpen,
   onOpenChange,
   defaultSlot,
+  defaultCollaboratorId,
 }: {
   tenantId: string;
   services: ServiceOption[];
@@ -59,6 +60,8 @@ export function NewAppointmentDialog({
   onOpenChange?: (open: boolean) => void;
   /** "YYYY-MM-DDTHH:mm" do horário clicado na agenda. */
   defaultSlot?: string;
+  /** Profissional da coluna clicada na visão de Dia da agenda. */
+  defaultCollaboratorId?: string;
 }) {
   const router = useRouter();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
@@ -120,12 +123,16 @@ export function NewAppointmentDialog({
   // Clicou numa célula vazia da agenda: o diálogo já abre no dia certo, e o
   // horário exato fica pronto no campo de encaixe — a grade do profissional
   // continua mandando em quem não marcar "encaixe".
+  //
+  // Na visão de Dia a coluna é o profissional, então clicar nela já responde
+  // quem atende; a de Semana não diz nada a respeito e deixa o campo como está.
   useEffect(() => {
     if (!open || !defaultSlot) return;
     setDate(defaultSlot.slice(0, 10));
     setFreeSlot(defaultSlot);
     setSlot("");
-  }, [open, defaultSlot]);
+    if (defaultCollaboratorId) setCollaboratorId(defaultCollaboratorId);
+  }, [open, defaultSlot, defaultCollaboratorId]);
 
   const toggle = (id: string) =>
     setSelected((prev) => {

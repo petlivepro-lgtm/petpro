@@ -174,6 +174,7 @@ export function agendaRange(
 // ---- Faixas de horário -----------------------------------------------------
 
 export type CollaboratorWindow = {
+  collaborator_id: string;
   weekday: number;
   start_time: string;
   end_time: string;
@@ -235,12 +236,15 @@ export function bandLabel(hour: number): string {
   return `${hourLabel(hour)} - ${hourLabel(hour + 1)}`;
 }
 
+/** A coluna de quem ainda não tem profissional definido. */
+export const NO_COLLABORATOR = "none";
+
 /**
- * Onde cada atendimento cai na grade do dia: a faixa de horário (linha) e a
- * hora (coluna) saem as duas de `scheduled_at`, como no desenho da tela.
+ * A célula da grade: a linha é sempre a faixa de uma hora; a coluna é o dia
+ * na visão de Semana e o profissional na de Dia.
  */
-export function cellKey(dayOrHour: string | number, hour: number): string {
-  return `${dayOrHour}|${hour}`;
+export function cellKey(column: string, hour: number): string {
+  return `${column}|${hour}`;
 }
 
 /** Indexa os atendimentos por célula, para a grade só ler o mapa. */
@@ -253,12 +257,96 @@ export function byCell(
     if (!row.scheduledAt) continue;
     const at = new Date(row.scheduledAt);
     const hour = at.getHours();
-    const key = cellKey(mode === "semana" ? dayKey(at) : hour, hour);
+    const column =
+      mode === "semana"
+        ? dayKey(at)
+        : (row.collaboratorId ?? NO_COLLABORATOR);
+    const key = cellKey(column, hour);
     const list = map.get(key);
     if (list) list.push(row);
     else map.set(key, [row]);
   }
+  // Dentro da célula, a ordem é a do relógio. A consulta já vem ordenada, mas a
+  // atualização em tempo real insere fora de ordem — e numa célula com vários
+  // atendimentos empilhados isso salta aos olhos.
+  for (const list of map.values()) {
+    list.sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""));
+  }
   return map;
+}
+
+/** Um profissional, do jeito que a grade e o filtro precisam dele. */
+export type AgendaCollaborator = {
+  id: string;
+  full_name: string;
+  role_title?: string | null;
+};
+
+/** Uma coluna da visão de Dia. */
+export type DayColumn = {
+  /** Id do profissional, ou `NO_COLLABORATOR`. */
+  id: string;
+  name: string;
+  roleTitle: string | null;
+};
+
+/**
+ * As colunas da visão de Dia: os profissionais, e não as horas — que já são as
+ * linhas. Repetir a hora nos dois eixos deixava a grade legível só na diagonal.
+ *
+ * Entra quem tem expediente naquele dia da semana; quem tem atendimento entra
+ * junto mesmo fora do expediente, pela mesma razão de `hourBands` — um encaixe
+ * nunca pode sumir da tela. Sem nenhum expediente cadastrado, mostra todo mundo
+ * que está ativo, senão a agenda abriria vazia.
+ *
+ * A coluna "Sem profissional" só aparece quando há atendimento sem responsável:
+ * fora isso ela seria uma faixa morta, já que agendar exige escolher alguém.
+ */
+export function dayColumns(
+  collaborators: AgendaCollaborator[],
+  windows: CollaboratorWindow[],
+  rows: AtendimentoRow[],
+  date: string,
+): DayColumn[] {
+  const weekday = parseDayKey(date).getDay();
+  const working = new Set(
+    windows.filter((w) => w.weekday === weekday).map((w) => w.collaborator_id),
+  );
+  const busy = new Set(
+    rows.map((r) => r.collaboratorId).filter((id): id is string => id != null),
+  );
+
+  const columns: DayColumn[] = collaborators
+    .filter((c) => working.size === 0 || working.has(c.id) || busy.has(c.id))
+    .map((c) => ({
+      id: c.id,
+      name: c.full_name,
+      roleTitle: c.role_title ?? null,
+    }));
+
+  // Um atendimento de profissional inativo (ou fora da lista visível) ainda
+  // precisa de onde cair — o nome vem do próprio atendimento.
+  const known = new Set(columns.map((c) => c.id));
+  for (const row of rows) {
+    if (!row.collaboratorId || known.has(row.collaboratorId)) continue;
+    known.add(row.collaboratorId);
+    columns.push({
+      id: row.collaboratorId,
+      name: row.collaboratorName ?? "Profissional",
+      roleTitle: null,
+    });
+  }
+
+  const orphan = rows.some((r) => r.collaboratorId == null && r.scheduledAt);
+  if (orphan || columns.length === 0) {
+    columns.push({
+      id: NO_COLLABORATOR,
+      name: "Sem profissional",
+      roleTitle: null,
+    });
+  }
+
+  return columns;
 }
 
 /**
