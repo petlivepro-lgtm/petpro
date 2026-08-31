@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
-import { serviceTypeInput } from "@mylivepet/types";
+import { serviceAddonInput, serviceTypeInput } from "@mylivepet/types";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -111,6 +111,88 @@ export async function deleteServiceType(_prev: FormState, formData: FormData): P
 
   const supabase = await createClient();
   const { error } = await supabase.from("service_type").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/servicos");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------
+// Serviços adicionais (0056): só nome e preço, escolhidos no agendamento
+// junto do serviço principal.
+// ---------------------------------------------------------------------
+
+function parseAddon(formData: FormData) {
+  return serviceAddonInput.safeParse({
+    name: str(formData.get("name")),
+    price_cents: toCents(formData.get("price")),
+    active: formData.get("active") === "on",
+  });
+}
+
+/** Nome repetido é barrado pelo índice service_addon_name_uq (0056). */
+function addonError(error: { code?: string; message: string }): string {
+  if (error.code === "23505") return "Já existe um adicional com esse nome.";
+  return error.message;
+}
+
+export async function createServiceAddon(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = parseAddon(formData);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  const supabase = await createClient();
+  const tenant = await getActiveTenant(supabase);
+  if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
+
+  const { error } = await supabase.from("service_addon").insert({
+    tenant_id: tenant.tenantId,
+    name: parsed.data.name,
+    price_cents: parsed.data.price_cents,
+    active: parsed.data.active ?? true,
+  });
+  if (error) return { ok: false, error: addonError(error) };
+
+  revalidatePath("/servicos");
+  return { ok: true };
+}
+
+export async function updateServiceAddon(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = str(formData.get("id"));
+  if (!id) return { ok: false, error: "Adicional inválido" };
+
+  const parsed = parseAddon(formData);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("service_addon")
+    .update({
+      name: parsed.data.name,
+      price_cents: parsed.data.price_cents,
+      active: parsed.data.active ?? true,
+    })
+    .eq("id", id);
+  if (error) return { ok: false, error: addonError(error) };
+
+  revalidatePath("/servicos");
+  return { ok: true };
+}
+
+/**
+ * Excluir só tira do catálogo: os atendimentos que já usaram o adicional guardam
+ * nome e preço próprios (appointment_addon, 0056), então histórico e receitas
+ * não mudam.
+ */
+export async function deleteServiceAddon(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = str(formData.get("id"));
+  if (!id) return { ok: false, error: "Adicional inválido" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("service_addon").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/servicos");

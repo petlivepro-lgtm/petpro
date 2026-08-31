@@ -22,6 +22,44 @@ export async function signOut() {
 }
 
 /**
+ * Grava os adicionais escolhidos na solicitação (0056).
+ *
+ * Nome e preço vêm do catálogo aqui no servidor, não do formulário: é esse valor
+ * que o petshop vai cobrar. Id inativo ou de outro petshop não é encontrado e
+ * fica de fora.
+ *
+ * O pedido já existe quando isto roda: se a gravação falhar, o tutor continua
+ * com o horário solicitado e o petshop acerta os extras no balcão — derrubar a
+ * solicitação inteira por causa de um adicional seria pior.
+ */
+async function attachAddons(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tenantId: string,
+  appointmentId: string,
+  addonIds: string[],
+): Promise<void> {
+  if (addonIds.length === 0) return;
+
+  const { data: addons } = await supabase
+    .from("service_addon")
+    .select("id, name, price_cents")
+    .eq("tenant_id", tenantId)
+    .eq("active", true)
+    .in("id", addonIds);
+  if (!addons || addons.length === 0) return;
+
+  await supabase.from("appointment_addon").insert(
+    addons.map((addon) => ({
+      tenant_id: tenantId,
+      appointment_id: appointmentId,
+      service_addon_id: addon.id,
+      name: addon.name,
+      price_cents: addon.price_cents,
+    })),
+  );
+}
+
+/**
  * Tutor solicita um agendamento → cria um appointment REQUESTED (origin TUTOR)
  * por serviço escolhido, todos com o mesmo request_group_id para o petshop
  * confirmar/recusar tudo de uma vez ou individualmente.
@@ -30,6 +68,7 @@ export async function requestBooking(formData: FormData) {
   const parsed = bookingRequest.safeParse({
     pet_id: formData.get("pet_id"),
     service_type_ids: formData.getAll("service_type_id"),
+    service_addon_ids: formData.getAll("service_addon_id"),
     collaborator_id: formData.get("collaborator_id"),
     scheduled_at: formData.get("scheduled_at"),
     notes: formData.get("notes") ?? undefined,
@@ -58,7 +97,11 @@ export async function requestBooking(formData: FormData) {
   }
 
   const requestGroupId = crypto.randomUUID();
-  const rows = parsed.data.service_type_ids.map((service_type_id) => ({
+  // Ids gerados aqui, e não pelo default do banco, para saber de antemão qual é
+  // a primeira linha do grupo — é nela que os adicionais são gravados.
+  const ids = parsed.data.service_type_ids.map(() => crypto.randomUUID());
+  const rows = parsed.data.service_type_ids.map((service_type_id, index) => ({
+    id: ids[index]!,
     tenant_id: ctx.tenantId,
     tutor_id: ctx.tutorId,
     pet_id: parsed.data.pet_id,
@@ -79,6 +122,8 @@ export async function requestBooking(formData: FormData) {
     // OFF_SCHEDULE vem do trigger appointment_within_schedule (0054).
     redirect(error.message.includes("OFF_SCHEDULE") ? "/agendar?erro=grade" : "/agendar?erro=1");
   }
+
+  await attachAddons(supabase, ctx.tenantId, ids[0]!, parsed.data.service_addon_ids ?? []);
 
   // Antes do redirect: redirect() lança, e o push nunca sairia depois dele.
   await dispatchNotifications(ctx.tenantId);

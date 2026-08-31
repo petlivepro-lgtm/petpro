@@ -6,6 +6,7 @@ import {
   PawPrint,
   Scissors,
   Settings,
+  Sparkles,
   UserPlus,
   Users,
   UsersRound,
@@ -177,6 +178,14 @@ const ACTIONS: StaticEntry[] = [
     group: "acao",
     roles: MANAGEMENT_ROLES,
     keywords: "criar cadastrar banho tosa adicionar catalogo",
+  },
+  {
+    label: "Novo serviço adicional",
+    href: "/servicos?novo=adicional",
+    icon: Sparkles,
+    group: "acao",
+    roles: MANAGEMENT_ROLES,
+    keywords: "criar cadastrar extra hidratacao perfume adicionar",
   },
   {
     label: "Novo produto",

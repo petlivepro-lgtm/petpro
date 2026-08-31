@@ -154,7 +154,7 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
     // O pet já define o cliente: não precisa da lista de tutores.
     canBook
       ? loadBookingOptions(supabase, { includeTutors: false })
-      : Promise.resolve({ tutors: [], services: [], collaborators: [] }),
+      : Promise.resolve({ tutors: [], services: [], addons: [], collaborators: [] }),
   ]);
   const summary = summaries.get(petId) ?? null;
   const behaviorBadge = behaviorBadgeOf(
@@ -468,6 +468,7 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
               <NewAppointmentDialog
                 tenantId={tenant.tenantId}
                 services={bookingOptions.services}
+                addons={bookingOptions.addons}
                 collaborators={bookingOptions.collaborators}
                 fixedPet={{ id: petId_, name: petName }}
                 trigger="tile"

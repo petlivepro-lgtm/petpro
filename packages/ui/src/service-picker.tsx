@@ -50,13 +50,39 @@ export type ServiceOption = {
   id: string;
   name: string;
   price_cents: number;
-  duration_min: number;
+  /** Ausente no serviço adicional, que não ocupa horário. */
+  duration_min?: number | null;
+};
+
+/** Textos do seletor. O padrão fala de serviço; adicionais passam os seus. */
+export type ServicePickerLabels = {
+  /** Texto do botão fechado, sem nada selecionado. */
+  placeholder?: string;
+  /** Aviso abaixo do campo enquanto nada foi escolhido; null esconde. */
+  hint?: string | null;
+  noun?: string;
+  nounPlural?: string;
+  searchPlaceholder?: string;
+  /** Busca sem resultado. */
+  empty?: string;
+};
+
+const DEFAULT_LABELS: Required<ServicePickerLabels> = {
+  placeholder: "Selecione um ou mais serviços",
+  hint: "Selecione ao menos um serviço.",
+  noun: "serviço",
+  nounPlural: "serviços",
+  searchPlaceholder: "Buscar serviço...",
+  empty: "Nenhum serviço encontrado.",
 };
 
 /**
  * Seletor de múltiplos serviços: fechado por padrão, abre uma lista em popover.
  * Emite um input hidden por serviço escolhido (lido com formData.getAll), então
  * funciona igual no formulário do tutor e no diálogo do petshop.
+ *
+ * Serve também aos serviços adicionais (0056): mesma mecânica, trocando os
+ * rótulos por `labels` — item sem duração simplesmente não a exibe.
  */
 export function ServicePicker({
   services,
@@ -64,6 +90,7 @@ export function ServicePicker({
   toggle,
   name = "service_type_id",
   searchable,
+  labels,
 }: {
   services: ServiceOption[];
   selected: Set<string>;
@@ -75,7 +102,9 @@ export function ServicePicker({
    * cinco serviços; passe `searchable` para exibi-lo desde já.
    */
   searchable?: boolean;
+  labels?: ServicePickerLabels;
 }) {
+  const copy = { ...DEFAULT_LABELS, ...labels };
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const ref = React.useRef<HTMLDivElement>(null);
@@ -115,15 +144,15 @@ export function ServicePicker({
 
   const chosen = services.filter((s) => selected.has(s.id));
   const totalCents = chosen.reduce((sum, s) => sum + s.price_cents, 0);
-  const totalMin = chosen.reduce((sum, s) => sum + s.duration_min, 0);
+  const totalMin = chosen.reduce((sum, s) => sum + (s.duration_min ?? 0), 0);
   const count = chosen.length;
 
   const summary =
     count === 0
-      ? "Selecione um ou mais serviços"
+      ? copy.placeholder
       : count === 1
         ? (chosen[0]?.name ?? "")
-        : `${count} serviços selecionados`;
+        : `${count} ${copy.nounPlural} selecionados`;
 
   return (
     <div className="relative" ref={ref}>
@@ -169,8 +198,8 @@ export function ServicePicker({
                 ref={searchRef}
                 type="text"
                 value={query}
-                placeholder="Buscar serviço..."
-                aria-label="Buscar serviço"
+                placeholder={copy.searchPlaceholder}
+                aria-label={copy.searchPlaceholder}
                 onChange={(e) => setQuery(e.target.value)}
                 className="h-9 w-full rounded-lg border border-graphite/15 bg-surface px-3 text-sm text-graphite placeholder:text-gray-neutral/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
               />
@@ -179,7 +208,7 @@ export function ServicePicker({
 
           {visible.length === 0 && (
             <p className="px-3 py-2.5 text-sm text-gray-neutral">
-              Nenhum serviço encontrado.
+              {copy.empty}
             </p>
           )}
 
@@ -213,9 +242,11 @@ export function ServicePicker({
                       <span className="block font-medium text-graphite">
                         {s.name}
                       </span>
-                      <span className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-neutral">
-                        <Clock className="h-3 w-3" /> {s.duration_min}min
-                      </span>
+                      {!!s.duration_min && (
+                        <span className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-neutral">
+                          <Clock className="h-3 w-3" /> {s.duration_min}min
+                        </span>
+                      )}
                     </span>
                     <span className="shrink-0 font-heading text-sm font-semibold text-graphite">
                       {formatBRL(s.price_cents)}
@@ -251,18 +282,17 @@ export function ServicePicker({
           </div>
           <div className="flex items-center justify-between rounded-xl bg-surface-muted px-3 py-2 text-sm">
             <span className="text-gray-neutral">
-              {count} serviço{count > 1 ? "s" : ""} · {totalMin}min
+              {count} {count > 1 ? copy.nounPlural : copy.noun}
+              {totalMin > 0 ? ` · ${totalMin}min` : ""}
             </span>
             <span className="font-heading font-semibold text-graphite">
               {formatBRL(totalCents)}
             </span>
           </div>
         </div>
-      ) : (
-        <p className="mt-2 text-xs text-gray-neutral">
-          Selecione ao menos um serviço.
-        </p>
-      )}
+      ) : copy.hint ? (
+        <p className="mt-2 text-xs text-gray-neutral">{copy.hint}</p>
+      ) : null}
     </div>
   );
 }

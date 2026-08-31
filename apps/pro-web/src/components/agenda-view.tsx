@@ -93,6 +93,7 @@ export function AgendaView({
   tenantId,
   bookingTutors,
   bookingServices,
+  bookingAddons,
   bookingCollaborators,
 }: {
   initial: Row[];
@@ -115,6 +116,7 @@ export function AgendaView({
   tenantId: string | null;
   bookingTutors: BookingTutor[];
   bookingServices: ServiceOption[];
+  bookingAddons: ServiceOption[];
   bookingCollaborators: BookingCollaborator[];
 }) {
   const router = useRouter();
@@ -344,6 +346,7 @@ export function AgendaView({
                 tenantId={tenantId}
                 tutors={bookingTutors}
                 services={bookingServices}
+                addons={bookingAddons}
                 collaborators={bookingCollaborators}
               />
             )}
@@ -482,6 +485,7 @@ export function AgendaView({
           tenantId={tenantId}
           tutors={bookingTutors}
           services={bookingServices}
+          addons={bookingAddons}
           collaborators={bookingCollaborators}
           trigger="none"
           open={slot !== null}

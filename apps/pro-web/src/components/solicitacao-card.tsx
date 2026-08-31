@@ -20,6 +20,7 @@ import {
   Textarea,
 } from "@mylivepet/ui";
 import {
+  formatBRL,
   type PaymentTerminalDTO,
   type ReservationStatus,
 } from "@mylivepet/types";
@@ -41,6 +42,8 @@ export type SolicitacaoAppointment = {
   notes: string | null;
   petName: string;
   serviceName: string;
+  /** Adicionais escolhidos pelo tutor, somados ao serviço na conclusão (0056). */
+  addons: { id: string; name: string; priceCents: number }[];
   collaboratorName: string | null;
   requestGroupId: string | null;
 };
@@ -469,6 +472,16 @@ export function SolicitacaoCard({
                       >
                         <span className="text-sm text-graphite">
                           {a.serviceName}
+                          {a.addons.length > 0 && (
+                            <span className="block text-xs text-gray-neutral">
+                              {a.addons
+                                .map(
+                                  (addon) =>
+                                    `+ ${addon.name} (${formatBRL(addon.priceCents)})`,
+                                )
+                                .join(" · ")}
+                            </span>
+                          )}
                         </span>
                         <div className="flex gap-2">
                           <form

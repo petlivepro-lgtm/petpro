@@ -4,7 +4,7 @@ import type { SolicitacaoGroup } from "@/components/solicitacao-card";
 // Colunas das consultas de Solicitações — reutilizadas no render inicial (server)
 // e no refetch em tempo real (client), garantindo o mesmo shape nos dois lados.
 export const SOLICITACAO_APPOINTMENT_SELECT =
-  "id, scheduled_at, notes, tutor_id, request_group_id, pet(name), service_type(name), tutor(full_name), collaborator(full_name)";
+  "id, scheduled_at, notes, tutor_id, request_group_id, pet(name), service_type(name), tutor(full_name), collaborator(full_name), appointment_addon(id, name, price_cents)";
 export const SOLICITACAO_RESERVATION_SELECT = `id, status, note, expires_at, created_at, tutor_id, tutor(full_name),
   product_reservation_item(id, quantity, price_cents, variant_label, product_name, product(name))`;
 
@@ -18,6 +18,8 @@ type RawAppointment = {
   service_type: { name: string } | null;
   tutor: { full_name: string } | null;
   collaborator: { full_name: string } | null;
+  /** Extras pedidos junto (0056); ficam na primeira linha do grupo. */
+  appointment_addon: { id: string; name: string; price_cents: number }[] | null;
 };
 
 type RawReservation = {
@@ -94,6 +96,11 @@ export function buildSolicitacaoGroups(
       notes: a.notes,
       petName: a.pet?.name ?? "Pet",
       serviceName: a.service_type?.name ?? "Serviço",
+      addons: (a.appointment_addon ?? []).map((x) => ({
+        id: x.id,
+        name: x.name,
+        priceCents: x.price_cents,
+      })),
       collaboratorName: a.collaborator?.full_name ?? null,
       requestGroupId: a.request_group_id,
     });

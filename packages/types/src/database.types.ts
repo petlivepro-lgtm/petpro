@@ -196,6 +196,58 @@ export type Database = {
           },
         ]
       }
+      appointment_addon: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          id: string
+          name: string
+          price_cents: number
+          service_addon_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          id?: string
+          name: string
+          price_cents: number
+          service_addon_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          price_cents?: number
+          service_addon_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_addon_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_addon_service_addon_id_fkey"
+            columns: ["service_addon_id"]
+            isOneToOne: false
+            referencedRelation: "service_addon"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_addon_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_camera_session: {
         Row: {
           appointment_id: string
@@ -2240,6 +2292,41 @@ export type Database = {
           },
           {
             foreignKeyName: "recording_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_addon: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          price_cents: number
+          tenant_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          price_cents?: number
+          tenant_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          price_cents?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_addon_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenant"

@@ -77,6 +77,13 @@ export const bookingRequest = z.object({
   service_type_ids: z
     .array(z.string().uuid())
     .min(1, "Selecione ao menos um serviço"),
+  // Extras do agendamento inteiro, não de um serviço específico: quando há mais
+  // de um serviço, eles ficam na primeira linha do grupo e são cobrados uma vez
+  // só (ver 0056_service_addon.sql).
+  service_addon_ids: z
+    .array(z.string().uuid())
+    .refine((ids) => new Set(ids).size === ids.length, "Adicional repetido no agendamento")
+    .optional(),
   collaborator_id: z.string().uuid("Escolha um profissional"),
   scheduled_at: z.string().min(1, "Escolha data e horário"),
   notes: z.string().optional(),
@@ -366,6 +373,16 @@ export const serviceTypeInput = z.object({
     .optional(),
 });
 export type ServiceTypeInput = z.infer<typeof serviceTypeInput>;
+
+// Serviço adicional: extra que acompanha o atendimento (hidratação, perfume).
+// Só nome e preço — não ocupa horário nem tem etapas, por isso não é um
+// service_type com duração zero (ver 0056_service_addon.sql).
+export const serviceAddonInput = z.object({
+  name: z.string().trim().min(1, "Informe o nome").max(60, "Nome muito longo"),
+  price_cents: z.number().int().min(0),
+  active: z.boolean().optional(),
+});
+export type ServiceAddonInput = z.infer<typeof serviceAddonInput>;
 
 // Configurações do petshop (nome + dados de contato; logo sobe à parte)
 export const tenantSettingsInput = z.object({

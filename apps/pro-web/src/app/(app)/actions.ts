@@ -44,6 +44,47 @@ export async function signOut() {
 }
 
 /**
+ * Grava os adicionais escolhidos no agendamento (0056).
+ *
+ * Nome e preço vêm do catálogo aqui no servidor, não do formulário: é esse valor
+ * que vira receita ao concluir, então não pode depender do que o navegador
+ * mandou. Id inativo ou de outro petshop não é encontrado e fica de fora.
+ *
+ * Devolve a mensagem de erro, ou undefined quando deu certo. O agendamento já
+ * existe neste ponto: falhar aqui deixa o horário marcado sem os extras, e é
+ * isso que a mensagem precisa dizer.
+ */
+async function attachAddons(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tenantId: string,
+  appointmentId: string,
+  addonIds: string[],
+): Promise<string | undefined> {
+  if (addonIds.length === 0) return;
+
+  const { data: addons } = await supabase
+    .from("service_addon")
+    .select("id, name, price_cents")
+    .eq("tenant_id", tenantId)
+    .eq("active", true)
+    .in("id", addonIds);
+  if (!addons || addons.length === 0) return;
+
+  const { error } = await supabase.from("appointment_addon").insert(
+    addons.map((addon) => ({
+      tenant_id: tenantId,
+      appointment_id: appointmentId,
+      service_addon_id: addon.id,
+      name: addon.name,
+      price_cents: addon.price_cents,
+    })),
+  );
+  if (error) {
+    return "Agendamento criado, mas os adicionais não foram salvos. Edite o atendimento para incluí-los.";
+  }
+}
+
+/**
  * A loja agenda em nome do tutor (telefone, WhatsApp ou balcão). Nasce
  * CONFIRMED — diferente da solicitação do tutor, que entra como REQUESTED e
  * precisa de aval. Cada serviço escolhido vira uma linha, todas irmãs pelo
@@ -56,6 +97,7 @@ export async function createStaffBooking(
   const parsed = bookingRequest.safeParse({
     pet_id: formData.get("pet_id"),
     service_type_ids: formData.getAll("service_type_id"),
+    service_addon_ids: formData.getAll("service_addon_id"),
     collaborator_id: formData.get("collaborator_id"),
     scheduled_at: formData.get("scheduled_at"),
     notes: formData.get("notes") || undefined,
@@ -106,8 +148,12 @@ export async function createStaffBooking(
   }
 
   const requestGroupId = crypto.randomUUID();
+  // Ids gerados aqui, e não pelo default do banco, para saber de antemão qual é
+  // a primeira linha do grupo — é nela que os adicionais são gravados.
+  const ids = parsed.data.service_type_ids.map(() => crypto.randomUUID());
   const { error } = await supabase.from("appointment").insert(
-    parsed.data.service_type_ids.map((serviceTypeId) => ({
+    parsed.data.service_type_ids.map((serviceTypeId, index) => ({
+      id: ids[index]!,
       tenant_id: pet.tenant_id,
       pet_id: pet.id,
       tutor_id: pet.tutor_id,
@@ -130,6 +176,14 @@ export async function createStaffBooking(
         : error.message,
     };
   }
+
+  const addonError = await attachAddons(
+    supabase,
+    pet.tenant_id,
+    ids[0]!,
+    parsed.data.service_addon_ids ?? [],
+  );
+  if (addonError) return { ok: false, error: addonError };
 
   // O agendamento da loja já nasce CONFIRMED: entra direto na agenda do
   // profissional, que precisa saber sem depender de abrir o painel.

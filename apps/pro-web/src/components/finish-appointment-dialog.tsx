@@ -45,7 +45,10 @@ export function FinishAppointmentDialog({
   behaviorCategories?: BehaviorCategory[];
   /** Maquininhas ativas, para escolher onde a cobrança foi passada. */
   terminals?: PaymentTerminalDTO[];
-  /** Preço do serviço, quando conhecido, para a prévia do líquido. */
+  /**
+   * Valor a cobrar (serviço + adicionais, como o trigger de receita soma na
+   * conclusão), quando conhecido, para a prévia do líquido.
+   */
   priceCents?: number;
   size?: ButtonProps["size"];
   className?: string;

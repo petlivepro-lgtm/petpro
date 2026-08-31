@@ -11,7 +11,7 @@ import {
   ServicePicker,
   type ServiceOption,
 } from "@mylivepet/ui";
-import { weekdayOfDateString, worksOnWeekday } from "@mylivepet/types";
+import { formatBRL, weekdayOfDateString, worksOnWeekday } from "@mylivepet/types";
 import { requestBooking } from "../actions";
 import { SlotPicker, type Collaborator } from "./slot-picker";
 
@@ -28,11 +28,14 @@ function todayISO(): string {
 export function BookingForm({
   pets,
   services,
+  addons,
   collaborators,
   tenantId,
 }: {
   pets: Pet[];
   services: ServiceOption[];
+  /** Extras do catálogo, somados ao valor do agendamento (0056). */
+  addons: ServiceOption[];
   collaborators: Collaborator[];
   tenantId: string;
 }) {
@@ -40,6 +43,7 @@ export function BookingForm({
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(services.length === 1 ? [services[0].id] : []),
   );
+  const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set());
   const [collaboratorId, setCollaboratorId] = useState("");
   const [date, setDate] = useState("");
   const [slot, setSlot] = useState(""); // ISO do horário escolhido
@@ -72,6 +76,19 @@ export function BookingForm({
       return next;
     });
 
+  const toggleAddon = (id: string) =>
+    setSelectedAddons((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  // Serviços + adicionais: é o valor que o tutor vai pagar no petshop.
+  const totalCents =
+    services.filter((s) => selected.has(s.id)).reduce((sum, s) => sum + s.price_cents, 0) +
+    addons.filter((a) => selectedAddons.has(a.id)).reduce((sum, a) => sum + a.price_cents, 0);
+
   const canSubmit = selected.size > 0 && !!collaboratorId && !!slot;
 
   return (
@@ -97,6 +114,44 @@ export function BookingForm({
           </Label>
           <ServicePicker services={services} selected={selected} toggle={toggle} />
         </div>
+
+        {/* Extras do pedido inteiro, escolhidos depois do serviço principal
+            (ver 0056_service_addon.sql). */}
+        {addons.length > 0 && (
+          <div>
+            <Label>
+              Serviços adicionais{" "}
+              <span className="font-normal text-gray-neutral">(opcional)</span>
+            </Label>
+            {selected.size === 0 ? (
+              <p className="text-sm text-gray-neutral">Escolha o serviço antes.</p>
+            ) : (
+              <ServicePicker
+                services={addons}
+                selected={selectedAddons}
+                toggle={toggleAddon}
+                name="service_addon_id"
+                labels={{
+                  placeholder: "Nenhum adicional",
+                  hint: null,
+                  noun: "adicional",
+                  nounPlural: "adicionais",
+                  searchPlaceholder: "Buscar adicional...",
+                  empty: "Nenhum adicional encontrado.",
+                }}
+              />
+            )}
+          </div>
+        )}
+
+        {selectedAddons.size > 0 && (
+          <div className="flex items-center justify-between rounded-xl bg-orange/5 px-3 py-2.5 text-sm">
+            <span className="text-gray-neutral">Total do agendamento</span>
+            <span className="font-heading text-base font-bold text-graphite">
+              {formatBRL(totalCents)}
+            </span>
+          </div>
+        )}
 
         <div>
           <Label htmlFor="scheduled_date">Data desejada</Label>

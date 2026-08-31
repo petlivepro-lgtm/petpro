@@ -15,7 +15,11 @@ import {
   Textarea,
   type ServiceOption,
 } from "@mylivepet/ui";
-import { weekdayOfDateString, worksOnWeekday } from "@mylivepet/types";
+import {
+  formatBRL,
+  weekdayOfDateString,
+  worksOnWeekday,
+} from "@mylivepet/types";
 import { createStaffBooking, type FormState } from "@/app/(app)/actions";
 import { SlotPicker } from "@/components/slot-picker";
 import { useOpenFromUrl } from "@/lib/use-open-from-url";
@@ -38,6 +42,7 @@ function todayISO(): string {
 export function NewAppointmentDialog({
   tenantId,
   services,
+  addons,
   collaborators,
   tutors = [],
   fixedPet,
@@ -49,6 +54,8 @@ export function NewAppointmentDialog({
 }: {
   tenantId: string;
   services: ServiceOption[];
+  /** Extras do catálogo, somados ao valor do agendamento (0056). */
+  addons: ServiceOption[];
   collaborators: BookingCollaborator[];
   /** Necessário quando não há pet fixo (o cliente é escolhido no diálogo). */
   tutors?: BookingTutor[];
@@ -80,6 +87,7 @@ export function NewAppointmentDialog({
   const [tutorId, setTutorId] = useState("");
   const [petId, setPetId] = useState(fixedPet?.id ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set());
   const [collaboratorId, setCollaboratorId] = useState("");
   const [date, setDate] = useState("");
   const [slot, setSlot] = useState(""); // ISO vindo da grade
@@ -133,6 +141,7 @@ export function NewAppointmentDialog({
     setTutorId("");
     setPetId(fixedPet?.id ?? "");
     setSelected(new Set());
+    setSelectedAddons(new Set());
     setCollaboratorId("");
     setDate("");
     setSlot("");
@@ -162,6 +171,24 @@ export function NewAppointmentDialog({
       else next.add(id);
       return next;
     });
+
+  const toggleAddon = (id: string) =>
+    setSelectedAddons((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  // Total do agendamento: serviços + adicionais. Só aparece quando há
+  // adicional escolhido — sem eles o próprio seletor de serviços já soma.
+  const totalCents =
+    services
+      .filter((s) => selected.has(s.id))
+      .reduce((sum, s) => sum + s.price_cents, 0) +
+    addons
+      .filter((a) => selectedAddons.has(a.id))
+      .reduce((sum, a) => sum + a.price_cents, 0);
 
   return (
     <>
@@ -274,6 +301,50 @@ export function NewAppointmentDialog({
               />
             )}
           </div>
+
+          {/* Extras do agendamento inteiro: valem para o conjunto, não para um
+              serviço específico (ver 0056_service_addon.sql). Sem adicional no
+              catálogo, o campo nem aparece. */}
+          {addons.length > 0 && (
+            <div>
+              <Label>
+                Serviços adicionais{" "}
+                <span className="font-normal text-gray-neutral">
+                  (opcional)
+                </span>
+              </Label>
+              {selected.size === 0 ? (
+                <p className="text-sm text-gray-neutral">
+                  Escolha o serviço antes.
+                </p>
+              ) : (
+                <ServicePicker
+                  services={addons}
+                  selected={selectedAddons}
+                  toggle={toggleAddon}
+                  name="service_addon_id"
+                  labels={{
+                    placeholder: "Nenhum adicional",
+                    hint: null,
+                    noun: "adicional",
+                    nounPlural: "adicionais",
+                    searchPlaceholder: "Buscar adicional...",
+                    empty: "Nenhum adicional encontrado.",
+                  }}
+                />
+              )}
+            </div>
+          )}
+
+          {/* A soma das duas listas, para o balcão conferir antes de agendar. */}
+          {selectedAddons.size > 0 && (
+            <div className="flex items-center justify-between rounded-xl bg-orange/5 px-3 py-2.5 text-sm">
+              <span className="text-gray-neutral">Total do agendamento</span>
+              <span className="font-heading text-base font-bold text-graphite">
+                {formatBRL(totalCents)}
+              </span>
+            </div>
+          )}
 
           {/* A data vem antes do profissional: é ela que define quem atende. */}
           {freeTime ? (

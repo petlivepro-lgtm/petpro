@@ -5,7 +5,7 @@ import type { AppointmentStatus } from "@mylivepet/types";
 // Colunas da tela de Atendimentos — reutilizadas no render inicial (server) e no
 // refetch em tempo real (client), garantindo o mesmo shape nos dois lados.
 export const ATENDIMENTO_SELECT =
-  "id, status, origin, scheduled_at, started_at, finished_at, pet(id, name, photo_path), tutor(full_name), service_type(id, name, price_cents, duration_min, color_hex), collaborator(id, full_name)";
+  "id, status, origin, scheduled_at, started_at, finished_at, pet(id, name, photo_path), tutor(full_name), service_type(id, name, price_cents, duration_min, color_hex), collaborator(id, full_name), appointment_addon(id, name, price_cents)";
 
 type RawAtendimento = {
   id: string;
@@ -24,6 +24,8 @@ type RawAtendimento = {
     color_hex: string | null;
   } | null;
   collaborator: { id: string; full_name: string } | null;
+  /** Extras do agendamento (0056); ficam na primeira linha do grupo. */
+  appointment_addon: { id: string; name: string; price_cents: number }[] | null;
 };
 
 export type AtendimentoRow = {
@@ -39,8 +41,13 @@ export type AtendimentoRow = {
   tutorName: string | null;
   serviceId: string | null;
   serviceName: string;
-  /** Preço do serviço, para prever o líquido ao finalizar (0036). */
+  /**
+   * Preço a cobrar: serviço + adicionais, como o trigger de receita soma na
+   * conclusão (0056). É o que prevê o líquido ao finalizar (0036).
+   */
   servicePriceCents: number | null;
+  /** Adicionais do agendamento, para a ficha e o resumo do card. */
+  addons: { id: string; name: string; priceCents: number }[];
   /** Duração cadastrada, usada para desenhar o card na grade da agenda. */
   serviceDurationMin: number | null;
   /** Cor escolhida no cadastro do serviço; nula = a UI deriva do id. */
@@ -63,7 +70,20 @@ export function mapAtendimentos(rows: RawAtendimento[]): AtendimentoRow[] {
     tutorName: a.tutor?.full_name ?? null,
     serviceId: a.service_type?.id ?? null,
     serviceName: a.service_type?.name ?? "Serviço",
-    servicePriceCents: a.service_type?.price_cents ?? null,
+    servicePriceCents:
+      a.service_type?.price_cents === undefined ||
+      a.service_type?.price_cents === null
+        ? null
+        : a.service_type.price_cents +
+          (a.appointment_addon ?? []).reduce(
+            (sum, x) => sum + x.price_cents,
+            0,
+          ),
+    addons: (a.appointment_addon ?? []).map((x) => ({
+      id: x.id,
+      name: x.name,
+      priceCents: x.price_cents,
+    })),
     serviceDurationMin: a.service_type?.duration_min ?? null,
     serviceColorHex: a.service_type?.color_hex ?? null,
     collaboratorId: a.collaborator?.id ?? null,

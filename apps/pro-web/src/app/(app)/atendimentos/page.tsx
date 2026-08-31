@@ -94,7 +94,7 @@ export default async function AtendimentosPage({
       : Promise.resolve([]),
     canBook
       ? loadBookingOptions(supabase)
-      : Promise.resolve({ tutors: [], services: [], collaborators: [] }),
+      : Promise.resolve({ tutors: [], services: [], addons: [], collaborators: [] }),
   ]);
 
   // O cabeçalho vive dentro do AgendaView: Filtros e Histórico ficam na linha
@@ -119,6 +119,7 @@ export default async function AtendimentosPage({
         tenantId={tenant?.tenantId ?? null}
         bookingTutors={bookingOptions.tutors}
         bookingServices={bookingOptions.services}
+        bookingAddons={bookingOptions.addons}
         bookingCollaborators={bookingOptions.collaborators}
       />
     </div>

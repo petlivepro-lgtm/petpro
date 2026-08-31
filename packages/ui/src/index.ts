@@ -33,7 +33,11 @@ export {
   SLOT_MINUTES,
   type CollaboratorSchedule,
 } from "./slot-grid";
-export { ServicePicker, type ServiceOption } from "./service-picker";
+export {
+  ServicePicker,
+  type ServiceOption,
+  type ServicePickerLabels,
+} from "./service-picker";
 export { Avatar } from "./avatar";
 export { PageHeader } from "./page-header";
 export { StatCard } from "./stat-card";

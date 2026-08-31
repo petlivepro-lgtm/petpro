@@ -42,6 +42,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import { loadPaymentTerminals } from "@/lib/payment-terminals";
 import {
   canMutateAsRole,
+  formatBRL,
   type AppointmentStatus,
   type FeedbackResponse,
 } from "@mylivepet/types";
@@ -65,7 +66,7 @@ export default async function AtendimentoPage({
   const { data: appt } = await supabase
     .from("appointment")
     .select(
-      "id, status, scheduled_at, started_at, finished_at, notes, photos, camera_id, request_group_id, cancellation_reason, cancelled_at, cancelled_by_role, pet:pet_id(id, name, photo_path), tutor:tutor_id(full_name), service_type(name, price_cents), collaborator(full_name), camera:camera_id(room_label)",
+      "id, status, scheduled_at, started_at, finished_at, notes, photos, camera_id, request_group_id, cancellation_reason, cancelled_at, cancelled_by_role, pet:pet_id(id, name, photo_path), tutor:tutor_id(full_name), service_type(name, price_cents), collaborator(full_name), camera:camera_id(room_label), appointment_addon(id, name, price_cents)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -98,6 +99,17 @@ export default async function AtendimentoPage({
   } | null;
   const camera = appt.camera as unknown as { room_label: string } | null;
   const status = appt.status as AppointmentStatus;
+
+  // Extras escolhidos no agendamento (0056). O trigger de receita soma esses
+  // valores ao do serviço na conclusão, então o balcão precisa ver o total —
+  // é ele que vai ser cobrado.
+  const addons = (appt.appointment_addon ?? []) as unknown as {
+    id: string;
+    name: string;
+    price_cents: number;
+  }[];
+  const addonsCents = addons.reduce((sum, a) => sum + a.price_cents, 0);
+  const totalCents = (service?.price_cents ?? 0) + addonsCents;
 
   // Câmeras ativas para os dialogs de início e de troca de sala.
   const canStart = status === "CONFIRMED" || status === "CHECKED_IN";
@@ -389,6 +401,27 @@ export default async function AtendimentoPage({
               </div>
             </div>
 
+            {addons.length > 0 && (
+              <div className="mb-3 space-y-1.5 rounded-xl bg-surface-muted p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-gray-neutral">{service?.name ?? "Serviço"}</span>
+                  <span className="text-graphite">{formatBRL(service?.price_cents ?? 0)}</span>
+                </div>
+                {addons.map((addon) => (
+                  <div key={addon.id} className="flex items-center justify-between gap-2">
+                    <span className="text-gray-neutral">+ {addon.name}</span>
+                    <span className="text-graphite">{formatBRL(addon.price_cents)}</span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between gap-2 border-t border-graphite/10 pt-1.5">
+                  <span className="font-medium text-graphite">Total</span>
+                  <span className="font-heading font-bold text-graphite">
+                    {formatBRL(totalCents)}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {canStart && (
               <StartAppointmentDialog
                 appointmentId={id}
@@ -427,7 +460,7 @@ export default async function AtendimentoPage({
                   appointmentId={id}
                   behaviorCategories={behaviorCategories}
                   terminals={terminals}
-                  priceCents={service?.price_cents}
+                  priceCents={service ? totalCents : undefined}
                 />
               </div>
             )}

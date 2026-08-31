@@ -19,11 +19,19 @@ export default async function AgendarPage({
   const ctx = await getTutorContext(supabase);
   if (!ctx) return null;
 
-  const [{ data: pets }, { data: services }, { data: collaborators }] = await Promise.all([
+  const [{ data: pets }, { data: services }, { data: addons }, { data: collaborators }] =
+    await Promise.all([
     supabase.from("pet").select("id, name").eq("tutor_id", ctx.tutorId),
     supabase
       .from("service_type")
       .select("id, name, price_cents, duration_min")
+      .eq("tenant_id", ctx.tenantId)
+      .eq("active", true)
+      .order("name"),
+    // Extras do catálogo (0056): sem duração, não ocupam horário.
+    supabase
+      .from("service_addon")
+      .select("id, name, price_cents")
       .eq("tenant_id", ctx.tenantId)
       .eq("active", true)
       .order("name"),
@@ -53,6 +61,7 @@ export default async function AgendarPage({
       <BookingForm
         pets={pets ?? []}
         services={services ?? []}
+        addons={addons ?? []}
         collaborators={collaborators ?? []}
         tenantId={ctx.tenantId}
       />
