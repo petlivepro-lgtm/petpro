@@ -5,6 +5,12 @@ import { colors } from "./tokens.js";
 export default {
   theme: {
     extend: {
+      // Variante por ALTURA da janela (não largura): navegador com barra
+      // lateral e abas (Opera GX), notebook 768p ou zoom acima de 100% deixam
+      // a viewport baixa, e aí os menus laterais compactam o cabeçalho.
+      screens: {
+        short: { raw: "(max-height: 800px)" },
+      },
       colors: {
         graphite: colors.graphite,
         orange: colors.orange,

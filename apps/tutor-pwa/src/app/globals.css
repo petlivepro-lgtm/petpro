@@ -7,3 +7,27 @@
     @apply bg-surface text-graphite antialiased;
   }
 }
+
+@layer utilities {
+  /* Barra de rolagem discreta para menus e listas de altura limitada. Sem ela,
+     o Chromium (Opera GX incluso) esconde a barra e o conteúdo que passa da
+     altura da janela vira conteúdo inalcançável. */
+  .scrollbar-slim {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(31 42 51 / 0.25) transparent;
+  }
+  .scrollbar-slim::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: rgb(31 42 51 / 0.2);
+  }
+  .scrollbar-slim:hover::-webkit-scrollbar-thumb {
+    background-color: rgb(31 42 51 / 0.35);
+  }
+}

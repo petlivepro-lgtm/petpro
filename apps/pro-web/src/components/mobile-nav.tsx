@@ -60,14 +60,16 @@ export function MobileNav({
             onClick={() => setOpen(false)}
             aria-hidden
           />
-          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col justify-between bg-surface p-4 shadow-xl">
-            <div>
-              <div className="mb-6 flex items-center justify-between">
+          {/* Mesma estrutura da barra do desktop: miolo rolável e rodapé
+              ancorado — em celular deitado a lista não cabe inteira. */}
+          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col bg-surface shadow-xl">
+            <div className="scrollbar-slim min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+              <div className="mb-6 flex items-center justify-between short:mb-3">
                 <div className="min-w-0">
                   <img
                     src="/brand/logopet.svg"
                     alt="Pet Live Pro"
-                    className="h-14 max-w-[180px] object-contain"
+                    className="h-14 max-w-[180px] object-contain short:h-10"
                   />
                   <div className="flex items-center gap-1.5">
                     {logoUrl && (
@@ -88,7 +90,7 @@ export function MobileNav({
               </div>
               <Nav role={role} onNavigate={() => setOpen(false)} />
             </div>
-            <div className="border-t border-graphite/10 pt-3">
+            <div className="shrink-0 border-t border-graphite/10 p-4 pt-3">
               <div className="mb-2 flex items-center gap-3 px-2">
                 <Avatar name={userName} size="sm" />
                 <div className="min-w-0">

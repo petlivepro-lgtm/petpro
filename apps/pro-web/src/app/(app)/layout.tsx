@@ -36,15 +36,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen bg-surface-muted">
-      <aside className="fixed inset-y-0 hidden w-64 flex-col justify-between border-r border-graphite/10 bg-surface p-4 md:flex">
-        <div>
-          <div className="mb-8 px-2 pt-2">
+      {/* A barra tem a altura da janela: o miolo rola (min-h-0 + flex-1) e o
+          rodapé fica ancorado, para que Configurações/Sair nunca fiquem fora
+          de alcance numa janela baixa. */}
+      <aside className="fixed inset-y-0 hidden w-64 flex-col border-r border-graphite/10 bg-surface md:flex">
+        <div className="scrollbar-slim min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+          <div className="mb-8 px-2 pt-2 short:mb-4">
             <img
               src="/brand/logopet.svg"
               alt="Pet Live Pro"
-              className="h-20 w-auto"
+              className="h-20 w-auto short:h-12"
             />
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-4 flex items-center gap-2 short:mt-2">
               {tenant?.logoUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -72,7 +75,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           )}
           <Nav role={tenant?.role} />
         </div>
-        <div className="border-t border-graphite/10 pt-3">
+        <div className="shrink-0 border-t border-graphite/10 p-4 pt-3">
           <div className="mb-2 flex items-center gap-3 px-2">
             <Avatar name={userName} size="sm" />
             <div className="min-w-0">

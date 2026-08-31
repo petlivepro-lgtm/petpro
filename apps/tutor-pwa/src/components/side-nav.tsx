@@ -19,16 +19,18 @@ export function SideNav({
   bell?: React.ReactNode;
 }) {
   const pathname = usePathname();
+  // A barra tem a altura da janela: o miolo rola (min-h-0 + flex-1) e o rodapé
+  // fica ancorado, para Configurações/Sair não saírem de alcance.
   return (
-    <aside className="fixed inset-y-0 hidden w-64 flex-col justify-between border-r border-graphite/10 bg-surface p-4 lg:flex">
-      <div>
-        <div className="mb-8 px-2 pt-2">
+    <aside className="fixed inset-y-0 hidden w-64 flex-col border-r border-graphite/10 bg-surface lg:flex">
+      <div className="scrollbar-slim min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+        <div className="mb-8 px-2 pt-2 short:mb-4">
           <img
             src="/brand/logopet.svg"
             alt="MyLivePet"
-            className="h-20 w-auto"
+            className="h-20 w-auto short:h-12"
           />
-          <div className="mt-4 flex items-start gap-2">
+          <div className="mt-4 flex items-start gap-2 short:mt-2">
             <div className="min-w-0 flex-1">
               <TenantBrand name={tenantName} logoUrl={tenantLogoUrl} />
             </div>
@@ -60,7 +62,7 @@ export function SideNav({
           })}
         </nav>
       </div>
-      <div>
+      <div className="shrink-0 border-t border-graphite/10 p-4 pt-3">
         <Link
           href="/configuracoes"
           className={cn(
