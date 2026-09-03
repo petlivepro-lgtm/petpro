@@ -51,6 +51,7 @@ import { NewAppointmentDialog } from "@/components/new-appointment-dialog";
 import { loadBookingOptions } from "@/lib/booking-options";
 import { loadPaymentTerminals } from "@/lib/payment-terminals";
 import {
+  loadClubinhoManualUsage,
   loadClubinhoPlans,
   loadClubinhoSchedules,
   loadPetSubscription,
@@ -62,6 +63,8 @@ import { ClubinhoScheduleList } from "@/components/clubinho-schedule-list";
 import { ClubinhoScheduleDialog } from "@/components/clubinho-schedule-dialog";
 import { ClubinhoSubscriptionDialog } from "@/components/clubinho-subscription-dialog";
 import { ClubinhoStatusActions } from "@/components/clubinho-status-actions";
+import { ClubinhoUsageList } from "@/components/clubinho-usage-list";
+import { ClubinhoUsageDialog } from "@/components/clubinho-usage-dialog";
 import { CLUBINHO_STATUS_LABEL, clubinhoCycleLabel, formatBRL } from "@mylivepet/types";
 
 const statusColor: Record<AppointmentStatus, string> = {
@@ -195,15 +198,20 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
       ])
     : [null, [], []];
 
-  // Horários fixos e as datas que eles produzem no ciclo corrente.
-  const [clubinhoSchedules, clubinhoOccurrences] = subscription
+  // Horários fixos, as datas que eles produzem no ciclo corrente e o que já
+  // foi entregue na mão neste ciclo.
+  const [clubinhoSchedules, clubinhoOccurrences, clubinhoUsages] = subscription
     ? await Promise.all([
         loadClubinhoSchedules(supabase, [subscription.id]).then(
           (map) => map.get(subscription.id) ?? [],
         ),
         loadSchedulePreview(supabase, subscription.id),
+        loadClubinhoManualUsage(
+          supabase,
+          subscription.period_id ? [subscription.period_id] : [],
+        ).then((map) => map.get(subscription.id) ?? []),
       ])
-    : [[], []];
+    : [[], [], []];
 
   const meta = [pet.breed, pet.species, pet.size].filter(Boolean).join(" · ");
   const age = ageFrom(pet.birth_date);
@@ -410,6 +418,17 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
                 )}
               </div>
               <ClubinhoBalance subscription={subscription} className="pt-3" />
+
+              {subscription.period_id && (
+                <ClubinhoUsageList
+                  usages={clubinhoUsages}
+                  petId={petId_}
+                  canManage={canEdit && subscription.status === "ACTIVE"}
+                  className="mt-3 border-t border-graphite/5 pt-3"
+                >
+                  <ClubinhoUsageDialog subscription={subscription} />
+                </ClubinhoUsageList>
+              )}
 
               <ClubinhoScheduleList
                 schedules={clubinhoSchedules}

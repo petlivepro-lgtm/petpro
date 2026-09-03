@@ -966,6 +966,7 @@ export type Database = {
           created_by: string | null
           credit_id: string
           id: string
+          note: string | null
           service_type_id: string | null
           subscription_id: string
           tenant_id: string
@@ -976,6 +977,7 @@ export type Database = {
           created_by?: string | null
           credit_id: string
           id?: string
+          note?: string | null
           service_type_id?: string | null
           subscription_id: string
           tenant_id: string
@@ -986,6 +988,7 @@ export type Database = {
           created_by?: string | null
           credit_id?: string
           id?: string
+          note?: string | null
           service_type_id?: string | null
           subscription_id?: string
           tenant_id?: string
@@ -2873,6 +2876,10 @@ export type Database = {
         }
         Returns: string
       }
+      clubinho_register_usage: {
+        Args: { p_credit: string; p_note?: string; p_used_at?: string }
+        Returns: string
+      }
       clubinho_resume_subscription: {
         Args: { p_id: string }
         Returns: undefined
@@ -2895,6 +2902,10 @@ export type Database = {
       clubinho_sync_periods: { Args: { p_tenant: string }; Returns: number }
       clubinho_sync_tutor_flag: {
         Args: { p_tutor: string }
+        Returns: undefined
+      }
+      clubinho_undo_usage: {
+        Args: { p_usage: string }
         Returns: undefined
       }
       collab_sees_pet: {

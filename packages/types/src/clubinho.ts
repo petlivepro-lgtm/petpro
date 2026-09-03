@@ -255,6 +255,50 @@ export function formatSchedule(schedule: {
   return `Toda ${day.toLowerCase()} às ${schedule.start_time.slice(0, 5)}`;
 }
 
+// --- Serviços já realizados ----------------------------------------------
+
+/**
+ * Uma entrega do pacote registrada na mão (supabase/migrations/0057).
+ *
+ * Só as manuais chegam à tela: a entrega que veio de atendimento já aparece
+ * na agenda e no histórico do pet, e é desfeita estornando o atendimento.
+ */
+export type ClubinhoUsageDTO = {
+  id: string;
+  subscription_id: string;
+  credit_id: string;
+  service_name: string;
+  /** timestamptz — o momento em que o serviço foi entregue. */
+  used_at: string;
+  note: string | null;
+};
+
+export const clubinhoUsageInput = z.object({
+  credit_id: z.string().uuid("Escolha o serviço"),
+  // ISO completo montado no cliente: o DatePicker devolve hora local, e é
+  // no navegador do balcão que "14:00" tem o fuso certo.
+  used_at: z
+    .string()
+    .min(1, "Informe quando o serviço foi realizado")
+    .refine((v) => !Number.isNaN(Date.parse(v)), "Data inválida")
+    .refine(
+      (v) => Date.parse(v) <= Date.now(),
+      "Não dá para marcar como realizado um serviço com data no futuro",
+    ),
+  note: z.string().trim().max(500, "Observação muito longa").optional(),
+});
+export type ClubinhoUsageInput = z.infer<typeof clubinhoUsageInput>;
+
+/** "28/08, 14:00" — como a entrega é lida na lista. */
+export function formatUsageMoment(isoDateTime: string): string {
+  return new Date(isoDateTime).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 // --- Ajudantes de leitura ------------------------------------------------
 
 /**

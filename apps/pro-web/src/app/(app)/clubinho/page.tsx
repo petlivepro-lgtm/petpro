@@ -20,6 +20,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import { loadPaymentTerminals } from "@/lib/payment-terminals";
 import { loadBookingOptions } from "@/lib/booking-options";
 import {
+  loadClubinhoManualUsage,
   loadClubinhoPlans,
   loadClubinhoSchedules,
   loadClubinhoSubscriptions,
@@ -30,6 +31,8 @@ import {
 import { ClubinhoBalance } from "@/components/clubinho-balance";
 import { ClubinhoScheduleList } from "@/components/clubinho-schedule-list";
 import { ClubinhoScheduleDialog } from "@/components/clubinho-schedule-dialog";
+import { ClubinhoUsageList } from "@/components/clubinho-usage-list";
+import { ClubinhoUsageDialog } from "@/components/clubinho-usage-dialog";
 import {
   ClubinhoSubscriptionDialog,
   type PetOption,
@@ -92,10 +95,20 @@ export default async function ClubinhoPage() {
 
   // Combinados de todas as assinaturas numa consulta; a prévia é por
   // assinatura (a regra de orçamento é por ciclo) e roda em paralelo.
-  const schedulesBySubscription = await loadClubinhoSchedules(
-    supabase,
-    subscriptions.map((s) => s.id),
-  );
+  const [schedulesBySubscription, usagesBySubscription] = await Promise.all([
+    loadClubinhoSchedules(
+      supabase,
+      subscriptions.map((s) => s.id),
+    ),
+    // Só o ciclo corrente: o que foi entregue no ciclo anterior saiu junto
+    // com o saldo dele.
+    loadClubinhoManualUsage(
+      supabase,
+      subscriptions
+        .map((s) => s.period_id)
+        .filter((id): id is string => id !== null),
+    ),
+  ]);
   const previews = new Map(
     await Promise.all(
       subscriptions
@@ -272,6 +285,17 @@ export default async function ClubinhoPage() {
                     subscription={sub}
                     className="border-t border-graphite/5 pt-3"
                   />
+
+                  {sub.period_id && (
+                    <ClubinhoUsageList
+                      usages={usagesBySubscription.get(sub.id) ?? []}
+                      petId={sub.pet_id}
+                      canManage={canManage && sub.status === "ACTIVE"}
+                      className="mt-3 border-t border-graphite/5 pt-3"
+                    >
+                      <ClubinhoUsageDialog subscription={sub} />
+                    </ClubinhoUsageList>
+                  )}
 
                   <ClubinhoScheduleList
                     schedules={schedulesBySubscription.get(sub.id) ?? []}

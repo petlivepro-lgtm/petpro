@@ -5,6 +5,7 @@ import type {
   ClubinhoPlanDTO,
   ClubinhoScheduleDTO,
   ClubinhoSubscriptionDTO,
+  ClubinhoUsageDTO,
   Database,
 } from "@mylivepet/types";
 
@@ -194,6 +195,53 @@ export async function loadClubinhoSchedules(
         (row.collaborator as { full_name: string } | null)?.full_name ??
         "Profissional",
       active: row.active,
+    });
+    bySubscription.set(row.subscription_id, list);
+  }
+  return bySubscription;
+}
+
+// !inner: o filtro por período mora na tabela do crédito, e sem o inner join
+// o PostgREST devolveria as linhas de todos os ciclos com o crédito nulo.
+const USAGE_SELECT =
+  "id, subscription_id, credit_id, used_at, note, clubinho_credit!inner(service_name, period_id)";
+
+/**
+ * As baixas manuais do ciclo corrente, agrupadas por assinatura.
+ *
+ * Só as manuais (`appointment_id is null`): a entrega que veio de atendimento
+ * já aparece na agenda e no histórico do pet, e repeti-la aqui seria contar a
+ * mesma coisa duas vezes na mesma tela.
+ *
+ * Recebe os ids dos períodos, e não das assinaturas, porque o que interessa é
+ * o ciclo em andamento — o que foi entregue no mês passado saiu junto com o
+ * saldo do mês passado.
+ */
+export async function loadClubinhoManualUsage(
+  supabase: SupabaseClient<Database>,
+  periodIds: string[],
+): Promise<Map<string, ClubinhoUsageDTO[]>> {
+  const bySubscription = new Map<string, ClubinhoUsageDTO[]>();
+  if (periodIds.length === 0) return bySubscription;
+
+  const { data: rows } = await supabase
+    .from("clubinho_usage")
+    .select(USAGE_SELECT)
+    .in("clubinho_credit.period_id", periodIds)
+    .is("appointment_id", null)
+    .order("used_at", { ascending: false });
+
+  for (const row of rows ?? []) {
+    const list = bySubscription.get(row.subscription_id) ?? [];
+    list.push({
+      id: row.id,
+      subscription_id: row.subscription_id,
+      credit_id: row.credit_id,
+      service_name:
+        (row.clubinho_credit as { service_name: string } | null)
+          ?.service_name ?? "Serviço",
+      used_at: row.used_at,
+      note: row.note,
     });
     bySubscription.set(row.subscription_id, list);
   }

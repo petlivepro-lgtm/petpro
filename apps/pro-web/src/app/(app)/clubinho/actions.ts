@@ -9,6 +9,7 @@ import {
   clubinhoScheduleInput,
   clubinhoSubscriptionInput,
   clubinhoSubscriptionUpdateInput,
+  clubinhoUsageInput,
   type ClubinhoSubscriptionStatus,
 } from "@mylivepet/types";
 
@@ -270,6 +271,72 @@ export async function setClubinhoSubscriptionStatus(
           : error.message,
     };
   }
+
+  revalidateClubinho(str(formData.get("pet_id")));
+  return { ok: true };
+}
+
+/**
+ * Marca um serviço do pacote como já realizado, sem atendimento por trás.
+ *
+ * É o caso do pet que já era do Clubinho antes de entrar no sistema: a
+ * assinatura é criada hoje, o ciclo abre cheio, e os banhos que o tutor já
+ * tomou precisam sair do saldo — senão o petshop entrega mais do que vendeu.
+ *
+ * A conta mora na RPC (0057), não aqui: descontar o crédito e registrar a
+ * entrega têm de acontecer na mesma transação, com o crédito travado, pelo
+ * mesmo motivo que a conclusão do atendimento faz isso no banco.
+ */
+export async function registerClubinhoUsage(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = clubinhoUsageInput.safeParse({
+    credit_id: str(formData.get("credit_id")),
+    used_at: str(formData.get("used_at")) ?? "",
+    note: str(formData.get("note")),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos",
+    };
+  }
+
+  const context = await clubinhoContext();
+  if ("error" in context) return { ok: false, error: context.error };
+
+  const { error } = await context.supabase.rpc("clubinho_register_usage", {
+    p_credit: parsed.data.credit_id,
+    p_used_at: parsed.data.used_at,
+    p_note: parsed.data.note ?? undefined,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidateClubinho(str(formData.get("pet_id")));
+  return { ok: true };
+}
+
+/**
+ * Devolve o crédito de uma baixa manual.
+ *
+ * Baixa manual não tem atendimento para estornar, então precisa da própria
+ * saída — sem isso, um clique errado no balcão ficaria sem volta pela tela.
+ */
+export async function undoClubinhoUsage(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const id = str(formData.get("id"));
+  if (!id) return { ok: false, error: "Registro inválido" };
+
+  const context = await clubinhoContext();
+  if ("error" in context) return { ok: false, error: context.error };
+
+  const { error } = await context.supabase.rpc("clubinho_undo_usage", {
+    p_usage: id,
+  });
+  if (error) return { ok: false, error: error.message };
 
   revalidateClubinho(str(formData.get("pet_id")));
   return { ok: true };
