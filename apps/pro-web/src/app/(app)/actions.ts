@@ -13,6 +13,8 @@ import {
   canMutateAsRole,
   isWithinSchedule,
   paidReservationInput,
+  PET_SIZES,
+  priceForPetSize,
   reservationCancel,
   reservationReject,
 } from "@mylivepet/types";
@@ -50,6 +52,9 @@ export async function signOut() {
  * que vira receita ao concluir, então não pode depender do que o navegador
  * mandou. Id inativo ou de outro petshop não é encontrado e fica de fora.
  *
+ * O preço sai do porte do pet (0058), resolvido aqui e congelado no snapshot:
+ * o que foi cobrado não pode mudar quando o catálogo for reajustado.
+ *
  * Devolve a mensagem de erro, ou undefined quando deu certo. O agendamento já
  * existe neste ponto: falhar aqui deixa o horário marcado sem os extras, e é
  * isso que a mensagem precisa dizer.
@@ -59,12 +64,15 @@ async function attachAddons(
   tenantId: string,
   appointmentId: string,
   addonIds: string[],
+  petSize: string | null,
 ): Promise<string | undefined> {
   if (addonIds.length === 0) return;
 
   const { data: addons } = await supabase
     .from("service_addon")
-    .select("id, name, price_cents")
+    .select(
+      "id, name, price_cents, price_mini_cents, price_pequeno_cents, price_medio_cents, price_grande_cents, price_gigante_cents",
+    )
     .eq("tenant_id", tenantId)
     .eq("active", true)
     .in("id", addonIds);
@@ -76,7 +84,7 @@ async function attachAddons(
       appointment_id: appointmentId,
       service_addon_id: addon.id,
       name: addon.name,
-      price_cents: addon.price_cents,
+      price_cents: priceForPetSize(addon, petSize),
     })),
   );
   if (error) {
@@ -121,7 +129,7 @@ export async function createStaffBooking(
   // Tenant e tutor vêm do pet (a RLS já limita ao tenant), nunca do formulário.
   const { data: pet } = await supabase
     .from("pet")
-    .select("id, tenant_id, tutor_id")
+    .select("id, tenant_id, tutor_id, size")
     .eq("id", parsed.data.pet_id)
     .maybeSingle();
   if (!pet) return { ok: false, error: "Pet não encontrado" };
@@ -182,6 +190,7 @@ export async function createStaffBooking(
     pet.tenant_id,
     ids[0]!,
     parsed.data.service_addon_ids ?? [],
+    pet.size,
   );
   if (addonError) return { ok: false, error: addonError };
 
@@ -193,6 +202,48 @@ export async function createStaffBooking(
   revalidatePath("/atendimentos");
   revalidatePath("/solicitacoes");
   revalidatePath(`/pets/${pet.id}`);
+  return { ok: true };
+}
+
+/**
+ * Completa só o porte de um pet, sem sair do diálogo de agendamento.
+ *
+ * Existe porque o porte define o preço (0058) e pet sem porte cairia no preço
+ * base — mais barato do que o petshop cobra por um cachorro grande. Em vez de
+ * mandar o atendente para a ficha do pet e perder o agendamento em andamento,
+ * o diálogo pede o porte na hora e grava aqui.
+ *
+ * Não é um updatePet enxuto por preguiça: o atendente no balcão não deve poder
+ * mexer em nome, raça ou nascimento por este caminho.
+ */
+export async function setPetSize(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const petId = formData.get("pet_id");
+  const size = formData.get("size");
+  if (typeof petId !== "string" || !petId) {
+    return { ok: false, error: "Pet inválido" };
+  }
+  if (typeof size !== "string" || !(PET_SIZES as readonly string[]).includes(size)) {
+    return { ok: false, error: "Escolha o porte do pet" };
+  }
+
+  const supabase = await createClient();
+  if (!(await canMutate(supabase))) {
+    return { ok: false, error: "Seu acesso é somente leitura" };
+  }
+
+  // A RLS (pet_staff) já limita ao tenant do usuário.
+  const { error } = await supabase
+    .from("pet")
+    .update({ size })
+    .eq("id", petId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/atendimentos");
+  revalidatePath(`/pets/${petId}`);
+  revalidatePath("/tutores");
   return { ok: true };
 }
 

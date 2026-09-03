@@ -14,7 +14,11 @@ import {
   CpfInput,
   DatePicker,
 } from "@mylivepet/ui";
-import { SPECIES_OPTIONS } from "@mylivepet/types";
+import {
+  PET_SIZES,
+  PET_SIZE_LABEL,
+  SPECIES_OPTIONS,
+} from "@mylivepet/types";
 import { createTutor, type FormState } from "@/app/(app)/tutores/actions";
 import { useOpenFromUrl } from "@/lib/use-open-from-url";
 
@@ -44,6 +48,12 @@ export function NewTutorDialog({
   // controlada de fora não disputa o slug: quem responde por ele é o botão da
   // página de Tutores (o hook dá a posse a quem montar primeiro).
   useOpenFromUrl("tutor", () => setUncontrolledOpen(true), trigger !== "none");
+  // O pet inteiro é opcional aqui, mas quem começa a preencher tem de terminar:
+  // pet sem porte agendaria no preço base e sairia mais barato do que o
+  // petshop cobra (0058). Por isso o porte acompanha o nome.
+  const [petName, setPetName] = useState("");
+  const petRequired = requirePet || petName.trim() !== "";
+
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     createTutor,
     { ok: false },
@@ -58,11 +68,13 @@ export function NewTutorDialog({
     if (!state.ok) return;
     if (state.tutor) latest.current.onCreated?.(state.tutor);
     latest.current.setOpen(false);
+    setPetName("");
     router.refresh();
   }, [state, router]);
 
   function close() {
     setOpen(false);
+    setPetName("");
     router.refresh();
   }
 
@@ -135,16 +147,29 @@ export function NewTutorDialog({
                     id="pet_name"
                     name="pet_name"
                     required={requirePet}
+                    value={petName}
+                    onChange={(event) => setPetName(event.target.value)}
                     placeholder="Ex.: Thor"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="pet_size">Porte</Label>
-                  <Select id="pet_size" name="pet_size" defaultValue="">
-                    <option value="">—</option>
-                    <option value="pequeno">Pequeno</option>
-                    <option value="medio">Médio</option>
-                    <option value="grande">Grande</option>
+                  <Label htmlFor="pet_size">
+                    Porte {petRequired && "*"}
+                  </Label>
+                  <Select
+                    id="pet_size"
+                    name="pet_size"
+                    defaultValue=""
+                    required={petRequired}
+                  >
+                    <option value="" disabled={petRequired}>
+                      {petRequired ? "Selecione o porte" : "—"}
+                    </option>
+                    {PET_SIZES.map((s) => (
+                      <option key={s} value={s}>
+                        {PET_SIZE_LABEL[s]}
+                      </option>
+                    ))}
                   </Select>
                 </div>
               </div>

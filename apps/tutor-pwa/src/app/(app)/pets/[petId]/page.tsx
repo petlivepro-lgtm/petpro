@@ -15,6 +15,7 @@ import {
   BEHAVIOR_BADGE_TONE,
   behaviorBadgeOf,
   formatBehaviorScore,
+  petSizeLabel,
   type AppointmentStatus,
 } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/server";
@@ -23,12 +24,6 @@ import { TUTOR_APPOINTMENT_STATUS_LABEL } from "@/lib/status-labels";
 import { fetchBehaviorSummaries, fetchPetBehaviorReports } from "@/lib/behavior";
 import { BehaviorReportView } from "@/components/behavior-report-view";
 import { PetDialog, type PetRow } from "@/components/pet-dialog";
-
-const SIZE_LABEL: Record<string, string> = {
-  pequeno: "Pequeno",
-  medio: "Médio",
-  grande: "Grande",
-};
 
 const tone: Record<AppointmentStatus, React.ComponentProps<typeof Badge>["tone"]> = {
   REQUESTED: "warning",
@@ -105,7 +100,7 @@ export default async function PetProfilePage({
   const count = summary?.reportCount ?? 0;
   const badge = behaviorBadgeOf(average, count);
 
-  const meta = [pet.species, pet.breed, pet.size ? SIZE_LABEL[pet.size] : null]
+  const meta = [pet.species, pet.breed, petSizeLabel(pet.size)]
     .filter(Boolean)
     .join(" · ");
   const age = ageFrom(pet.birth_date);

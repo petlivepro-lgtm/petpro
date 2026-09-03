@@ -4,7 +4,11 @@ import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Dialog, FileInput, Input, Label, Button, Select, DatePicker } from "@mylivepet/ui";
-import { SPECIES_OPTIONS } from "@mylivepet/types";
+import {
+  PET_SIZES,
+  PET_SIZE_LABEL,
+  SPECIES_OPTIONS,
+} from "@mylivepet/types";
 import { createPet, type FormState } from "@/app/(app)/tutores/actions";
 
 export function NewPetDialog({ tutorId, tutorName }: { tutorId: string; tutorName: string }) {
@@ -38,12 +42,16 @@ export function NewPetDialog({ tutorId, tutorName }: { tutorId: string; tutorNam
               <Input id="name" name="name" required placeholder="Ex.: Thor" />
             </div>
             <div>
-              <Label htmlFor="size">Porte</Label>
-              <Select id="size" name="size" defaultValue="">
-                <option value="">—</option>
-                <option value="pequeno">Pequeno</option>
-                <option value="medio">Médio</option>
-                <option value="grande">Grande</option>
+              <Label htmlFor="size">Porte *</Label>
+              <Select id="size" name="size" defaultValue="" required>
+                <option value="" disabled>
+                  Selecione o porte
+                </option>
+                {PET_SIZES.map((s) => (
+                  <option key={s} value={s}>
+                    {PET_SIZE_LABEL[s]}
+                  </option>
+                ))}
               </Select>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { Sparkles } from "lucide-react";
 import { StatusChip } from "@mylivepet/ui";
-import { formatBRL } from "@mylivepet/types";
+import { formatCatalogPrice } from "@/lib/service-price";
 import {
   AddonDialog,
   DeleteAddonDialog,
@@ -77,7 +77,7 @@ export function ServicosAdicionais({ addons }: { addons: AddonRow[] }) {
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 font-heading font-semibold text-graphite">
-                      {formatBRL(addon.price_cents)}
+                      {formatCatalogPrice(addon)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-4">
                       <StatusChip tone={addon.active ? "success" : "danger"}>

@@ -14,19 +14,21 @@ import {
   Label,
   Select,
 } from "@mylivepet/ui";
-import type { ServiceStepTemplate } from "@mylivepet/types";
+import type { ServiceStepTemplate, SizePrices } from "@mylivepet/types";
 import {
   createServiceType,
   updateServiceType,
   type FormState,
 } from "@/app/(app)/servicos/actions";
+import { SizePriceFields } from "@/components/size-price-fields";
 import { AGENDA_COLORS, colorNameOf } from "@/lib/agenda-colors";
 import { useOpenFromUrl } from "@/lib/use-open-from-url";
 
-export type ServiceRow = {
+export type ServiceRow = SizePrices & {
   id: string;
   name: string;
   description: string | null;
+  /** Preço base: vale para porte sem preço próprio e para pet sem porte. */
   price_cents: number;
   duration_min: number;
   active: boolean;
@@ -144,7 +146,7 @@ export function ServiceDialog({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label htmlFor="price">Preço *</Label>
+              <Label htmlFor="price">Preço base *</Label>
               <CurrencyInput id="price" name="price" required defaultCents={service?.price_cents} />
             </div>
             <div>
@@ -161,6 +163,8 @@ export function ServiceDialog({
               />
             </div>
           </div>
+
+          <SizePriceFields idPrefix="service" values={service} />
 
           <div>
             <Label>Cor na agenda</Label>

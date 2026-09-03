@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
 import { uploadPetPhoto } from "@/lib/pet-photo";
-import { petInput } from "@mylivepet/types";
+import { petInput, PET_SIZES, type PetSize } from "@mylivepet/types";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -13,9 +13,11 @@ function str(v: FormDataEntryValue | null): string | undefined {
   return s === "" ? undefined : s;
 }
 
-function size(v: FormDataEntryValue | null): "pequeno" | "medio" | "grande" | undefined {
+function size(v: FormDataEntryValue | null): PetSize | undefined {
   const s = typeof v === "string" ? v : "";
-  return s === "pequeno" || s === "medio" || s === "grande" ? s : undefined;
+  return (PET_SIZES as readonly string[]).includes(s)
+    ? (s as PetSize)
+    : undefined;
 }
 
 /** RLS (pet_tutor_write) garante que o tutor só cria/edita os próprios pets. */

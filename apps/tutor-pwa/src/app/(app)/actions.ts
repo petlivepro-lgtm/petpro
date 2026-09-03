@@ -9,6 +9,7 @@ import {
   appointmentCancel,
   bookingRequest,
   isWithinSchedule,
+  priceForPetSize,
   tutorFeedbackInput,
   reservationInput,
   reservationItemCancel,
@@ -28,6 +29,9 @@ export async function signOut() {
  * que o petshop vai cobrar. Id inativo ou de outro petshop não é encontrado e
  * fica de fora.
  *
+ * O preço sai do porte do pet (0058), resolvido aqui e congelado no snapshot:
+ * o que foi cobrado não pode mudar quando o catálogo for reajustado.
+ *
  * O pedido já existe quando isto roda: se a gravação falhar, o tutor continua
  * com o horário solicitado e o petshop acerta os extras no balcão — derrubar a
  * solicitação inteira por causa de um adicional seria pior.
@@ -37,12 +41,15 @@ async function attachAddons(
   tenantId: string,
   appointmentId: string,
   addonIds: string[],
+  petSize: string | null,
 ): Promise<void> {
   if (addonIds.length === 0) return;
 
   const { data: addons } = await supabase
     .from("service_addon")
-    .select("id, name, price_cents")
+    .select(
+      "id, name, price_cents, price_mini_cents, price_pequeno_cents, price_medio_cents, price_grande_cents, price_gigante_cents",
+    )
     .eq("tenant_id", tenantId)
     .eq("active", true)
     .in("id", addonIds);
@@ -54,7 +61,7 @@ async function attachAddons(
       appointment_id: appointmentId,
       service_addon_id: addon.id,
       name: addon.name,
-      price_cents: addon.price_cents,
+      price_cents: priceForPetSize(addon, petSize),
     })),
   );
 }
@@ -80,6 +87,14 @@ export async function requestBooking(formData: FormData) {
   if (!ctx) redirect("/agendar?erro=1");
 
   const scheduledAt = new Date(parsed.data.scheduled_at).toISOString();
+
+  // O porte define o preço do adicional (0058). A RLS (pet_tutor) já garante
+  // que só vem pet do próprio tutor.
+  const { data: pet } = await supabase
+    .from("pet")
+    .select("id, size")
+    .eq("id", parsed.data.pet_id)
+    .maybeSingle();
 
   // O formulário só oferece profissionais e horários dentro do expediente, mas
   // os campos são adulteráveis: reconfere aqui (e o trigger de 0054 no banco
@@ -123,7 +138,13 @@ export async function requestBooking(formData: FormData) {
     redirect(error.message.includes("OFF_SCHEDULE") ? "/agendar?erro=grade" : "/agendar?erro=1");
   }
 
-  await attachAddons(supabase, ctx.tenantId, ids[0]!, parsed.data.service_addon_ids ?? []);
+  await attachAddons(
+    supabase,
+    ctx.tenantId,
+    ids[0]!,
+    parsed.data.service_addon_ids ?? [],
+    pet?.size ?? null,
+  );
 
   // Antes do redirect: redirect() lança, e o push nunca sairia depois dele.
   await dispatchNotifications(ctx.tenantId);

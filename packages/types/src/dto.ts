@@ -4,6 +4,7 @@ import {
   FEEDBACK_FIELD_TYPES,
   FINANCE_ENTRY_TYPES,
   PAYMENT_METHODS,
+  PET_SIZES,
   PRODUCT_CATEGORIES,
   STOCK_MOVEMENT_TYPES,
   WEIGHT_UNITS,
@@ -61,7 +62,10 @@ export const petInput = z.object({
   name: z.string().min(1, "Informe o nome do pet"),
   species: z.string().optional(),
   breed: z.string().optional(),
-  size: z.enum(["pequeno", "medio", "grande"]).optional(),
+  // Obrigatório desde 0058: sem porte o agendamento cairia no preço base, que
+  // para um pet grande sai mais barato do que o petshop cobra — prejuízo em
+  // silêncio. Quem não sabe o porte na hora não deveria cadastrar o pet.
+  size: z.enum(PET_SIZES, { message: "Escolha o porte do pet" }),
   birth_date: petBirthDateInput.optional(),
   notes: z.string().optional(),
 });
@@ -351,10 +355,23 @@ export const DEFAULT_SERVICE_STEP_LABELS = [
 ] as const;
 
 // Serviço oferecido pelo petshop (cadastro/edição no CRM; some no app do tutor)
+// Preço opcional por porte (0058): ausente/nulo = o porte usa o preço base.
+// Compartilhado pelo serviço e pelo adicional, que seguem a mesma regra.
+const sizePriceInput = z.number().int().min(0).nullable().optional();
+
+export const sizePricesInput = {
+  price_mini_cents: sizePriceInput,
+  price_pequeno_cents: sizePriceInput,
+  price_medio_cents: sizePriceInput,
+  price_grande_cents: sizePriceInput,
+  price_gigante_cents: sizePriceInput,
+};
+
 export const serviceTypeInput = z.object({
   name: z.string().min(1, "Informe o nome"),
   description: z.string().optional(),
   price_cents: z.number().int().min(0),
+  ...sizePricesInput,
   duration_min: z.number().int().positive("Informe a duração em minutos"),
   active: z.boolean().optional(),
   // Cor do serviço na agenda, em "#RRGGBB". Ausente = a UI deriva do id.
@@ -380,6 +397,7 @@ export type ServiceTypeInput = z.infer<typeof serviceTypeInput>;
 export const serviceAddonInput = z.object({
   name: z.string().trim().min(1, "Informe o nome").max(60, "Nome muito longo"),
   price_cents: z.number().int().min(0),
+  ...sizePricesInput,
   active: z.boolean().optional(),
 });
 export type ServiceAddonInput = z.infer<typeof serviceAddonInput>;

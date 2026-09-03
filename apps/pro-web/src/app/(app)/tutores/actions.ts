@@ -8,8 +8,9 @@ import { uploadPetPhoto } from "@/lib/pet-photo";
 import {
   canMutateAsRole,
   tutorInput,
-  petBirthDateInput,
   petInput,
+  type PetInput,
+  type PetSize,
 } from "@mylivepet/types";
 
 export type FormState = {
@@ -25,7 +26,8 @@ export type FormState = {
     full_name: string;
     phone: string | null;
     cpf: string | null;
-    pet: { id: string; name: string }[];
+    /** O porte vem junto: é ele que define o preço do serviço (0058). */
+    pet: { id: string; name: string; size: string | null }[];
   };
 };
 
@@ -57,16 +59,26 @@ export async function createTutor(
     };
   }
 
+  // O pet é opcional, mas validado ANTES de gravar o tutor: dado de pet
+  // inválido não pode deixar o tutor criado sozinho e o pet pelo caminho.
+  // O tutor_id fica de fora porque só existe depois do insert.
   const petName = str(formData.get("pet_name"));
-  const petBirthDate = str(formData.get("pet_birth_date"));
+  let petData: Omit<PetInput, "tutor_id"> | null = null;
   if (petName) {
-    const parsedBirthDate = petBirthDateInput.optional().safeParse(petBirthDate);
-    if (!parsedBirthDate.success) {
+    const petParsed = petInput.omit({ tutor_id: true }).safeParse({
+      name: petName,
+      species: str(formData.get("pet_species")),
+      breed: str(formData.get("pet_breed")),
+      size: str(formData.get("pet_size")),
+      birth_date: str(formData.get("pet_birth_date")),
+    });
+    if (!petParsed.success) {
       return {
         ok: false,
-        error: parsedBirthDate.error.issues[0]?.message ?? "Data de nascimento inválida",
+        error: petParsed.error.issues[0]?.message ?? "Dados do pet inválidos",
       };
     }
+    petData = petParsed.data;
   }
 
   const supabase = await createClient();
@@ -88,43 +100,30 @@ export async function createTutor(
   if (error || !tutor)
     return { ok: false, error: error?.message ?? "Falha ao salvar" };
 
-  // Primeiro pet (opcional)
-  let createdPet: { id: string; name: string } | null = null;
-  if (petName) {
-    const petParsed = petInput.safeParse({
-      tutor_id: tutor.id,
-      name: petName,
-      species: str(formData.get("pet_species")),
-      breed: str(formData.get("pet_breed")),
-      size: str(formData.get("pet_size")) as
-        | "pequeno"
-        | "medio"
-        | "grande"
-        | undefined,
-      birth_date: petBirthDate,
-    });
-    if (petParsed.success) {
-      let photoPath: string | null = null;
-      const photo = formData.get("pet_photo");
-      if (photo instanceof File && photo.size > 0) {
-        photoPath = await uploadPetPhoto(tenant.tenantId, photo);
-      }
-      const { data: pet } = await supabase
-        .from("pet")
-        .insert({
-          tenant_id: tenant.tenantId,
-          tutor_id: tutor.id,
-          name: petParsed.data.name,
-          species: petParsed.data.species ?? null,
-          breed: petParsed.data.breed ?? null,
-          size: petParsed.data.size ?? null,
-          birth_date: petParsed.data.birth_date || null,
-          photo_path: photoPath,
-        })
-        .select("id, name")
-        .single();
-      createdPet = pet ?? null;
+  // Primeiro pet (opcional), já validado acima.
+  let createdPet: { id: string; name: string; size: string | null } | null =
+    null;
+  if (petData) {
+    let photoPath: string | null = null;
+    const photo = formData.get("pet_photo");
+    if (photo instanceof File && photo.size > 0) {
+      photoPath = await uploadPetPhoto(tenant.tenantId, photo);
     }
+    const { data: pet } = await supabase
+      .from("pet")
+      .insert({
+        tenant_id: tenant.tenantId,
+        tutor_id: tutor.id,
+        name: petData.name,
+        species: petData.species ?? null,
+        breed: petData.breed ?? null,
+        size: petData.size,
+        birth_date: petData.birth_date || null,
+        photo_path: photoPath,
+      })
+      .select("id, name, size")
+      .single();
+    createdPet = pet ?? null;
   }
 
   revalidatePath("/tutores");
@@ -194,11 +193,7 @@ export async function createPet(
     name: formData.get("name"),
     species: str(formData.get("species")),
     breed: str(formData.get("breed")),
-    size: str(formData.get("size")) as
-      | "pequeno"
-      | "medio"
-      | "grande"
-      | undefined,
+    size: str(formData.get("size")) as PetSize | undefined,
     birth_date: str(formData.get("birth_date")),
   });
   if (!parsed.success) {

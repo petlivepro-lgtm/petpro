@@ -17,14 +17,27 @@ import {
 } from "@mylivepet/ui";
 import {
   formatBRL,
+  hasSizePrices,
+  petSizeLabel,
+  priceForPetSize,
+  PET_SIZES,
+  PET_SIZE_LABEL,
   weekdayOfDateString,
   worksOnWeekday,
 } from "@mylivepet/types";
-import { createStaffBooking, type FormState } from "@/app/(app)/actions";
+import {
+  createStaffBooking,
+  setPetSize,
+  type FormState,
+} from "@/app/(app)/actions";
 import { NewTutorDialog } from "@/components/new-tutor-dialog";
 import { SlotPicker } from "@/components/slot-picker";
 import { useOpenFromUrl } from "@/lib/use-open-from-url";
-import type { BookingCollaborator, BookingTutor } from "@/lib/booking-options";
+import type {
+  BookingCollaborator,
+  BookingService,
+  BookingTutor,
+} from "@/lib/booking-options";
 
 /** Data local de hoje em YYYY-MM-DD (limite mínimo do calendário). */
 function todayISO(): string {
@@ -54,14 +67,14 @@ export function NewAppointmentDialog({
   defaultCollaboratorId,
 }: {
   tenantId: string;
-  services: ServiceOption[];
+  services: BookingService[];
   /** Extras do catálogo, somados ao valor do agendamento (0056). */
-  addons: ServiceOption[];
+  addons: BookingService[];
   collaborators: BookingCollaborator[];
   /** Necessário quando não há pet fixo (o cliente é escolhido no diálogo). */
   tutors?: BookingTutor[];
-  /** Ficha do pet: cliente e pet já definidos. */
-  fixedPet?: { id: string; name: string };
+  /** Ficha do pet: cliente e pet já definidos. O porte define o preço (0058). */
+  fixedPet?: { id: string; name: string; size: string | null };
   /** "none" para quem já tem o próprio gatilho e controla `open`. */
   trigger?: "button" | "tile" | "none";
   /** Abre o diálogo de fora (célula vazia da agenda). Sem isso, é interno. */
@@ -104,6 +117,15 @@ export function NewAppointmentDialog({
     { ok: false },
   );
 
+  // Grava só o porte do pet, sem sair daqui. Chamada direto (não por um
+  // <form action>): já estamos dentro do formulário do agendamento, e form
+  // dentro de form quebra o submit.
+  const [sizeDraft, setSizeDraft] = useState("");
+  const [sizeState, saveSize, savingSize] = useActionState<FormState, FormData>(
+    setPetSize,
+    { ok: false },
+  );
+
   // O tutor recém-cadastrado entra na lista na hora, sem esperar o
   // `router.refresh()`; quando o servidor responde, a cópia local some.
   const tutorOptions = useMemo(() => {
@@ -118,6 +140,25 @@ export function NewAppointmentDialog({
 
   const tutor = tutorOptions.find((t) => t.id === tutorId);
   const pets = fixedPet ? [] : (tutor?.pet ?? []);
+
+  // O porte do pet é quem escolhe o preço do serviço (0058). Ninguém seleciona
+  // porte no agendamento: ele vem da ficha do pet. Quando falta, o bloco mais
+  // abaixo pede e grava na hora — o porte recém-salvo fica aqui até o
+  // router.refresh() trazer a ficha atualizada do servidor.
+  const [savedSizes, setSavedSizes] = useState<Record<string, string>>({});
+  const currentPetId = fixedPet?.id ?? petId;
+  const petSize =
+    savedSizes[currentPetId] ??
+    (fixedPet ? fixedPet.size : (pets.find((p) => p.id === petId)?.size ?? null));
+
+  const pricedServices = useMemo<ServiceOption[]>(
+    () => services.map((s) => ({ ...s, price_cents: priceForPetSize(s, petSize) })),
+    [services, petSize],
+  );
+  const pricedAddons = useMemo<ServiceOption[]>(
+    () => addons.map((a) => ({ ...a, price_cents: priceForPetSize(a, petSize) })),
+    [addons, petSize],
+  );
 
   // A data manda: só entra na lista quem tem expediente naquele dia da semana.
   // No encaixe não há grade a respeitar, então todos continuam disponíveis.
@@ -148,8 +189,21 @@ export function NewAppointmentDialog({
     return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
   }, [freeTime, slot, freeSlot]);
 
+  // Sem porte, o preço cai no base. Isso só é problema quando o item escolhido
+  // TEM preço por porte: aí o base pode sair mais barato do que o petshop
+  // cobra, e o prejuízo passa despercebido. Serviço de preço único segue
+  // agendando normalmente, sem porte nenhum.
+  const needsPetSize =
+    !petSize &&
+    (services.some((s) => selected.has(s.id) && hasSizePrices(s)) ||
+      addons.some((a) => selectedAddons.has(a.id) && hasSizePrices(a)));
+
   const canSubmit =
-    !!petId && selected.size > 0 && !!collaboratorId && !!scheduledAt;
+    !!petId &&
+    selected.size > 0 &&
+    !!collaboratorId &&
+    !!scheduledAt &&
+    !needsPetSize;
 
   // Agendou: fecha, limpa o formulário e recarrega a agenda.
   useEffect(() => {
@@ -164,6 +218,7 @@ export function NewAppointmentDialog({
     setSlot("");
     setFreeTime(false);
     setFreeSlot("");
+    setSizeDraft("");
     router.refresh();
   }, [state.ok, router, fixedPet?.id]);
 
@@ -180,6 +235,14 @@ export function NewAppointmentDialog({
     setSlot("");
     if (defaultCollaboratorId) setCollaboratorId(defaultCollaboratorId);
   }, [open, defaultSlot, defaultCollaboratorId]);
+
+  // Porte salvo: passa a valer aqui na hora, e o refresh alinha a ficha do pet.
+  useEffect(() => {
+    if (!sizeState.ok || !sizeDraft || !currentPetId) return;
+    setSavedSizes((prev) => ({ ...prev, [currentPetId]: sizeDraft }));
+    setSizeDraft("");
+    router.refresh();
+  }, [sizeState, currentPetId, sizeDraft, router]);
 
   const toggle = (id: string) =>
     setSelected((prev) => {
@@ -200,10 +263,10 @@ export function NewAppointmentDialog({
   // Total do agendamento: serviços + adicionais. Só aparece quando há
   // adicional escolhido — sem eles o próprio seletor de serviços já soma.
   const totalCents =
-    services
+    pricedServices
       .filter((s) => selected.has(s.id))
       .reduce((sum, s) => sum + s.price_cents, 0) +
-    addons
+    pricedAddons
       .filter((a) => selectedAddons.has(a.id))
       .reduce((sum, a) => sum + a.price_cents, 0);
 
@@ -325,13 +388,71 @@ export function NewAppointmentDialog({
               </p>
             ) : (
               <ServicePicker
-                services={services}
+                services={pricedServices}
                 selected={selected}
                 toggle={toggle}
                 searchable
               />
             )}
+            {/* De onde saiu o preço: com porte, é o dele; sem porte, o base. */}
+            {services.length > 0 && currentPetId && petSize && (
+              <p className="mt-1.5 text-xs text-gray-neutral">
+                Preços do porte {petSizeLabel(petSize)?.toLowerCase()}.
+              </p>
+            )}
           </div>
+
+          {/* O preço destes serviços depende do porte e a ficha do pet não tem
+              um. Deixar passar cobraria o preço base, que num pet grande sai
+              abaixo do que o petshop cobra — então o agendamento para aqui até
+              o porte ser preenchido. Preenche na hora para não perder o que já
+              foi escolhido. */}
+          {needsPetSize && currentPetId && (
+            <div className="rounded-xl border border-warning/40 bg-warning/5 p-4">
+              <p className="text-sm font-semibold text-graphite">
+                Falta o porte do pet
+              </p>
+              <p className="mt-0.5 text-xs text-gray-neutral">
+                O preço destes serviços muda conforme o porte. Informe abaixo
+                para continuar — fica salvo na ficha do pet.
+              </p>
+              <div className="mt-3 flex flex-wrap items-end gap-2">
+                <div className="min-w-[10rem] flex-1">
+                  <Label htmlFor="booking-pet-size">Porte</Label>
+                  <Select
+                    id="booking-pet-size"
+                    value={sizeDraft}
+                    onChange={(event) => setSizeDraft(event.target.value)}
+                  >
+                    <option value="" disabled>
+                      Selecione o porte
+                    </option>
+                    {PET_SIZES.map((size) => (
+                      <option key={size} value={size}>
+                        {PET_SIZE_LABEL[size]}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!sizeDraft || savingSize}
+                  onClick={() => {
+                    const data = new FormData();
+                    data.set("pet_id", currentPetId);
+                    data.set("size", sizeDraft);
+                    saveSize(data);
+                  }}
+                >
+                  {savingSize ? "Salvando..." : "Salvar porte"}
+                </Button>
+              </div>
+              {sizeState.error && (
+                <p className="mt-2 text-sm text-danger">{sizeState.error}</p>
+              )}
+            </div>
+          )}
 
           {/* Extras do agendamento inteiro: valem para o conjunto, não para um
               serviço específico (ver 0056_service_addon.sql). Sem adicional no
@@ -350,7 +471,7 @@ export function NewAppointmentDialog({
                 </p>
               ) : (
                 <ServicePicker
-                  services={addons}
+                  services={pricedAddons}
                   selected={selectedAddons}
                   toggle={toggleAddon}
                   name="service_addon_id"

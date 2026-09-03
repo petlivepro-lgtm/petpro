@@ -2309,6 +2309,11 @@ export type Database = {
           id: string
           name: string
           price_cents: number
+          price_gigante_cents: number | null
+          price_grande_cents: number | null
+          price_medio_cents: number | null
+          price_mini_cents: number | null
+          price_pequeno_cents: number | null
           tenant_id: string
         }
         Insert: {
@@ -2317,6 +2322,11 @@ export type Database = {
           id?: string
           name: string
           price_cents?: number
+          price_gigante_cents?: number | null
+          price_grande_cents?: number | null
+          price_medio_cents?: number | null
+          price_mini_cents?: number | null
+          price_pequeno_cents?: number | null
           tenant_id: string
         }
         Update: {
@@ -2325,6 +2335,11 @@ export type Database = {
           id?: string
           name?: string
           price_cents?: number
+          price_gigante_cents?: number | null
+          price_grande_cents?: number | null
+          price_medio_cents?: number | null
+          price_mini_cents?: number | null
+          price_pequeno_cents?: number | null
           tenant_id?: string
         }
         Relationships: [
@@ -2380,6 +2395,11 @@ export type Database = {
           id: string
           name: string
           price_cents: number
+          price_gigante_cents: number | null
+          price_grande_cents: number | null
+          price_medio_cents: number | null
+          price_mini_cents: number | null
+          price_pequeno_cents: number | null
           step_ids: string[]
           tenant_id: string
         }
@@ -2393,6 +2413,11 @@ export type Database = {
           id?: string
           name: string
           price_cents?: number
+          price_gigante_cents?: number | null
+          price_grande_cents?: number | null
+          price_medio_cents?: number | null
+          price_mini_cents?: number | null
+          price_pequeno_cents?: number | null
           step_ids?: string[]
           tenant_id: string
         }
@@ -2406,6 +2431,11 @@ export type Database = {
           id?: string
           name?: string
           price_cents?: number
+          price_gigante_cents?: number | null
+          price_grande_cents?: number | null
+          price_medio_cents?: number | null
+          price_mini_cents?: number | null
+          price_pequeno_cents?: number | null
           step_ids?: string[]
           tenant_id?: string
         }

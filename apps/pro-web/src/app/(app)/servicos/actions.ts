@@ -18,6 +18,28 @@ function toCents(v: FormDataEntryValue | null): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+/**
+ * Idem, mas devolvendo null para campo em branco. É o que separa "este porte
+ * não tem preço próprio" (cai no preço base) de "este porte é de graça" — com
+ * toCents os dois virariam zero.
+ */
+function toCentsOrNull(v: FormDataEntryValue | null): number | null {
+  if (typeof v !== "string" || v.trim() === "") return null;
+  const n = Number.parseInt(v, 10);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/** Os cinco preços por porte (0058), no formato do zod e do banco. */
+function sizePrices(formData: FormData) {
+  return {
+    price_mini_cents: toCentsOrNull(formData.get("price_mini")),
+    price_pequeno_cents: toCentsOrNull(formData.get("price_pequeno")),
+    price_medio_cents: toCentsOrNull(formData.get("price_medio")),
+    price_grande_cents: toCentsOrNull(formData.get("price_grande")),
+    price_gigante_cents: toCentsOrNull(formData.get("price_gigante")),
+  };
+}
+
 function toInt(v: FormDataEntryValue | null): number {
   const n = Number.parseInt(typeof v === "string" ? v : "", 10);
   return Number.isFinite(n) && n > 0 ? n : 0;
@@ -28,6 +50,7 @@ function parse(formData: FormData) {
     name: str(formData.get("name")),
     description: str(formData.get("description")),
     price_cents: toCents(formData.get("price")),
+    ...sizePrices(formData),
     duration_min: toInt(formData.get("duration_min")),
     active: formData.get("active") === "on",
     // Cor do serviço na agenda; vazio = a UI deriva do id.
@@ -66,6 +89,7 @@ export async function createServiceType(_prev: FormState, formData: FormData): P
     name: parsed.data.name,
     description: parsed.data.description ?? null,
     price_cents: parsed.data.price_cents,
+    ...sizePrices(formData),
     duration_min: parsed.data.duration_min,
     active: parsed.data.active ?? true,
     color_hex: parsed.data.color_hex ?? null,
@@ -93,6 +117,7 @@ export async function updateServiceType(_prev: FormState, formData: FormData): P
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       price_cents: parsed.data.price_cents,
+      ...sizePrices(formData),
       duration_min: parsed.data.duration_min,
       active: parsed.data.active ?? true,
       color_hex: parsed.data.color_hex ?? null,
@@ -126,6 +151,7 @@ function parseAddon(formData: FormData) {
   return serviceAddonInput.safeParse({
     name: str(formData.get("name")),
     price_cents: toCents(formData.get("price")),
+    ...sizePrices(formData),
     active: formData.get("active") === "on",
   });
 }
@@ -150,6 +176,7 @@ export async function createServiceAddon(_prev: FormState, formData: FormData): 
     tenant_id: tenant.tenantId,
     name: parsed.data.name,
     price_cents: parsed.data.price_cents,
+    ...sizePrices(formData),
     active: parsed.data.active ?? true,
   });
   if (error) return { ok: false, error: addonError(error) };
@@ -173,6 +200,7 @@ export async function updateServiceAddon(_prev: FormState, formData: FormData): 
     .update({
       name: parsed.data.name,
       price_cents: parsed.data.price_cents,
+      ...sizePrices(formData),
       active: parsed.data.active ?? true,
     })
     .eq("id", id);

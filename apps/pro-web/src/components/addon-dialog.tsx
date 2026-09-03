@@ -11,6 +11,8 @@ import {
   Input,
   Label,
 } from "@mylivepet/ui";
+import type { SizePrices } from "@mylivepet/types";
+import { SizePriceFields } from "@/components/size-price-fields";
 import {
   createServiceAddon,
   deleteServiceAddon,
@@ -19,9 +21,10 @@ import {
 } from "@/app/(app)/servicos/actions";
 import { useOpenFromUrl } from "@/lib/use-open-from-url";
 
-export type AddonRow = {
+export type AddonRow = SizePrices & {
   id: string;
   name: string;
+  /** Preço base: vale para porte sem preço próprio e para pet sem porte. */
   price_cents: number;
   active: boolean;
 };
@@ -89,7 +92,7 @@ export function AddonDialog({ addon }: { addon?: AddonRow }) {
           </div>
 
           <div>
-            <Label htmlFor="addon-price">Preço *</Label>
+            <Label htmlFor="addon-price">Preço base *</Label>
             <CurrencyInput
               id="addon-price"
               name="price"
@@ -97,6 +100,8 @@ export function AddonDialog({ addon }: { addon?: AddonRow }) {
               defaultCents={addon?.price_cents}
             />
           </div>
+
+          <SizePriceFields idPrefix="addon" values={addon} />
 
           <Checkbox
             name="active"

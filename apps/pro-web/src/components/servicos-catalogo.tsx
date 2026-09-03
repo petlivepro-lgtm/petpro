@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Clock, ListChecks, Scissors, SearchX } from "lucide-react";
 import { Button, Card, EmptyState, StatusChip } from "@mylivepet/ui";
-import { formatBRL, type ServiceStepTemplate } from "@mylivepet/types";
+import type { ServiceStepTemplate } from "@mylivepet/types";
+import { formatCatalogPrice } from "@/lib/service-price";
 import { ServiceDialog, type ServiceRow } from "@/components/service-dialog";
 import { serviceColor } from "@/lib/agenda-colors";
 import { DeleteServiceDialog } from "@/components/delete-service-dialog";
@@ -40,7 +41,7 @@ export function ServicosCatalogo({
           [
             service.name,
             service.description,
-            formatBRL(service.price_cents),
+            formatCatalogPrice(service),
             `${service.duration_min} min`,
             `${service.duration_min}min`,
             `${service.step_ids.length} ${
@@ -124,7 +125,7 @@ function ServicesCards({
           )}
           <div className="mt-3 flex items-center gap-3">
             <p className="font-heading text-xl font-bold text-graphite">
-              {formatBRL(service.price_cents)}
+              {formatCatalogPrice(service)}
             </p>
             <span className="inline-flex items-center gap-1 text-sm text-gray-neutral">
               <Clock className="h-3.5 w-3.5" /> {service.duration_min}min
@@ -207,7 +208,7 @@ function ServicesTable({
                   </div>
                 </td>
                 <td className="whitespace-nowrap px-4 py-4 font-heading font-semibold text-graphite">
-                  {formatBRL(service.price_cents)}
+                  {formatCatalogPrice(service)}
                 </td>
                 <td className="whitespace-nowrap px-4 py-4 text-gray-neutral">
                   {service.duration_min}min

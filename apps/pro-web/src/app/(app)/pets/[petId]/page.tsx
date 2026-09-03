@@ -35,6 +35,7 @@ import {
   behaviorBadgeOf,
   canMutateAsRole,
   formatBehaviorScore,
+  petSizeLabel,
   type AppointmentStatus,
   type ReservationStatus,
 } from "@mylivepet/types";
@@ -213,7 +214,9 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
       ])
     : [[], [], []];
 
-  const meta = [pet.breed, pet.species, pet.size].filter(Boolean).join(" · ");
+  const meta = [pet.breed, pet.species, petSizeLabel(pet.size)]
+    .filter(Boolean)
+    .join(" · ");
   const age = ageFrom(pet.birth_date);
 
   const tiles = [
@@ -489,7 +492,7 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
                 services={bookingOptions.services}
                 addons={bookingOptions.addons}
                 collaborators={bookingOptions.collaborators}
-                fixedPet={{ id: petId_, name: petName }}
+                fixedPet={{ id: petId_, name: petName, size: pet.size }}
                 trigger="tile"
               />
             )}

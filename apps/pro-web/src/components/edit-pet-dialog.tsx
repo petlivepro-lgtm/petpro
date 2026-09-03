@@ -12,7 +12,11 @@ import {
   Select,
   Textarea,
 } from "@mylivepet/ui";
-import { SPECIES_OPTIONS } from "@mylivepet/types";
+import {
+  PET_SIZES,
+  PET_SIZE_LABEL,
+  SPECIES_OPTIONS,
+} from "@mylivepet/types";
 import { updatePet, type FormState } from "@/app/(app)/pets/[petId]/actions";
 
 export function EditPetDialog({
@@ -76,12 +80,21 @@ export function EditPetDialog({
               />
             </div>
             <div>
-              <Label htmlFor="edit-pet-size">Porte</Label>
-              <Select id="edit-pet-size" name="size" defaultValue={pet.size ?? ""}>
-                <option value="">—</option>
-                <option value="pequeno">Pequeno</option>
-                <option value="medio">Médio</option>
-                <option value="grande">Grande</option>
+              <Label htmlFor="edit-pet-size">Porte *</Label>
+              <Select
+                id="edit-pet-size"
+                name="size"
+                defaultValue={pet.size ?? ""}
+                required
+              >
+                <option value="" disabled>
+                  Selecione o porte
+                </option>
+                {PET_SIZES.map((s) => (
+                  <option key={s} value={s}>
+                    {PET_SIZE_LABEL[s]}
+                  </option>
+                ))}
               </Select>
             </div>
           </div>

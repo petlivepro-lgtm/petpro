@@ -132,6 +132,93 @@ export const MAX_INSTALLMENTS = 12;
 // Opções de espécie de pet (campo de texto livre no banco; centralizado para a UI).
 export const SPECIES_OPTIONS = ["Cão", "Gato"] as const;
 
+// --- Porte do pet ---
+// pet.size é texto livre no banco (0001); a lista canônica vive aqui e é o que
+// petInput valida. Os rótulos são curtos de propósito: o campo já se chama
+// "Porte", então "Porte grande" dentro dele seria redundante.
+export const PET_SIZES = [
+  "mini",
+  "pequeno",
+  "medio",
+  "grande",
+  "gigante",
+] as const;
+export type PetSize = (typeof PET_SIZES)[number];
+
+export const PET_SIZE_LABEL: Record<PetSize, string> = {
+  mini: "Mini",
+  pequeno: "Pequeno",
+  medio: "Médio",
+  grande: "Grande",
+  gigante: "Gigante",
+};
+
+/** Rótulo de um porte vindo do banco, que é texto livre e pode estar vazio. */
+export function petSizeLabel(size?: string | null): string | null {
+  if (!size) return null;
+  return PET_SIZE_LABEL[size as PetSize] ?? size;
+}
+
+// --- Preço por porte (supabase/migrations/0058_service_size_price.sql) ---
+
+/**
+ * Preços opcionais por porte de serviço e de adicional. Coluna nula = aquele
+ * porte não tem preço próprio e usa o `price_cents` base — é o que mantém de pé
+ * todo serviço cadastrado antes de 0058.
+ */
+export type SizePrices = {
+  price_mini_cents: number | null;
+  price_pequeno_cents: number | null;
+  price_medio_cents: number | null;
+  price_grande_cents: number | null;
+  price_gigante_cents: number | null;
+};
+
+const SIZE_PRICE_COLUMN: Record<PetSize, keyof SizePrices> = {
+  mini: "price_mini_cents",
+  pequeno: "price_pequeno_cents",
+  medio: "price_medio_cents",
+  grande: "price_grande_cents",
+  gigante: "price_gigante_cents",
+};
+
+export type PricedBySize = SizePrices & { price_cents: number };
+
+/**
+ * Quanto custa o serviço para um pet daquele porte. Gêmeo em TypeScript de
+ * price_for_pet_size() no banco (0058): a UI mostra o valor com esta função e o
+ * caixa cobra com a do Postgres — as duas precisam concordar sempre.
+ *
+ * Pet sem porte, porte fora da lista ou porte sem preço próprio: preço base.
+ */
+export function priceForPetSize(
+  row: PricedBySize,
+  size?: string | null,
+): number {
+  const column = size ? SIZE_PRICE_COLUMN[size as PetSize] : undefined;
+  const price = column ? row[column] : null;
+  return price ?? row.price_cents;
+}
+
+/** Tem ao menos um porte com preço próprio (o catálogo mostra faixa, não valor). */
+export function hasSizePrices(row: SizePrices): boolean {
+  return PET_SIZES.some((s) => row[SIZE_PRICE_COLUMN[s]] != null);
+}
+
+/** Menor e maior preço praticados: o base e os portes preenchidos. */
+export function petSizePriceRange(row: PricedBySize): {
+  min: number;
+  max: number;
+} {
+  const prices = [
+    row.price_cents,
+    ...PET_SIZES.map((s) => row[SIZE_PRICE_COLUMN[s]]).filter(
+      (v): v is number => v != null,
+    ),
+  ];
+  return { min: Math.min(...prices), max: Math.max(...prices) };
+}
+
 // Categorias de produto (campo de texto livre no banco; valores predefinidos para a UI).
 // O slug é salvo no banco; o rótulo é exibido no CRM e no app do tutor.
 export const PRODUCT_CATEGORIES = [

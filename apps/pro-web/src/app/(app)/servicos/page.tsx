@@ -13,7 +13,9 @@ export default async function ServicosPage() {
   const [{ data }, { data: stepRows }, { data: addonRows }] = await Promise.all([
     supabase
       .from("service_type")
-      .select("id, name, description, price_cents, duration_min, active, color_hex, step_ids")
+      .select(
+        "id, name, description, price_cents, price_mini_cents, price_pequeno_cents, price_medio_cents, price_grande_cents, price_gigante_cents, duration_min, active, color_hex, step_ids",
+      )
       .order("name"),
     supabase
       .from("service_step_template")
@@ -21,7 +23,9 @@ export default async function ServicosPage() {
       .order("position"),
     supabase
       .from("service_addon")
-      .select("id, name, price_cents, active")
+      .select(
+        "id, name, price_cents, price_mini_cents, price_pequeno_cents, price_medio_cents, price_grande_cents, price_gigante_cents, active",
+      )
       .order("name"),
   ]);
 

@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { uploadPetPhoto } from "@/lib/pet-photo";
-import { canMutateAsRole, petInput } from "@mylivepet/types";
+import {
+  canMutateAsRole,
+  petInput,
+  PET_SIZES,
+  type PetSize,
+} from "@mylivepet/types";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -13,9 +18,11 @@ function str(v: FormDataEntryValue | null): string | undefined {
   return s === "" ? undefined : s;
 }
 
-function size(v: FormDataEntryValue | null): "pequeno" | "medio" | "grande" | undefined {
+function size(v: FormDataEntryValue | null): PetSize | undefined {
   const s = typeof v === "string" ? v : "";
-  return s === "pequeno" || s === "medio" || s === "grande" ? s : undefined;
+  return (PET_SIZES as readonly string[]).includes(s)
+    ? (s as PetSize)
+    : undefined;
 }
 
 /** Troca a foto do pet. RLS (pet_staff) garante acesso apenas a pets do tenant. */

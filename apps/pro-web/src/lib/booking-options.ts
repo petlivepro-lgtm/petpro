@@ -1,11 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@mylivepet/types/database";
+import type { SizePrices } from "@mylivepet/types";
 import type { CollaboratorSchedule, ServiceOption } from "@mylivepet/ui";
 
-// Selects em string literal única (o supabase-js só infere o tipo assim).
-const TUTOR_SELECT = "id, full_name, cpf, phone, pet(id, name)";
-const SERVICE_SELECT = "id, name, price_cents, duration_min";
-const ADDON_SELECT = "id, name, price_cents";
+// Selects em string literal única (o supabase-js só infere o tipo assim) — nada
+// de concatenar as colunas de porte numa constante compartilhada.
+const TUTOR_SELECT = "id, full_name, cpf, phone, pet(id, name, size)";
+const SERVICE_SELECT =
+  "id, name, price_cents, price_mini_cents, price_pequeno_cents, price_medio_cents, price_grande_cents, price_gigante_cents, duration_min";
+const ADDON_SELECT =
+  "id, name, price_cents, price_mini_cents, price_pequeno_cents, price_medio_cents, price_grande_cents, price_gigante_cents";
 const COLLABORATOR_SELECT =
   "id, full_name, role_title, collaborator_schedule(weekday, start_time, end_time)";
 
@@ -14,8 +18,12 @@ export type BookingTutor = {
   full_name: string;
   cpf: string | null;
   phone: string | null;
-  pet: { id: string; name: string }[];
+  /** O porte manda no preço do serviço (0058), por isso vem junto do pet. */
+  pet: { id: string; name: string; size: string | null }[];
 };
+
+/** Serviço do catálogo com os preços por porte ainda por resolver. */
+export type BookingService = ServiceOption & SizePrices;
 
 export type BookingCollaborator = {
   id: string;
@@ -26,9 +34,9 @@ export type BookingCollaborator = {
 
 export type BookingOptions = {
   tutors: BookingTutor[];
-  services: ServiceOption[];
+  services: BookingService[];
   /** Extras do catálogo (0056); sem duração, por isso não ocupam horário. */
-  addons: ServiceOption[];
+  addons: BookingService[];
   collaborators: BookingCollaborator[];
 };
 
@@ -70,8 +78,8 @@ export async function loadBookingOptions(
 
   return {
     tutors: (tutors ?? []) as BookingTutor[],
-    services: (services ?? []) as ServiceOption[],
-    addons: (addons ?? []) as ServiceOption[],
+    services: (services ?? []) as BookingService[],
+    addons: (addons ?? []) as BookingService[],
     collaborators: (collaborators ?? []) as BookingCollaborator[],
   };
 }

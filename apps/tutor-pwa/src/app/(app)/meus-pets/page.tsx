@@ -8,6 +8,7 @@ import {
   behaviorBadgeOf,
   formatBehaviorScore,
   formatSchedule,
+  petSizeLabel,
 } from "@mylivepet/types";
 import { fetchBehaviorSummaries } from "@/lib/behavior";
 import {
@@ -18,12 +19,6 @@ import {
 import { PetDialog, type PetRow } from "@/components/pet-dialog";
 import { ClubinhoBadge } from "@/components/clubinho-badge";
 import { DeletePetDialog } from "@/components/delete-pet-dialog";
-
-const SIZE_LABEL: Record<string, string> = {
-  pequeno: "Pequeno",
-  medio: "Médio",
-  grande: "Grande",
-};
 
 export default async function MeusPetsPage() {
   const supabase = await createClient();
@@ -102,7 +97,7 @@ export default async function MeusPetsPage() {
                 <Avatar name={p.name} src={p.photo_path} size="lg" />
                 <p className="mt-1 font-heading font-semibold text-graphite">{p.name}</p>
                 <p className="text-xs text-gray-neutral">
-                  {[p.species, p.breed, p.size ? SIZE_LABEL[p.size] : null]
+                  {[p.species, p.breed, petSizeLabel(p.size)]
                     .filter(Boolean)
                     .join(" · ") || "Pet"}
                 </p>

@@ -33,8 +33,11 @@ import { AgendaHistorico } from "@/components/agenda-historico";
 import { NewAppointmentDialog } from "@/components/new-appointment-dialog";
 import type { CameraOption } from "@/components/start-appointment-dialog";
 import { serviceColor } from "@/lib/agenda-colors";
-import type { BookingCollaborator, BookingTutor } from "@/lib/booking-options";
-import type { ServiceOption } from "@mylivepet/ui";
+import type {
+  BookingCollaborator,
+  BookingService,
+  BookingTutor,
+} from "@/lib/booking-options";
 import {
   addDays,
   addMonths,
@@ -115,8 +118,8 @@ export function AgendaView({
   canBook: boolean;
   tenantId: string | null;
   bookingTutors: BookingTutor[];
-  bookingServices: ServiceOption[];
-  bookingAddons: ServiceOption[];
+  bookingServices: BookingService[];
+  bookingAddons: BookingService[];
   bookingCollaborators: BookingCollaborator[];
 }) {
   const router = useRouter();

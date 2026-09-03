@@ -21,17 +21,22 @@ export default async function AgendarPage({
 
   const [{ data: pets }, { data: services }, { data: addons }, { data: collaborators }] =
     await Promise.all([
-    supabase.from("pet").select("id, name").eq("tutor_id", ctx.tutorId),
+    // O porte vem junto: é ele que define o preço do serviço (0058).
+    supabase.from("pet").select("id, name, size").eq("tutor_id", ctx.tutorId),
     supabase
       .from("service_type")
-      .select("id, name, price_cents, duration_min")
+      .select(
+        "id, name, price_cents, price_mini_cents, price_pequeno_cents, price_medio_cents, price_grande_cents, price_gigante_cents, duration_min",
+      )
       .eq("tenant_id", ctx.tenantId)
       .eq("active", true)
       .order("name"),
     // Extras do catálogo (0056): sem duração, não ocupam horário.
     supabase
       .from("service_addon")
-      .select("id, name, price_cents")
+      .select(
+        "id, name, price_cents, price_mini_cents, price_pequeno_cents, price_medio_cents, price_grande_cents, price_gigante_cents",
+      )
       .eq("tenant_id", ctx.tenantId)
       .eq("active", true)
       .order("name"),
