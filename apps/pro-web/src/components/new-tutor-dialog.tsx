@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import {
@@ -20,24 +20,45 @@ import { useOpenFromUrl } from "@/lib/use-open-from-url";
 
 export function NewTutorDialog({
   trigger = "button",
+  open: controlledOpen,
+  onOpenChange,
+  requirePet = false,
+  onCreated,
 }: {
-  trigger?: "button" | "cta";
+  /** "none" para quem já tem o próprio gatilho e controla `open`. */
+  trigger?: "button" | "cta" | "none";
+  /** Abre o diálogo de fora (cadastro rápido dentro do agendamento). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** No cadastro rápido o pet é obrigatório: sem ele não há o que agendar. */
+  requirePet?: boolean;
+  /** Recebe o tutor recém-criado, para quem precisa selecioná-lo na hora. */
+  onCreated?: (tutor: NonNullable<FormState["tutor"]>) => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
 
-  // "Novo tutor" na paleta de comandos chega como ?novo=tutor.
-  useOpenFromUrl("tutor", () => setOpen(true));
+  // "Novo tutor" na paleta de comandos chega como ?novo=tutor. A instância
+  // controlada de fora não disputa o slug: quem responde por ele é o botão da
+  // página de Tutores (o hook dá a posse a quem montar primeiro).
+  useOpenFromUrl("tutor", () => setUncontrolledOpen(true), trigger !== "none");
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     createTutor,
     { ok: false },
   );
 
+  // O pai recria `onOpenChange`/`onCreated` a cada render; quem dispara o
+  // efeito é o sucesso da action, não a identidade dos callbacks.
+  const latest = useRef({ setOpen, onCreated });
+  latest.current = { setOpen, onCreated };
+
   useEffect(() => {
-    if (state.ok) {
-      setOpen(false);
-      router.refresh();
-    }
+    if (!state.ok) return;
+    if (state.tutor) latest.current.onCreated?.(state.tutor);
+    latest.current.setOpen(false);
+    router.refresh();
   }, [state, router]);
 
   function close() {
@@ -47,7 +68,7 @@ export function NewTutorDialog({
 
   return (
     <>
-      {trigger === "button" ? (
+      {trigger === "none" ? null : trigger === "button" ? (
         <Button size="sm" onClick={() => setOpen(true)}>
           <Plus className="h-4 w-4" /> Novo tutor
         </Button>
@@ -102,15 +123,18 @@ export function NewTutorDialog({
           </div>
           <div className="rounded-xl border border-dashed border-graphite/15 p-4">
             <p className="mb-3 text-sm font-semibold text-graphite">
-              Primeiro pet (opcional)
+              {requirePet ? "Primeiro pet" : "Primeiro pet (opcional)"}
             </p>
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <Label htmlFor="pet_name">Nome do pet</Label>
+                  <Label htmlFor="pet_name">
+                    Nome do pet {requirePet && "*"}
+                  </Label>
                   <Input
                     id="pet_name"
                     name="pet_name"
+                    required={requirePet}
                     placeholder="Ex.: Thor"
                   />
                 </div>

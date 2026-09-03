@@ -15,6 +15,18 @@ import {
 export type FormState = {
   ok: boolean;
   error?: string;
+  /**
+   * Só em createTutor: o registro recém-criado, para quem precisa selecioná-lo
+   * na hora sem esperar o servidor (o cadastro rápido dentro do agendamento).
+   * Mesmo formato de `BookingTutor` (ver lib/booking-options.ts).
+   */
+  tutor?: {
+    id: string;
+    full_name: string;
+    phone: string | null;
+    cpf: string | null;
+    pet: { id: string; name: string }[];
+  };
 };
 
 function str(v: FormDataEntryValue | null): string | undefined {
@@ -71,12 +83,13 @@ export async function createTutor(
       cpf: parsed.data.cpf ?? null,
       notes: parsed.data.notes ?? null,
     })
-    .select("id")
+    .select("id, full_name, phone, cpf")
     .single();
   if (error || !tutor)
     return { ok: false, error: error?.message ?? "Falha ao salvar" };
 
   // Primeiro pet (opcional)
+  let createdPet: { id: string; name: string } | null = null;
   if (petName) {
     const petParsed = petInput.safeParse({
       tutor_id: tutor.id,
@@ -96,21 +109,35 @@ export async function createTutor(
       if (photo instanceof File && photo.size > 0) {
         photoPath = await uploadPetPhoto(tenant.tenantId, photo);
       }
-      await supabase.from("pet").insert({
-        tenant_id: tenant.tenantId,
-        tutor_id: tutor.id,
-        name: petParsed.data.name,
-        species: petParsed.data.species ?? null,
-        breed: petParsed.data.breed ?? null,
-        size: petParsed.data.size ?? null,
-        birth_date: petParsed.data.birth_date || null,
-        photo_path: photoPath,
-      });
+      const { data: pet } = await supabase
+        .from("pet")
+        .insert({
+          tenant_id: tenant.tenantId,
+          tutor_id: tutor.id,
+          name: petParsed.data.name,
+          species: petParsed.data.species ?? null,
+          breed: petParsed.data.breed ?? null,
+          size: petParsed.data.size ?? null,
+          birth_date: petParsed.data.birth_date || null,
+          photo_path: photoPath,
+        })
+        .select("id, name")
+        .single();
+      createdPet = pet ?? null;
     }
   }
 
   revalidatePath("/tutores");
-  return { ok: true };
+  return {
+    ok: true,
+    tutor: {
+      id: tutor.id,
+      full_name: tutor.full_name,
+      phone: tutor.phone,
+      cpf: tutor.cpf,
+      pet: createdPet ? [createdPet] : [],
+    },
+  };
 }
 
 export async function updateTutor(

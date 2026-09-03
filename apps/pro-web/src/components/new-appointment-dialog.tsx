@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarPlus, Stethoscope } from "lucide-react";
+import { CalendarPlus, Plus, Stethoscope } from "lucide-react";
 import {
   ActionTile,
   Button,
@@ -21,6 +21,7 @@ import {
   worksOnWeekday,
 } from "@mylivepet/types";
 import { createStaffBooking, type FormState } from "@/app/(app)/actions";
+import { NewTutorDialog } from "@/components/new-tutor-dialog";
 import { SlotPicker } from "@/components/slot-picker";
 import { useOpenFromUrl } from "@/lib/use-open-from-url";
 import type { BookingCollaborator, BookingTutor } from "@/lib/booking-options";
@@ -94,12 +95,28 @@ export function NewAppointmentDialog({
   const [freeTime, setFreeTime] = useState(false);
   const [freeSlot, setFreeSlot] = useState(""); // "YYYY-MM-DDTHH:mm" do encaixe
 
+  // Cadastro rápido do cliente novo, sem sair do agendamento em andamento.
+  const [quickTutorOpen, setQuickTutorOpen] = useState(false);
+  const [newTutors, setNewTutors] = useState<BookingTutor[]>([]);
+
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     createStaffBooking,
     { ok: false },
   );
 
-  const tutor = tutors.find((t) => t.id === tutorId);
+  // O tutor recém-cadastrado entra na lista na hora, sem esperar o
+  // `router.refresh()`; quando o servidor responde, a cópia local some.
+  const tutorOptions = useMemo(() => {
+    if (newTutors.length === 0) return tutors;
+    const known = new Set(tutors.map((t) => t.id));
+    const extras = newTutors.filter((t) => !known.has(t.id));
+    if (extras.length === 0) return tutors;
+    return [...tutors, ...extras].sort((a, b) =>
+      a.full_name.localeCompare(b.full_name, "pt-BR"),
+    );
+  }, [tutors, newTutors]);
+
+  const tutor = tutorOptions.find((t) => t.id === tutorId);
   const pets = fixedPet ? [] : (tutor?.pet ?? []);
 
   // A data manda: só entra na lista quem tem expediente naquele dia da semana.
@@ -208,7 +225,12 @@ export function NewAppointmentDialog({
 
       <Dialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(next) => {
+          // Escape é ouvido no document pelos dois diálogos: com o cadastro
+          // rápido por cima, o fechamento é dele, não do agendamento.
+          if (!next && quickTutorOpen) return;
+          setOpen(next);
+        }}
         title="Novo agendamento"
         description={
           fixedPet
@@ -224,7 +246,16 @@ export function NewAppointmentDialog({
           {!fixedPet && (
             <>
               <div>
-                <Label htmlFor="booking-tutor">Cliente</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="booking-tutor">Cliente</Label>
+                  <button
+                    type="button"
+                    onClick={() => setQuickTutorOpen(true)}
+                    className="mb-1.5 inline-flex items-center gap-1 rounded-full border border-dashed border-graphite/20 px-3 py-1 text-sm text-gray-neutral transition-colors hover:border-orange hover:text-orange"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Novo tutor
+                  </button>
+                </div>
                 <Select
                   id="booking-tutor"
                   searchable
@@ -239,7 +270,7 @@ export function NewAppointmentDialog({
                   <option value="" disabled>
                     Selecione o tutor
                   </option>
-                  {tutors.map((t) => (
+                  {tutorOptions.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.full_name}
                       {t.phone ? ` · ${t.phone}` : ""}
@@ -472,6 +503,23 @@ export function NewAppointmentDialog({
           </div>
         </form>
       </Dialog>
+
+      {/* Fora do <form> acima de propósito: o Dialog não usa portal, e <form>
+          dentro de <form> quebra o submit. Depois no DOM, também pinta por
+          cima — os dois diálogos compartilham o mesmo z-index. */}
+      {!fixedPet && (
+        <NewTutorDialog
+          trigger="none"
+          requirePet
+          open={quickTutorOpen}
+          onOpenChange={setQuickTutorOpen}
+          onCreated={(created) => {
+            setNewTutors((prev) => [...prev, created]);
+            setTutorId(created.id);
+            setPetId(created.pet[0]?.id ?? "");
+          }}
+        />
+      )}
     </>
   );
 }
