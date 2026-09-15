@@ -19,7 +19,13 @@ export default async function ConfiguracoesPage() {
   if (!ctx) return null;
 
   const [{ data: tutor }, { data: pets }] = await Promise.all([
-    supabase.from("tutor").select("full_name, email, phone, notes").eq("id", ctx.tutorId).maybeSingle(),
+    supabase
+      .from("tutor")
+      .select(
+        "full_name, email, phone, cep, street, street_number, complement, district, city, state",
+      )
+      .eq("id", ctx.tutorId)
+      .maybeSingle(),
     supabase
       .from("pet")
       .select("id, name, species, breed, size, birth_date, notes, photo_path")
@@ -31,7 +37,13 @@ export default async function ConfiguracoesPage() {
     full_name: tutor?.full_name ?? ctx.fullName,
     email: tutor?.email ?? "",
     phone: tutor?.phone ?? "",
-    notes: tutor?.notes ?? "",
+    cep: tutor?.cep ?? null,
+    street: tutor?.street ?? null,
+    street_number: tutor?.street_number ?? null,
+    complement: tutor?.complement ?? null,
+    district: tutor?.district ?? null,
+    city: tutor?.city ?? null,
+    state: tutor?.state ?? null,
   };
   const list = (pets ?? []) as PetRow[];
   const summaries = await fetchBehaviorSummaries(

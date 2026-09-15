@@ -79,6 +79,8 @@ export async function requestBooking(formData: FormData) {
     collaborator_id: formData.get("collaborator_id"),
     scheduled_at: formData.get("scheduled_at"),
     notes: formData.get("notes") ?? undefined,
+    pickup: formData.get("pickup") === "on",
+    dropoff: formData.get("dropoff") === "on",
   });
   if (!parsed.success) redirect("/agendar?erro=1");
 
@@ -105,6 +107,7 @@ export async function requestBooking(formData: FormData) {
     .eq("id", parsed.data.collaborator_id)
     .eq("tenant_id", ctx.tenantId)
     .eq("active", true)
+    .eq("access_role", "COLLABORATOR")
     .maybeSingle();
   if (!collaborator) redirect("/agendar?erro=1");
   if (!isWithinSchedule(collaborator.collaborator_schedule, scheduledAt)) {
@@ -127,6 +130,14 @@ export async function requestBooking(formData: FormData) {
     origin: "TUTOR" as const,
     status: "REQUESTED" as const,
     request_group_id: requestGroupId,
+    // Leva e traz é do PEDIDO, não de cada serviço: banho e tosa no mesmo
+    // horário são duas linhas irmãs, e marcar as duas geraria duas viagens ao
+    // mesmo endereço. Fica na primeira, como os adicionais (0056).
+    //
+    // Vai junto do pedido ainda REQUESTED, mas só vira parada na rota depois
+    // que o petshop aceitar (0064) — pedir não é o mesmo que estar combinado.
+    pickup: index === 0 ? (parsed.data.pickup ?? false) : false,
+    dropoff: index === 0 ? (parsed.data.dropoff ?? false) : false,
   }));
 
   const { error } = await supabase.from("appointment").insert(rows);

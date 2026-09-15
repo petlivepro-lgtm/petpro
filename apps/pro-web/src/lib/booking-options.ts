@@ -5,7 +5,11 @@ import type { CollaboratorSchedule, ServiceOption } from "@mylivepet/ui";
 
 // Selects em string literal única (o supabase-js só infere o tipo assim) — nada
 // de concatenar as colunas de porte numa constante compartilhada.
-const TUTOR_SELECT = "id, full_name, cpf, phone, pet(id, name, size)";
+// cep/street/city vêm do tutor E do pet porque o diálogo precisa saber se dá
+// para oferecer leva-e-traz (0062). Um subconjunto das sete colunas basta para
+// a pergunta "tem endereço?" — hasAddress ignora as que não vierem.
+const TUTOR_SELECT =
+  "id, full_name, cpf, phone, cep, street, city, pet(id, name, size, cep, street, city)";
 const SERVICE_SELECT =
   "id, name, price_cents, price_mini_cents, price_pequeno_cents, price_medio_cents, price_grande_cents, price_gigante_cents, duration_min";
 const ADDON_SELECT =
@@ -18,8 +22,19 @@ export type BookingTutor = {
   full_name: string;
   cpf: string | null;
   phone: string | null;
+  cep: string | null;
+  street: string | null;
+  city: string | null;
   /** O porte manda no preço do serviço (0058), por isso vem junto do pet. */
-  pet: { id: string; name: string; size: string | null }[];
+  pet: {
+    id: string;
+    name: string;
+    size: string | null;
+    /** Endereço próprio do pet; vazio = ele mora com o tutor (0059). */
+    cep: string | null;
+    street: string | null;
+    city: string | null;
+  }[];
 };
 
 /** Serviço do catálogo com os preços por porte ainda por resolver. */
@@ -73,6 +88,9 @@ export async function loadBookingOptions(
       .from("collaborator")
       .select(COLLABORATOR_SELECT)
       .eq("active", true)
+      // Quem entrega não atende: o entregador (0062) fica fora da lista de
+      // profissionais do agendamento.
+      .eq("access_role", "COLLABORATOR")
       .order("full_name"),
   ]);
 

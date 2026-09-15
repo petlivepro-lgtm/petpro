@@ -2,14 +2,14 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Input, Label, PhoneInput } from "@mylivepet/ui";
+import { AddressFields, Button, Card, Input, Label, PhoneInput } from "@mylivepet/ui";
+import type { AddressParts } from "@mylivepet/types";
 import { updateTutorProfile, type FormState } from "@/app/(app)/configuracoes/actions";
 
-export type TutorProfile = {
+export type TutorProfile = AddressParts & {
   full_name: string;
   email: string;
   phone: string;
-  notes: string;
 };
 
 export function TutorProfileForm({ tutor }: { tutor: TutorProfile }) {
@@ -48,10 +48,10 @@ export function TutorProfileForm({ tutor }: { tutor: TutorProfile }) {
           </div>
         </div>
 
-        <div>
-          <Label htmlFor="notes">Observações</Label>
-          <Input id="notes" name="notes" defaultValue={tutor.notes} placeholder="Opcional" />
-        </div>
+        {/* O endereço é editável pelo próprio tutor porque é o único dado do
+            cadastro que muda sozinho: ele se muda e o petshop não fica
+            sabendo. É também o que libera o leva e traz no agendamento. */}
+        <AddressFields idPrefix="tutor-perfil" defaultValues={tutor} />
 
         {state.error && <p className="text-sm text-danger">{state.error}</p>}
         {saved && <p className="text-sm text-success">Alterações salvas.</p>}

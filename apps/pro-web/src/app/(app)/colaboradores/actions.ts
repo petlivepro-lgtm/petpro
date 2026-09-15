@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
-import { collaboratorInput, type CollaboratorScheduleInput } from "@mylivepet/types";
+import {
+  COLLABORATOR_ACCESS_ROLES,
+  collaboratorInput,
+  type CollaboratorAccessRole,
+  type CollaboratorScheduleInput,
+} from "@mylivepet/types";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -138,6 +143,13 @@ export async function setCollaboratorAccess(
     return { ok: false, error: "Informe um e-mail válido" };
   }
 
+  // Qual painel ele abre (0062). O formulário sempre manda; o fallback cobre
+  // um acesso criado antes desta tela ganhar o seletor.
+  const accessRole = str(formData.get("access_role")) ?? "COLLABORATOR";
+  if (!(COLLABORATOR_ACCESS_ROLES as readonly string[]).includes(accessRole)) {
+    return { ok: false, error: "Cargo de acesso inválido" };
+  }
+
   const supabase = await createClient();
   const tenant = await getActiveTenant(supabase);
   if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
@@ -164,7 +176,10 @@ export async function setCollaboratorAccess(
 
   const { error } = await supabase
     .from("collaborator")
-    .update({ access_email: email })
+    .update({
+      access_email: email,
+      access_role: accessRole as CollaboratorAccessRole,
+    })
     .eq("id", id);
   if (error) {
     // 23505 = colisão no índice único global de access_email

@@ -6,6 +6,8 @@ export * from "./clubinho";
 export * from "./finance";
 export * from "./phone";
 export * from "./cpf";
+export * from "./address";
+export * from "./address-form";
 export type { Database, Tables, TablesInsert, Json } from "./database.types";
 
 /** Formata centavos (integer) em moeda BRL. */

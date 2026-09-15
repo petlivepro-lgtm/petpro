@@ -26,6 +26,7 @@ export type Database = {
           collaborator_id: string | null
           completed_by: string | null
           created_at: string
+          dropoff: boolean
           finished_at: string | null
           id: string
           installments: number
@@ -34,6 +35,7 @@ export type Database = {
           payment_method: Database["public"]["Enums"]["payment_method"] | null
           pet_id: string
           photos: string[]
+          pickup: boolean
           request_group_id: string | null
           scheduled_at: string | null
           service_type_id: string | null
@@ -55,6 +57,7 @@ export type Database = {
           collaborator_id?: string | null
           completed_by?: string | null
           created_at?: string
+          dropoff?: boolean
           finished_at?: string | null
           id?: string
           installments?: number
@@ -63,6 +66,7 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           pet_id: string
           photos?: string[]
+          pickup?: boolean
           request_group_id?: string | null
           scheduled_at?: string | null
           service_type_id?: string | null
@@ -84,6 +88,7 @@ export type Database = {
           collaborator_id?: string | null
           completed_by?: string | null
           created_at?: string
+          dropoff?: boolean
           finished_at?: string | null
           id?: string
           installments?: number
@@ -92,6 +97,7 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           pet_id?: string
           photos?: string[]
+          pickup?: boolean
           request_group_id?: string | null
           scheduled_at?: string | null
           service_type_id?: string | null
@@ -156,6 +162,13 @@ export type Database = {
             foreignKeyName: "appointment_pet_id_fkey"
             columns: ["pet_id"]
             isOneToOne: false
+            referencedRelation: "delivery_stop_card"
+            referencedColumns: ["pet_id"]
+          },
+          {
+            foreignKeyName: "appointment_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
             referencedRelation: "pet"
             referencedColumns: ["id"]
           },
@@ -186,6 +199,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "payment_terminal"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_stop_card"
+            referencedColumns: ["tutor_id"]
           },
           {
             foreignKeyName: "appointment_tutor_id_fkey"
@@ -927,6 +947,13 @@ export type Database = {
             foreignKeyName: "clubinho_subscription_pet_id_fkey"
             columns: ["pet_id"]
             isOneToOne: false
+            referencedRelation: "delivery_stop_card"
+            referencedColumns: ["pet_id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
             referencedRelation: "pet"
             referencedColumns: ["id"]
           },
@@ -950,6 +977,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "payment_terminal"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_stop_card"
+            referencedColumns: ["tutor_id"]
           },
           {
             foreignKeyName: "clubinho_subscription_tutor_id_fkey"
@@ -1049,6 +1083,7 @@ export type Database = {
       collaborator: {
         Row: {
           access_email: string | null
+          access_role: Database["public"]["Enums"]["staff_role"]
           active: boolean
           created_at: string
           full_name: string
@@ -1059,6 +1094,7 @@ export type Database = {
         }
         Insert: {
           access_email?: string | null
+          access_role?: Database["public"]["Enums"]["staff_role"]
           active?: boolean
           created_at?: string
           full_name: string
@@ -1069,6 +1105,7 @@ export type Database = {
         }
         Update: {
           access_email?: string | null
+          access_role?: Database["public"]["Enums"]["staff_role"]
           active?: boolean
           created_at?: string
           full_name?: string
@@ -1176,7 +1213,211 @@ export type Database = {
             foreignKeyName: "consent_tutor_id_fkey"
             columns: ["tutor_id"]
             isOneToOne: false
+            referencedRelation: "delivery_stop_card"
+            referencedColumns: ["tutor_id"]
+          },
+          {
+            foreignKeyName: "consent_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
             referencedRelation: "tutor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_position: {
+        Row: {
+          accuracy_m: number | null
+          collaborator_id: string
+          heading: number | null
+          lat: number
+          lng: number
+          route_id: string
+          speed_ms: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          accuracy_m?: number | null
+          collaborator_id: string
+          heading?: number | null
+          lat: number
+          lng: number
+          route_id: string
+          speed_ms?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          accuracy_m?: number | null
+          collaborator_id?: string
+          heading?: number | null
+          lat?: number
+          lng?: number
+          route_id?: string
+          speed_ms?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_position_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "collaborator"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_position_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: true
+            referencedRelation: "delivery_route"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_position_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_route: {
+        Row: {
+          collaborator_id: string
+          created_at: string
+          finished_at: string | null
+          id: string
+          route_date: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["delivery_route_status"]
+          tenant_id: string
+        }
+        Insert: {
+          collaborator_id: string
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          route_date: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["delivery_route_status"]
+          tenant_id: string
+        }
+        Update: {
+          collaborator_id?: string
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          route_date?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["delivery_route_status"]
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_route_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "collaborator"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_route_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_stop: {
+        Row: {
+          appointment_id: string
+          arrived_at: string | null
+          cep: string | null
+          city: string | null
+          complement: string | null
+          district: string | null
+          done_at: string | null
+          eta_at: string | null
+          fail_reason: string | null
+          id: string
+          kind: Database["public"]["Enums"]["delivery_stop_kind"]
+          lat: number | null
+          lng: number | null
+          position: number
+          route_id: string
+          state: string | null
+          status: Database["public"]["Enums"]["delivery_stop_status"]
+          street: string | null
+          street_number: string | null
+          tenant_id: string
+        }
+        Insert: {
+          appointment_id: string
+          arrived_at?: string | null
+          cep?: string | null
+          city?: string | null
+          complement?: string | null
+          district?: string | null
+          done_at?: string | null
+          eta_at?: string | null
+          fail_reason?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["delivery_stop_kind"]
+          lat?: number | null
+          lng?: number | null
+          position?: number
+          route_id: string
+          state?: string | null
+          status?: Database["public"]["Enums"]["delivery_stop_status"]
+          street?: string | null
+          street_number?: string | null
+          tenant_id: string
+        }
+        Update: {
+          appointment_id?: string
+          arrived_at?: string | null
+          cep?: string | null
+          city?: string | null
+          complement?: string | null
+          district?: string | null
+          done_at?: string | null
+          eta_at?: string | null
+          fail_reason?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["delivery_stop_kind"]
+          lat?: number | null
+          lng?: number | null
+          position?: number
+          route_id?: string
+          state?: string | null
+          status?: Database["public"]["Enums"]["delivery_stop_status"]
+          street?: string | null
+          street_number?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_stop_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_stop_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_route"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_stop_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
             referencedColumns: ["id"]
           },
         ]
@@ -1736,39 +1977,69 @@ export type Database = {
         Row: {
           birth_date: string | null
           breed: string | null
+          cep: string | null
+          city: string | null
+          complement: string | null
           created_at: string
+          district: string | null
+          geocoded_at: string | null
           id: string
+          lat: number | null
+          lng: number | null
           name: string
           notes: string | null
           photo_path: string | null
           size: string | null
           species: string | null
+          state: string | null
+          street: string | null
+          street_number: string | null
           tenant_id: string
           tutor_id: string
         }
         Insert: {
           birth_date?: string | null
           breed?: string | null
+          cep?: string | null
+          city?: string | null
+          complement?: string | null
           created_at?: string
+          district?: string | null
+          geocoded_at?: string | null
           id?: string
+          lat?: number | null
+          lng?: number | null
           name: string
           notes?: string | null
           photo_path?: string | null
           size?: string | null
           species?: string | null
+          state?: string | null
+          street?: string | null
+          street_number?: string | null
           tenant_id: string
           tutor_id: string
         }
         Update: {
           birth_date?: string | null
           breed?: string | null
+          cep?: string | null
+          city?: string | null
+          complement?: string | null
           created_at?: string
+          district?: string | null
+          geocoded_at?: string | null
           id?: string
+          lat?: number | null
+          lng?: number | null
           name?: string
           notes?: string | null
           photo_path?: string | null
           size?: string | null
           species?: string | null
+          state?: string | null
+          street?: string | null
+          street_number?: string | null
           tenant_id?: string
           tutor_id?: string
         }
@@ -1779,6 +2050,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenant"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_stop_card"
+            referencedColumns: ["tutor_id"]
           },
           {
             foreignKeyName: "pet_tutor_id_fkey"
@@ -1844,6 +2122,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "collaborator_pet"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_behavior_report_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_stop_card"
+            referencedColumns: ["pet_id"]
           },
           {
             foreignKeyName: "pet_behavior_report_pet_id_fkey"
@@ -2022,6 +2307,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "payment_terminal"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_reservation_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_stop_card"
+            referencedColumns: ["tutor_id"]
           },
           {
             foreignKeyName: "product_reservation_tutor_id_fkey"
@@ -2569,42 +2861,69 @@ export type Database = {
       }
       tutor: {
         Row: {
+          cep: string | null
+          city: string | null
           clubinho: boolean
+          complement: string | null
           cpf: string | null
           created_at: string
+          district: string | null
           email: string | null
           full_name: string
+          geocoded_at: string | null
           id: string
-          notes: string | null
+          lat: number | null
+          lng: number | null
           phone: string | null
           phone_digits: string | null
           profile_id: string | null
+          state: string | null
+          street: string | null
+          street_number: string | null
           tenant_id: string
         }
         Insert: {
+          cep?: string | null
+          city?: string | null
           clubinho?: boolean
+          complement?: string | null
           cpf?: string | null
           created_at?: string
+          district?: string | null
           email?: string | null
           full_name: string
+          geocoded_at?: string | null
           id?: string
-          notes?: string | null
+          lat?: number | null
+          lng?: number | null
           phone?: string | null
           phone_digits?: string | null
           profile_id?: string | null
+          state?: string | null
+          street?: string | null
+          street_number?: string | null
           tenant_id: string
         }
         Update: {
+          cep?: string | null
+          city?: string | null
           clubinho?: boolean
+          complement?: string | null
           cpf?: string | null
           created_at?: string
+          district?: string | null
           email?: string | null
           full_name?: string
+          geocoded_at?: string | null
           id?: string
-          notes?: string | null
+          lat?: number | null
+          lng?: number | null
           phone?: string | null
           phone_digits?: string | null
           profile_id?: string | null
+          state?: string | null
+          street?: string | null
+          street_number?: string | null
           tenant_id?: string
         }
         Relationships: [
@@ -2679,6 +2998,13 @@ export type Database = {
             foreignKeyName: "clubinho_subscription_pet_id_fkey"
             columns: ["pet_id"]
             isOneToOne: false
+            referencedRelation: "delivery_stop_card"
+            referencedColumns: ["pet_id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
             referencedRelation: "pet"
             referencedColumns: ["id"]
           },
@@ -2702,6 +3028,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "payment_terminal"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubinho_subscription_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_stop_card"
+            referencedColumns: ["tutor_id"]
           },
           {
             foreignKeyName: "clubinho_subscription_tutor_id_fkey"
@@ -2739,7 +3072,74 @@ export type Database = {
             foreignKeyName: "pet_tutor_id_fkey"
             columns: ["tutor_id"]
             isOneToOne: false
+            referencedRelation: "delivery_stop_card"
+            referencedColumns: ["tutor_id"]
+          },
+          {
+            foreignKeyName: "pet_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
             referencedRelation: "tutor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_stop_card: {
+        Row: {
+          appointment_id: string | null
+          appointment_status:
+            | Database["public"]["Enums"]["appointment_status"]
+            | null
+          arrived_at: string | null
+          cep: string | null
+          city: string | null
+          complement: string | null
+          district: string | null
+          done_at: string | null
+          eta_at: string | null
+          fail_reason: string | null
+          id: string | null
+          kind: Database["public"]["Enums"]["delivery_stop_kind"] | null
+          lat: number | null
+          lng: number | null
+          pet_id: string | null
+          pet_name: string | null
+          photo_path: string | null
+          position: number | null
+          route_id: string | null
+          scheduled_at: string | null
+          service_name: string | null
+          size: string | null
+          species: string | null
+          state: string | null
+          status: Database["public"]["Enums"]["delivery_stop_status"] | null
+          street: string | null
+          street_number: string | null
+          tenant_id: string | null
+          tutor_id: string | null
+          tutor_name: string | null
+          tutor_phone: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_stop_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_stop_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_route"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_stop_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
             referencedColumns: ["id"]
           },
         ]
@@ -2846,6 +3246,13 @@ export type Database = {
             foreignKeyName: "pet_behavior_report_pet_id_fkey"
             columns: ["pet_id"]
             isOneToOne: false
+            referencedRelation: "delivery_stop_card"
+            referencedColumns: ["pet_id"]
+          },
+          {
+            foreignKeyName: "pet_behavior_report_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
             referencedRelation: "pet"
             referencedColumns: ["id"]
           },
@@ -2860,7 +3267,12 @@ export type Database = {
       }
     }
     Functions: {
+      appointment_tutor: { Args: { _appointment: string }; Returns: string }
       br_datetime: { Args: { _ts: string }; Returns: string }
+      build_delivery_route: {
+        Args: { _collaborator: string; _date: string }
+        Returns: string
+      }
       can_complete_appointment: {
         Args: { p_collaborator_id: string; p_tenant_id: string }
         Returns: boolean
@@ -2934,10 +3346,7 @@ export type Database = {
         Args: { p_tutor: string }
         Returns: undefined
       }
-      clubinho_undo_usage: {
-        Args: { p_usage: string }
-        Returns: undefined
-      }
+      clubinho_undo_usage: { Args: { p_usage: string }; Returns: undefined }
       collab_sees_pet: {
         Args: { _pet: string; _tenant: string }
         Returns: boolean
@@ -2964,6 +3373,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      delivery_sees_appointment: {
+        Args: { _appointment: string; _tenant: string }
+        Returns: boolean
+      }
+      delivery_sees_pet: {
+        Args: { _pet: string; _tenant: string }
+        Returns: boolean
+      }
       expire_product_reservations: { Args: never; Returns: number }
       get_busy_slots: {
         Args: {
@@ -2977,12 +3394,12 @@ export type Database = {
       global_search: {
         Args: { p_limit?: number; p_query: string; p_tenant: string }
         Returns: {
-          amount_cents: number | null
-          extra: string | null
+          amount_cents: number
+          extra: string
           id: string
           kind: string
           rank: number
-          subtitle: string | null
+          subtitle: string
           title: string
         }[]
       }
@@ -2993,6 +3410,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_delivery: { Args: { _tenant: string }; Returns: boolean }
       is_management: { Args: { _tenant: string }; Returns: boolean }
       is_staff: { Args: { _tenant: string }; Returns: boolean }
       link_collaborator_access: {
@@ -3025,11 +3443,42 @@ export type Database = {
         Returns: undefined
       }
       my_collaborator_id: { Args: { _tenant: string }; Returns: string }
+      my_delivery_stop: {
+        Args: { _stop: string; _tenant: string }
+        Returns: boolean
+      }
+      my_route_ids: { Args: { _tenant: string }; Returns: string[] }
       my_tutor_id: { Args: { _tenant: string }; Returns: string }
       normalize_phone_br: { Args: { p_value: string }; Returns: string }
       payment_method_uses_terminal: {
         Args: { p_method: Database["public"]["Enums"]["payment_method"] }
         Returns: boolean
+      }
+      pet_effective_address: {
+        Args: { _pet: string }
+        Returns: {
+          cep: string
+          city: string
+          complement: string
+          district: string
+          lat: number
+          lng: number
+          state: string
+          street: string
+          street_number: string
+        }[]
+      }
+      price_for_pet_size: {
+        Args: {
+          base: number
+          gigante: number
+          grande: number
+          medio: number
+          mini: number
+          p_size: string
+          pequeno: number
+        }
+        Returns: number
       }
       product_variant_label: {
         Args: { v: Database["public"]["Tables"]["product_variant"]["Row"] }
@@ -3158,6 +3607,7 @@ export type Database = {
         Returns: undefined
       }
       tutor_access_status: { Args: { p_email: string }; Returns: string }
+      tutor_active_stop_route: { Args: { _tenant: string }; Returns: string[] }
       tutor_first_access_target: { Args: { p_email: string }; Returns: Json }
       tutor_has_usable_password: { Args: { p_email: string }; Returns: boolean }
       tutor_login_status: { Args: { p_identifier: string }; Returns: Json }
@@ -3196,6 +3646,9 @@ export type Database = {
         | "PAUSED"
         | "CANCELLED"
         | "EXPIRED"
+      delivery_route_status: "PLANNED" | "IN_PROGRESS" | "DONE" | "CANCELLED"
+      delivery_stop_kind: "PICKUP" | "DROPOFF"
+      delivery_stop_status: "PENDING" | "EN_ROUTE" | "DONE" | "FAILED"
       feedback_direction: "STAFF_TO_TUTOR" | "TUTOR_TO_PETSHOP"
       finance_entry_type: "INCOME" | "EXPENSE"
       finance_refund_kind: "PRODUCT_RETURN" | "SERVICE_REFUND"
@@ -3221,6 +3674,11 @@ export type Database = {
         | "BOOKING_COMPLETED"
         | "RESERVATION_READY"
         | "RESERVATION_REJECTED"
+        | "PICKUP_STARTED"
+        | "PICKUP_DONE"
+        | "DROPOFF_STARTED"
+        | "DROPOFF_DONE"
+        | "ROUTE_ASSIGNED"
       payment_method:
         | "CASH"
         | "PIX"
@@ -3238,7 +3696,13 @@ export type Database = {
         | "REJECTED"
         | "PARTIALLY_REFUNDED"
         | "REFUNDED"
-      staff_role: "OWNER" | "MANAGER" | "ATTENDANT" | "VIEWER" | "COLLABORATOR"
+      staff_role:
+        | "OWNER"
+        | "MANAGER"
+        | "ATTENDANT"
+        | "VIEWER"
+        | "COLLABORATOR"
+        | "DELIVERY"
       stock_movement_source:
         | "MANUAL"
         | "RESERVATION"
@@ -3262,12 +3726,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3291,11 +3755,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3316,11 +3780,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3341,11 +3805,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3358,11 +3822,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3400,6 +3864,9 @@ export const Constants = {
         "CANCELLED",
         "EXPIRED",
       ],
+      delivery_route_status: ["PLANNED", "IN_PROGRESS", "DONE", "CANCELLED"],
+      delivery_stop_kind: ["PICKUP", "DROPOFF"],
+      delivery_stop_status: ["PENDING", "EN_ROUTE", "DONE", "FAILED"],
       feedback_direction: ["STAFF_TO_TUTOR", "TUTOR_TO_PETSHOP"],
       finance_entry_type: ["INCOME", "EXPENSE"],
       finance_refund_kind: ["PRODUCT_RETURN", "SERVICE_REFUND"],
@@ -3426,6 +3893,11 @@ export const Constants = {
         "BOOKING_COMPLETED",
         "RESERVATION_READY",
         "RESERVATION_REJECTED",
+        "PICKUP_STARTED",
+        "PICKUP_DONE",
+        "DROPOFF_STARTED",
+        "DROPOFF_DONE",
+        "ROUTE_ASSIGNED",
       ],
       payment_method: [
         "CASH",
@@ -3446,7 +3918,14 @@ export const Constants = {
         "PARTIALLY_REFUNDED",
         "REFUNDED",
       ],
-      staff_role: ["OWNER", "MANAGER", "ATTENDANT", "VIEWER", "COLLABORATOR"],
+      staff_role: [
+        "OWNER",
+        "MANAGER",
+        "ATTENDANT",
+        "VIEWER",
+        "COLLABORATOR",
+        "DELIVERY",
+      ],
       stock_movement_source: [
         "MANUAL",
         "RESERVATION",

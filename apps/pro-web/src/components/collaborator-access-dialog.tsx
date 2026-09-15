@@ -3,7 +3,12 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound } from "lucide-react";
-import { Button, Dialog, Input, Label } from "@mylivepet/ui";
+import { Button, Dialog, Input, Label, Select } from "@mylivepet/ui";
+import {
+  COLLABORATOR_ACCESS_ROLES,
+  COLLABORATOR_ACCESS_ROLE_LABEL,
+  type CollaboratorAccessRole,
+} from "@mylivepet/types";
 import {
   revokeCollaboratorAccess,
   setCollaboratorAccess,
@@ -14,8 +19,18 @@ export type CollaboratorAccess = {
   id: string;
   full_name: string;
   access_email: string | null;
+  /** Qual painel ele abre: quem atende, ou quem busca e devolve o pet (0062). */
+  access_role: CollaboratorAccessRole;
   /** Preenchido quando o colaborador já criou a senha e entrou pela primeira vez. */
   has_login: boolean;
+};
+
+/** O que cada cargo enxerga — o texto que explica a escolha para quem convida. */
+const O_QUE_VE: Record<CollaboratorAccessRole, string> = {
+  COLLABORATOR:
+    "Vê apenas os atendimentos atribuídos a ele e a ficha dos pets que atende. Não tem acesso a financeiro, produtos, tutores nem configurações.",
+  DELIVERY:
+    "Vê a rota de leva-e-traz do dia, com o endereço e o telefone dos tutores dessas paradas. Não tem acesso a financeiro, produtos, agenda nem configurações.",
 };
 
 export function CollaboratorAccessDialog({
@@ -26,6 +41,9 @@ export function CollaboratorAccessDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirmingRevoke, setConfirmingRevoke] = useState(false);
+  const [cargo, setCargo] = useState<CollaboratorAccessRole>(
+    collaborator.access_role ?? "COLLABORATOR",
+  );
   const [setState, setAction, setPending] = useActionState<FormState, FormData>(
     setCollaboratorAccess,
     { ok: false },
@@ -76,10 +94,14 @@ export function CollaboratorAccessDialog({
               </p>
             </div>
 
-            <p className="text-sm text-graphite">
-              O colaborador vê apenas os atendimentos atribuídos a ele e a ficha dos pets
-              que atende. Não tem acesso a financeiro, produtos, tutores nem configurações.
-            </p>
+            <div className="rounded-xl bg-surface-muted p-3">
+              <p className="text-xs text-gray-neutral">Cargo de acesso</p>
+              <p className="text-sm font-medium text-graphite">
+                {COLLABORATOR_ACCESS_ROLE_LABEL[collaborator.access_role]}
+              </p>
+            </div>
+
+            <p className="text-sm text-graphite">{O_QUE_VE[collaborator.access_role]}</p>
 
             {(setState.error ?? revokeState.error) && (
               <p className="text-sm text-danger">{setState.error ?? revokeState.error}</p>
@@ -133,6 +155,23 @@ export function CollaboratorAccessDialog({
                 autoComplete="off"
                 placeholder="ana@petshop.com.br"
               />
+            </div>
+
+            <div>
+              <Label htmlFor={`access_role_${collaborator.id}`}>Cargo de acesso *</Label>
+              <Select
+                id={`access_role_${collaborator.id}`}
+                name="access_role"
+                value={cargo}
+                onChange={(e) => setCargo(e.target.value as CollaboratorAccessRole)}
+              >
+                {COLLABORATOR_ACCESS_ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {COLLABORATOR_ACCESS_ROLE_LABEL[r]}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-1.5 text-xs text-gray-neutral">{O_QUE_VE[cargo]}</p>
             </div>
             {setState.error && <p className="text-sm text-danger">{setState.error}</p>}
             <div className="flex justify-end gap-2 pt-1">

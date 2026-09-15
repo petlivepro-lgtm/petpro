@@ -10,9 +10,11 @@ import {
   Input,
   Label,
   Select,
+  Textarea,
   PhoneInput,
   CpfInput,
   DatePicker,
+  AddressFields,
 } from "@mylivepet/ui";
 import {
   PET_SIZES,
@@ -129,10 +131,7 @@ export function NewTutorDialog({
             Com e-mail cadastrado, o tutor cria a própria senha no primeiro
             acesso ao app MyLivePet.
           </p>
-          <div>
-            <Label htmlFor="notes">Observações</Label>
-            <Input id="notes" name="notes" placeholder="Opcional" />
-          </div>
+          <AddressFields idPrefix="new-tutor" />
           <div className="rounded-xl border border-dashed border-graphite/15 p-4">
             <p className="mb-3 text-sm font-semibold text-graphite">
               {requirePet ? "Primeiro pet" : "Primeiro pet (opcional)"}
@@ -206,6 +205,22 @@ export function NewTutorDialog({
               <div>
                 <Label htmlFor="pet_photo">Foto</Label>
                 <FileInput id="pet_photo" name="pet_photo" />
+              </div>
+              <AddressFields
+                prefix="pet_"
+                idPrefix="new-tutor-pet"
+                tutorAddress={null}
+                inheritNote="Vale o endereço preenchido acima, no cadastro do tutor."
+                title="Endereço do pet"
+              />
+              <div>
+                <Label htmlFor="pet_notes">Observações</Label>
+                <Textarea
+                  id="pet_notes"
+                  name="pet_notes"
+                  rows={3}
+                  placeholder="Ex.: fica ansioso com secador."
+                />
               </div>
             </div>
           </div>

@@ -3,15 +3,25 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { Dialog, FileInput, Input, Label, Button, Select, DatePicker } from "@mylivepet/ui";
+import { AddressFields, Dialog, FileInput, Input, Label, Button, Select, Textarea, DatePicker } from "@mylivepet/ui";
 import {
   PET_SIZES,
   PET_SIZE_LABEL,
   SPECIES_OPTIONS,
 } from "@mylivepet/types";
+import type { AddressParts } from "@mylivepet/types";
 import { createPet, type FormState } from "@/app/(app)/tutores/actions";
 
-export function NewPetDialog({ tutorId, tutorName }: { tutorId: string; tutorName: string }) {
+export function NewPetDialog({
+  tutorId,
+  tutorName,
+  tutorAddress,
+}: {
+  tutorId: string;
+  tutorName: string;
+  /** Endereço herdado quando o pet mora com o tutor (o caso comum). */
+  tutorAddress: AddressParts;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState<FormState, FormData>(createPet, { ok: false });
@@ -79,6 +89,20 @@ export function NewPetDialog({ tutorId, tutorName }: { tutorId: string; tutorNam
           <div>
             <Label htmlFor="photo">Foto</Label>
             <FileInput id="photo" name="photo" />
+          </div>
+          <AddressFields
+            idPrefix={`new-pet-${tutorId}`}
+            tutorAddress={tutorAddress}
+            title="Endereço do pet"
+          />
+          <div>
+            <Label htmlFor="notes">Observações</Label>
+            <Textarea
+              id="notes"
+              name="notes"
+              rows={3}
+              placeholder="Ex.: fica ansioso com secador."
+            />
           </div>
 
           {state.error && <p className="text-sm text-danger">{state.error}</p>}

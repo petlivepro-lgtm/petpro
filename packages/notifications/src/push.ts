@@ -7,6 +7,7 @@
 // component.
 import webpush from "web-push";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { MANAGEMENT_ROLES } from "@mylivepet/types";
 import type { Database } from "@mylivepet/types/database";
 
 type Admin = SupabaseClient<Database>;
@@ -131,8 +132,14 @@ async function subscriptionsFor(
 
 /**
  * Inscrições de quem enxerga o mural da gestão. Espelha `is_management` do
- * banco (0040): todo papel menos COLLABORATOR — ele só recebe o que é
- * endereçado a ele, e receberia os pedidos dos tutores sem poder atendê-los.
+ * banco (0040): os papéis de campo ficam de fora — eles só recebem o que é
+ * endereçado a eles, e receberiam os pedidos dos tutores sem poder atendê-los.
+ *
+ * A lista é MANAGEMENT_ROLES, e não uma exclusão: quando a 0062 acrescentou o
+ * entregador, o `.neq("role", "COLLABORATOR")` que havia aqui passou a
+ * incluí-lo no mural sem ninguém perceber. Enumerar quem PODE receber não tem
+ * esse modo de falhar — um papel novo fica de fora até alguém decidir o
+ * contrário.
  */
 async function managementSubscriptions(
   admin: Admin,
@@ -142,7 +149,7 @@ async function managementSubscriptions(
     .from("membership")
     .select("profile_id")
     .eq("tenant_id", tenantId)
-    .neq("role", "COLLABORATOR");
+    .in("role", MANAGEMENT_ROLES);
 
   const ids = (members ?? []).map((m) => m.profile_id);
   if (!ids.length) return [];

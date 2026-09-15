@@ -7,6 +7,7 @@ import {
   Contact,
   Crown,
   ChevronRight,
+  MapPin,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -21,8 +22,10 @@ import {
   BEHAVIOR_BADGE_LABEL,
   BEHAVIOR_BADGE_TONE,
   behaviorBadgeOf,
+  formatAddressLine,
   formatBehaviorScore,
   formatCpfBR,
+  pickAddress,
 } from "@mylivepet/types";
 import { NewTutorDialog } from "@/components/new-tutor-dialog";
 import { NewPetDialog } from "@/components/new-pet-dialog";
@@ -46,7 +49,7 @@ export default async function TutoresPage({
   const { data: tutores } = await supabase
     .from("tutor")
     .select(
-      "id, full_name, email, phone, cpf, notes, profile_id, pet(id, name, species, breed, photo_path)",
+      "id, full_name, email, phone, cpf, profile_id, cep, street, street_number, complement, district, city, state, pet(id, name, species, breed, photo_path)",
     )
     .order("full_name");
 
@@ -62,6 +65,7 @@ export default async function TutoresPage({
             t.email,
             t.phone,
             t.cpf,
+            formatAddressLine(t),
             ...(((t.pet as { name: string }[]) ?? []).map((p) => p.name)),
           ],
           query,
@@ -117,6 +121,8 @@ export default async function TutoresPage({
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {list.map((t) => {
+            const address = pickAddress(t);
+            const addressLine = formatAddressLine(address);
             const pets =
               (t.pet as {
                 id: string;
@@ -157,6 +163,12 @@ export default async function TutoresPage({
                           {formatCpfBR(t.cpf)}
                         </p>
                       )}
+                      {addressLine && (
+                        <p className="flex items-start gap-1.5">
+                          <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />{" "}
+                          {addressLine}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center">
@@ -167,7 +179,7 @@ export default async function TutoresPage({
                         email: t.email,
                         phone: t.phone,
                         cpf: t.cpf,
-                        notes: t.notes,
+                        ...address,
                       }}
                     />
                     <DeleteTutorDialog
@@ -236,7 +248,11 @@ export default async function TutoresPage({
                       </Link>
                     );
                   })}
-                  <NewPetDialog tutorId={t.id} tutorName={t.full_name} />
+                  <NewPetDialog
+                    tutorId={t.id}
+                    tutorName={t.full_name}
+                    tutorAddress={address}
+                  />
                 </div>
               </Card>
             );

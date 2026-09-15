@@ -14,6 +14,7 @@ import {
   FlaskConical,
   CalendarClock,
   Crown,
+  MapPin,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -34,8 +35,11 @@ import {
   RESERVATION_STATUS_LABEL,
   behaviorBadgeOf,
   canMutateAsRole,
+  formatAddressLine,
   formatBehaviorScore,
+  hasAddress,
   petSizeLabel,
+  type AddressParts,
   type AppointmentStatus,
   type ReservationStatus,
 } from "@mylivepet/types";
@@ -125,13 +129,21 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
     : await supabase
         .from("pet")
         .select(
-          "id, name, species, breed, size, birth_date, photo_path, notes, tutor:tutor_id (id, full_name, phone, email)",
+          "id, name, species, breed, size, birth_date, photo_path, notes, cep, street, street_number, complement, district, city, state, tutor:tutor_id (id, full_name, phone, email, cep, street, street_number, complement, district, city, state)",
         )
         .eq("id", petId)
         .maybeSingle();
 
   if (!pet) notFound();
-  const tutor = pet.tutor as unknown as { id: string; full_name: string; phone: string | null } | null;
+  const tutor = pet.tutor as unknown as
+    | ({ id: string; full_name: string; phone: string | null } & AddressParts)
+    | null;
+  // Endereço do pet, com a herança de 0059: vazio significa que ele mora com
+  // o tutor. A view collaborator_pet não traz endereço, e lá os dois são
+  // vazios — o colaborador simplesmente não vê essa linha.
+  const petAddress = pet as unknown as AddressParts;
+  const ownAddress = hasAddress(petAddress);
+  const addressLine = formatAddressLine(ownAddress ? petAddress : tutor);
   // As colunas de uma view são sempre nullable nos tipos gerados; o filtro por
   // id já garante que estas duas existem.
   const petId_ = pet.id as string;
@@ -326,7 +338,9 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
                       size: pet.size,
                       birth_date: pet.birth_date,
                       notes: pet.notes,
+                      ...petAddress,
                     }}
+                    tutorAddress={tutor}
                   />
                   <DeletePetDialog
                     petId={petId_}
@@ -341,6 +355,17 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
             </div>
             {meta && <p className="text-sm text-gray-neutral">{meta}</p>}
             {age && <p className="text-sm text-gray-neutral">{age}</p>}
+            {addressLine && (
+              <p className="mt-1 flex items-start gap-1.5 text-sm text-gray-neutral">
+                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  {addressLine}
+                  {!ownAddress && (
+                    <span className="text-xs"> · mesmo endereço do tutor</span>
+                  )}
+                </span>
+              </p>
+            )}
             {pet.notes && (
               <p className="mt-2 whitespace-pre-line text-sm text-graphite">{pet.notes}</p>
             )}

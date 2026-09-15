@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Button,
   Card,
+  Checkbox,
   Label,
   Select,
   DatePicker,
@@ -14,6 +15,7 @@ import {
 } from "@mylivepet/ui";
 import {
   formatBRL,
+  hasAddress,
   hasSizePrices,
   petSizeLabel,
   priceForPetSize,
@@ -24,7 +26,18 @@ import {
 import { requestBooking } from "../actions";
 import { SlotPicker, type Collaborator } from "./slot-picker";
 
-type Pet = { id: string; name: string; size: string | null };
+type Pet = {
+  id: string;
+  name: string;
+  size: string | null;
+  /** Endereço próprio do pet; vazio = ele mora com o tutor (0059). */
+  cep: string | null;
+  street: string | null;
+  city: string | null;
+};
+
+/** As colunas de endereço do tutor que interessam para o leva e traz. */
+type TutorAddress = { cep: string | null; street: string | null; city: string | null };
 
 /** Serviço do catálogo com os preços por porte ainda por resolver (0058). */
 type BookingService = ServiceOption & SizePrices;
@@ -42,6 +55,7 @@ export function BookingForm({
   services,
   addons,
   collaborators,
+  tutorAddress,
   tenantId,
 }: {
   pets: Pet[];
@@ -49,6 +63,8 @@ export function BookingForm({
   /** Extras do catálogo, somados ao valor do agendamento (0056). */
   addons: BookingService[];
   collaborators: Collaborator[];
+  /** Endereço do tutor — null quando ele ainda não completou o cadastro. */
+  tutorAddress: TutorAddress | null;
   tenantId: string;
 }) {
   // Se só houver um serviço cadastrado, já vem marcado (atende "caso mais de um serviço").
@@ -65,6 +81,14 @@ export function BookingForm({
   // Quanto custa para ESTE pet: o preço sai do porte dele (0058), sem ninguém
   // precisar escolher. Pet sem porte cadastrado fica no preço base.
   const petSize = pets.find((p) => p.id === petId)?.size ?? null;
+
+  // Dá para pedir que busquem em casa? Só com endereço cadastrado — e a regra
+  // de qual endereço vale é a da 0059: o do pet quando ele tem o seu, senão o
+  // do tutor. Sem nenhum dos dois, o campo aparece desabilitado com o caminho
+  // para resolver, em vez de simplesmente sumir: campo escondido não ensina
+  // nada a quem está procurando por ele.
+  const petEscolhido = pets.find((p) => p.id === petId) ?? null;
+  const temEndereco = hasAddress(petEscolhido) || hasAddress(tutorAddress);
   const pricedServices = useMemo<ServiceOption[]>(
     () => services.map((s) => ({ ...s, price_cents: priceForPetSize(s, petSize) })),
     [services, petSize],
@@ -287,6 +311,36 @@ export function BookingForm({
             value={slot}
             onChange={setSlot}
           />
+        </div>
+
+        <div className="rounded-xl border border-graphite/10 p-3">
+          <p className="mb-1 text-sm font-medium text-graphite">
+            Leva e traz (opcional)
+          </p>
+          <p className="mb-2 text-xs text-gray-neutral">
+            O petshop confirma junto com o horário.
+          </p>
+          <div className="space-y-2">
+            <Checkbox
+              name="pickup"
+              label="Quero que busquem meu pet em casa"
+              disabled={!temEndereco}
+            />
+            <Checkbox
+              name="dropoff"
+              label="Quero que tragam meu pet de volta"
+              disabled={!temEndereco}
+            />
+          </div>
+          {!temEndereco && (
+            <p className="mt-2 text-xs text-gray-neutral">
+              Para pedir, cadastre seu endereço em{" "}
+              <Link href="/configuracoes" className="font-medium text-orange underline">
+                Configurações
+              </Link>
+              .
+            </p>
+          )}
         </div>
 
         <div>

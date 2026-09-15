@@ -9,6 +9,8 @@ import {
   petInput,
   PET_SIZES,
   type PetSize,
+  addressColumns,
+  addressFromForm,
 } from "@mylivepet/types";
 
 export type FormState = { ok: boolean; error?: string };
@@ -69,6 +71,8 @@ export async function updatePet(_prev: FormState, formData: FormData): Promise<F
     size: size(formData.get("size")),
     birth_date: str(formData.get("birth_date")),
     notes: str(formData.get("notes")),
+    // Sem campos de endereço = "mesmo endereço do tutor" (ver 0059).
+    ...addressFromForm(formData),
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
@@ -89,6 +93,7 @@ export async function updatePet(_prev: FormState, formData: FormData): Promise<F
       // `||` e não `??`: limpar o campo precisa gravar null, não "".
       birth_date: parsed.data.birth_date || null,
       notes: parsed.data.notes ?? null,
+      ...addressColumns(parsed.data),
     })
     .eq("id", petId)
     .eq("tenant_id", tenant.tenantId);

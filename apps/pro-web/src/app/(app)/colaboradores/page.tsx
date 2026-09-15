@@ -2,6 +2,7 @@ import { UsersRound, CalendarClock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { Card, PageHeader, StatusChip, EmptyState } from "@mylivepet/ui";
+import { asAccessRole } from "@mylivepet/types";
 import { hhmm, scheduleSummary } from "@/lib/collaborator-schedule";
 import { CollaboratorAccessDialog } from "@/components/collaborator-access-dialog";
 import { CollaboratorDialog } from "@/components/collaborator-dialog";
@@ -21,7 +22,7 @@ export default async function ColaboradoresPage({
     supabase
       .from("collaborator")
       .select(
-        "id, full_name, role_title, active, access_email, profile_id, collaborator_schedule(id, weekday, start_time, end_time)",
+        "id, full_name, role_title, active, access_email, access_role, profile_id, collaborator_schedule(id, weekday, start_time, end_time)",
       )
       .order("full_name"),
     getActiveTenant(supabase),
@@ -114,6 +115,7 @@ export default async function ColaboradoresPage({
                           id: c.id,
                           full_name: c.full_name,
                           access_email: c.access_email,
+                          access_role: asAccessRole(c.access_role),
                           has_login: c.profile_id !== null,
                         }}
                       />

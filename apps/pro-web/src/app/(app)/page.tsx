@@ -5,6 +5,7 @@ import { PageHeader, StatCard, Card, EmptyState } from "@mylivepet/ui";
 import { SearchTrigger } from "@/components/search-trigger";
 import { AppointmentStatusBadge } from "@/components/status-badge";
 import { ColaboradorDashboard } from "@/components/colaborador-dashboard";
+import { EntregadorDashboard } from "@/components/entregador-dashboard";
 import { RecentSolicitacoes } from "@/components/recent-solicitacoes";
 import { FinanceBarChart, type FinanceChartPoint } from "@/components/charts/finance-bar-chart";
 import { StockBarChart, type StockChartPoint } from "@/components/charts/stock-bar-chart";
@@ -34,11 +35,15 @@ function lastSixMonths(): { key: string; label: string }[] {
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  // A raiz serve dois painéis. O colaborador não pode ver faturamento, estoque
-  // nem a fila de solicitações, então nem chega nas queries abaixo.
+  // A raiz serve três painéis. Nem o colaborador nem o entregador podem ver
+  // faturamento, estoque ou a fila de solicitações, então nem chegam nas
+  // queries abaixo.
   const tenant = await getActiveTenant(supabase);
   if (tenant?.role === "COLLABORATOR") {
     return <ColaboradorDashboard tenant={tenant} />;
+  }
+  if (tenant?.role === "DELIVERY") {
+    return <EntregadorDashboard tenant={tenant} />;
   }
 
   const countOf = async (table: "tutor" | "pet" | "product") =>

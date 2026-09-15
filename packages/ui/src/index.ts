@@ -10,6 +10,8 @@ export { Select, type SelectProps } from "./select";
 export { CurrencyInput } from "./currency-input";
 export { PhoneInput } from "./phone-input";
 export { CpfInput } from "./cpf-input";
+export { CepInput, type ResolvedAddress } from "./cep-input";
+export { AddressFields } from "./address-fields";
 export { FileInput } from "./file-input";
 export { PhotoGalleryInput } from "./photo-gallery-input";
 export { PhotoGallery } from "./photo-gallery";

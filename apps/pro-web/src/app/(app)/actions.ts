@@ -109,6 +109,8 @@ export async function createStaffBooking(
     collaborator_id: formData.get("collaborator_id"),
     scheduled_at: formData.get("scheduled_at"),
     notes: formData.get("notes") || undefined,
+    pickup: formData.get("pickup") === "on",
+    dropoff: formData.get("dropoff") === "on",
   });
   if (!parsed.success) {
     return {
@@ -140,6 +142,9 @@ export async function createStaffBooking(
     .select("id, collaborator_schedule(weekday, start_time, end_time)")
     .eq("id", parsed.data.collaborator_id)
     .eq("tenant_id", pet.tenant_id)
+    // O entregador (0062) é colaborador, mas não atende: recusar aqui fecha o
+    // caminho de quem adulterar o campo no formulário.
+    .eq("access_role", "COLLABORATOR")
     .maybeSingle();
   if (!collaborator) return { ok: false, error: "Profissional não encontrado" };
 
@@ -173,6 +178,11 @@ export async function createStaffBooking(
       scheduled_at: parsed.data.scheduled_at,
       notes: parsed.data.notes ?? null,
       request_group_id: requestGroupId,
+      // Leva-e-traz é do PEDIDO, não de cada serviço: banho e tosa no mesmo
+      // horário são duas linhas irmãs, e marcar as duas geraria duas viagens
+      // ao mesmo endereço. Fica só na primeira, como os adicionais (0056).
+      pickup: index === 0 ? (parsed.data.pickup ?? false) : false,
+      dropoff: index === 0 ? (parsed.data.dropoff ?? false) : false,
     })),
   );
   if (error) {

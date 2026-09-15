@@ -5,14 +5,26 @@ import type { Database } from "@mylivepet/types/database";
 type CookieItem = { name: string; value: string; options?: CookieOptions };
 
 /**
- * Onde o colaborador entra e as únicas rotas que ele pode abrir. A raiz é
- * comparada por igualdade, e não por prefixo: "/" casaria com tudo.
+ * Onde cada papel de campo entra e as únicas rotas que ele pode abrir. A raiz
+ * é comparada por igualdade, e não por prefixo: "/" casaria com tudo.
+ *
+ * Um mapa, e não duas constantes soltas: quando a 0062 acrescentou o
+ * entregador ficou claro que "o papel restrito" nunca foi um só. Papel que não
+ * está aqui é papel de gestão, e abre o painel inteiro.
  */
-const COLLABORATOR_HOME = "/";
-const COLLABORATOR_ROUTES = ["/atendimentos", "/pets"];
+const FIELD_ACCESS: Record<string, { home: string; routes: string[] }> = {
+  COLLABORATOR: { home: "/", routes: ["/atendimentos", "/pets"] },
+  // O entregador só tem a rota do dia. As duas rotas de máquina são as
+  // chamadas que o mapa dele faz (endereço → coordenada, e o traçado): sem
+  // elas na lista, o fetch do próprio painel seria redirecionado para "/".
+  DELIVERY: { home: "/", routes: ["/rota", "/api/geocode", "/api/rota"] },
+};
 
-function isCollaboratorRoute(pathname: string): boolean {
-  return pathname === "/" || COLLABORATOR_ROUTES.some((r) => pathname.startsWith(r));
+function canOpen(access: { home: string; routes: string[] }, pathname: string): boolean {
+  return (
+    pathname === access.home ||
+    access.routes.some((r) => pathname === r || pathname.startsWith(r + "/"))
+  );
 }
 
 /** Atualiza a sessão (refresh de token) e protege rotas autenticadas. */
@@ -98,19 +110,20 @@ export async function updateSession(request: NextRequest) {
       return response;
     }
 
-    const isCollaborator = membership.role === "COLLABORATOR";
+    const access = FIELD_ACCESS[membership.role];
 
     if (isPublicRoute) {
       const url = request.nextUrl.clone();
-      url.pathname = isCollaborator ? COLLABORATOR_HOME : "/";
+      url.pathname = access?.home ?? "/";
       return NextResponse.redirect(url);
     }
 
-    // O colaborador só enxerga a própria agenda e os pets que atende. A RLS já
-    // barra o resto no banco; isto evita que ele caia numa tela de gestão vazia.
-    if (isCollaborator && !isCollaboratorRoute(pathname)) {
+    // Quem é de campo enxerga só o próprio trabalho: o colaborador a agenda e
+    // os pets que atende, o entregador a rota do dia. A RLS já barra o resto
+    // no banco; isto evita que ele caia numa tela de gestão vazia.
+    if (access && !canOpen(access, pathname)) {
       const url = request.nextUrl.clone();
-      url.pathname = COLLABORATOR_HOME;
+      url.pathname = access.home;
       url.search = "";
       return NextResponse.redirect(url);
     }

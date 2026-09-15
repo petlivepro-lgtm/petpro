@@ -1,22 +1,65 @@
 // Enums espelhando os tipos do Postgres (supabase/migrations/0001_init.sql).
 // COLLABORATOR (0030) é o profissional que atende: enxerga só a própria
 // agenda e os pets que atende, nunca a gestão do petshop.
+// DELIVERY (0061) é quem busca e devolve o pet na casa do tutor: enxerga a
+// rota do dia e os endereços dela, e nada mais.
 export const STAFF_ROLES = [
   "OWNER",
   "MANAGER",
   "ATTENDANT",
   "VIEWER",
   "COLLABORATOR",
+  "DELIVERY",
 ] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
-/** Papéis com acesso ao painel de gestão (tudo menos o colaborador). */
+/** Papéis com acesso ao painel de gestão (nem colaborador nem entregador). */
 export const MANAGEMENT_ROLES = [
   "OWNER",
   "MANAGER",
   "ATTENDANT",
   "VIEWER",
 ] as const satisfies readonly StaffRole[];
+
+/**
+ * Papéis de campo: quem executa o trabalho e entra num painel próprio, sem
+ * nenhuma tela de gestão. É o espelho em TypeScript da exclusão feita por
+ * is_staff() no banco (0062) — os dois precisam concordar sempre.
+ */
+export const FIELD_ROLES = [
+  "COLLABORATOR",
+  "DELIVERY",
+] as const satisfies readonly StaffRole[];
+
+export function isFieldRole(role: StaffRole): boolean {
+  return (FIELD_ROLES as readonly StaffRole[]).includes(role);
+}
+
+/**
+ * Cargo de acesso que um colaborador pode receber (collaborator.access_role).
+ * Decide qual painel ele abre — diferente de role_title, que é o cargo escrito
+ * na ficha e é texto livre.
+ */
+export const COLLABORATOR_ACCESS_ROLES = FIELD_ROLES;
+export type CollaboratorAccessRole = (typeof FIELD_ROLES)[number];
+
+export const COLLABORATOR_ACCESS_ROLE_LABEL: Record<
+  CollaboratorAccessRole,
+  string
+> = {
+  COLLABORATOR: "Profissional (atende)",
+  DELIVERY: "Entregador (leva e traz)",
+};
+
+/**
+ * collaborator.access_role é da coluna `staff_role`, que aceita os seis papéis,
+ * mas o check da 0062 só deixa entrar os dois de campo. Esta função é a ponte
+ * entre o tipo largo que vem do banco e o estreito que as telas usam — e o
+ * fallback cobre a linha antiga, anterior à coluna existir.
+ */
+export function asAccessRole(role: StaffRole | null | undefined): CollaboratorAccessRole {
+  return role === "DELIVERY" ? "DELIVERY" : "COLLABORATOR";
+}
 
 /** Papéis que podem escrever na gestão — VIEWER lê, COLLABORATOR nem vê. */
 export const MUTATING_ROLES = [
@@ -35,6 +78,7 @@ export const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
   ATTENDANT: "Atendente",
   VIEWER: "Visualização",
   COLLABORATOR: "Colaborador",
+  DELIVERY: "Entregador",
 };
 
 export const APPOINTMENT_ORIGINS = ["STAFF", "TUTOR"] as const;
@@ -506,4 +550,56 @@ export function clubinhoCycleLabel(
   return cycleDays
     ? `Personalizado · ${cycleDays} dia${cycleDays > 1 ? "s" : ""}`
     : "Personalizado";
+}
+
+// --- Leva e traz (supabase/migrations/0062_delivery_route.sql) ---
+
+export const DELIVERY_ROUTE_STATUSES = [
+  "PLANNED",
+  "IN_PROGRESS",
+  "DONE",
+  "CANCELLED",
+] as const;
+export type DeliveryRouteStatus = (typeof DELIVERY_ROUTE_STATUSES)[number];
+
+export const DELIVERY_ROUTE_STATUS_LABEL: Record<DeliveryRouteStatus, string> =
+  {
+    PLANNED: "Planejada",
+    IN_PROGRESS: "Em rota",
+    DONE: "Concluída",
+    CANCELLED: "Cancelada",
+  };
+
+/** PICKUP é a ida até a casa do tutor; DROPOFF é a volta. */
+export const DELIVERY_STOP_KINDS = ["PICKUP", "DROPOFF"] as const;
+export type DeliveryStopKind = (typeof DELIVERY_STOP_KINDS)[number];
+
+export const DELIVERY_STOP_KIND_LABEL: Record<DeliveryStopKind, string> = {
+  PICKUP: "Buscar",
+  DROPOFF: "Devolver",
+};
+
+export const DELIVERY_STOP_STATUSES = [
+  "PENDING",
+  "EN_ROUTE",
+  "DONE",
+  "FAILED",
+] as const;
+export type DeliveryStopStatus = (typeof DELIVERY_STOP_STATUSES)[number];
+
+export const DELIVERY_STOP_STATUS_LABEL: Record<DeliveryStopStatus, string> = {
+  PENDING: "Aguardando",
+  EN_ROUTE: "A caminho",
+  DONE: "Concluída",
+  FAILED: "Não realizada",
+};
+
+/** Paradas que ainda vão acontecer — o que o entregador tem pela frente. */
+export const OPEN_STOP_STATUSES = [
+  "PENDING",
+  "EN_ROUTE",
+] as const satisfies readonly DeliveryStopStatus[];
+
+export function isStopOpen(status: DeliveryStopStatus): boolean {
+  return (OPEN_STOP_STATUSES as readonly DeliveryStopStatus[]).includes(status);
 }

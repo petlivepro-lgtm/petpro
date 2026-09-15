@@ -11,16 +11,19 @@ import {
   Label,
   Select,
   Textarea,
+  AddressFields,
 } from "@mylivepet/ui";
 import {
   PET_SIZES,
   PET_SIZE_LABEL,
   SPECIES_OPTIONS,
+  type AddressParts,
 } from "@mylivepet/types";
 import { updatePet, type FormState } from "@/app/(app)/pets/[petId]/actions";
 
 export function EditPetDialog({
   pet,
+  tutorAddress,
 }: {
   pet: {
     id: string;
@@ -31,7 +34,13 @@ export function EditPetDialog({
     size: string | null;
     birth_date: string | null;
     notes: string | null;
-  };
+  } & AddressParts;
+  /**
+   * Endereço do tutor, para a opção de herança. Sempre existe: o botão de
+   * editar só aparece para quem pode mutar, e o colaborador — o único que não
+   * lê a tabela `tutor` — não pode.
+   */
+  tutorAddress: AddressParts;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -136,6 +145,13 @@ export function EditPetDialog({
               defaultValue={pet.birth_date}
             />
           </div>
+
+          <AddressFields
+            idPrefix="edit-pet"
+            defaultValues={pet}
+            tutorAddress={tutorAddress}
+            title="Endereço do pet"
+          />
 
           <div>
             <Label htmlFor="edit-pet-notes">Observações</Label>

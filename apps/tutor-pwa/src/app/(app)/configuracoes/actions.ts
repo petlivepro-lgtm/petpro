@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
-import { tutorInput } from "@mylivepet/types";
+import { addressColumns, addressFromForm, tutorInput } from "@mylivepet/types";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -29,7 +29,7 @@ export async function updateTutorProfile(
     full_name: str(formData.get("full_name")),
     email: str(formData.get("email")) ?? "",
     phone: str(formData.get("phone")),
-    notes: str(formData.get("notes")),
+    ...addressFromForm(formData),
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
@@ -62,7 +62,9 @@ export async function updateTutorProfile(
       full_name: parsed.data.full_name,
       email: parsed.data.email || null,
       phone: parsed.data.phone ?? null,
-      notes: parsed.data.notes ?? null,
+      // Campo apagado precisa virar null no banco: addressColumns cuida disso,
+      // e o trigger da 0062 zera a coordenada quando o endereço muda de fato.
+      ...addressColumns(parsed.data),
     })
     .eq("id", ctx.tutorId);
   if (error) return { ok: false, error: error.message };

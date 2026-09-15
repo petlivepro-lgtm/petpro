@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { AgendaView } from "@/components/agenda-view";
+import { LevaETrazDoDia } from "@/components/leva-e-traz-do-dia";
 import { fetchAtendimentos, dayKey } from "@/lib/atendimentos";
 import {
   agendaRange,
@@ -70,6 +71,9 @@ export default async function AtendimentosPage({
       .from("collaborator")
       .select("id, full_name, role_title")
       .eq("active", true)
+      // Só quem atende ganha coluna na grade — o entregador tem o painel de
+      // rota dele e nunca ocupa horário de atendimento.
+      .eq("access_role", "COLLABORATOR")
       .order("full_name"),
     // Expediente dos profissionais: é ele que define as faixas de horário da
     // grade (e o buraco do almoço, quando ninguém trabalha) e quem ganha coluna
@@ -122,6 +126,11 @@ export default async function AtendimentosPage({
         bookingAddons={bookingOptions.addons}
         bookingCollaborators={bookingOptions.collaborators}
       />
+
+      {/* O balcão precisa saber quem já saiu para buscar qual pet — é o que
+          responde o tutor que liga perguntando. O colaborador que atende não
+          tem nada a ver com a rota, e a RLS nem devolveria as paradas a ele. */}
+      {!isCollaborator && <LevaETrazDoDia dia={isCalendar ? date : undefined} />}
     </div>
   );
 }

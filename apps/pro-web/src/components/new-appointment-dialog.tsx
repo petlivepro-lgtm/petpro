@@ -19,6 +19,7 @@ import {
   formatBRL,
   hasSizePrices,
   petSizeLabel,
+  hasAddress,
   priceForPetSize,
   PET_SIZES,
   PET_SIZE_LABEL,
@@ -150,6 +151,19 @@ export function NewAppointmentDialog({
   const petSize =
     savedSizes[currentPetId] ??
     (fixedPet ? fixedPet.size : (pets.find((p) => p.id === petId)?.size ?? null));
+
+  // Leva e traz (0062) precisa de um endereço para ir. A regra de qual
+  // endereço vale é a da 0059: o do pet quando ele tem o seu, senão o do
+  // tutor. Com fixedPet não temos as colunas aqui (o diálogo veio da ficha do
+  // pet, com o mínimo) — aí os campos aparecem e quem avisa de endereço
+  // faltando é a própria rota, que já sabe mostrar isso.
+  const petSelecionado = pets.find((p) => p.id === petId);
+  const semEnderecoConhecido =
+    !fixedPet &&
+    tutorId !== "" &&
+    petId !== "" &&
+    !hasAddress(petSelecionado ?? null) &&
+    !hasAddress(tutor ?? null);
 
   const pricedServices = useMemo<ServiceOption[]>(
     () => services.map((s) => ({ ...s, price_cents: priceForPetSize(s, petSize) })),
@@ -598,6 +612,26 @@ export function NewAppointmentDialog({
             }}
           />
 
+          <div className="rounded-xl border border-graphite/10 p-3">
+            <p className="mb-2 text-sm font-medium text-graphite">Leva e traz</p>
+            <div className="space-y-2">
+              <Checkbox name="pickup" label="Buscar o pet em casa" />
+              <Checkbox name="dropoff" label="Levar o pet de volta depois" />
+            </div>
+            {semEnderecoConhecido ? (
+              <p className="mt-2 text-xs text-danger">
+                Este cadastro ainda não tem endereço. Preencha o endereço do
+                tutor (ou o do pet) antes, senão o entregador recebe a parada
+                sem saber para onde ir.
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-gray-neutral">
+                Entra na rota do entregador no dia do atendimento, usando o
+                endereço do cadastro.
+              </p>
+            )}
+          </div>
+
           <div>
             <Label htmlFor="booking-notes">Observações (opcional)</Label>
             <Textarea
@@ -635,7 +669,15 @@ export function NewAppointmentDialog({
           open={quickTutorOpen}
           onOpenChange={setQuickTutorOpen}
           onCreated={(created) => {
-            setNewTutors((prev) => [...prev, created]);
+            // O diálogo rápido devolve só o essencial. O endereço fica null
+            // aqui de propósito: quem acabou de cadastrar o cliente no balcão
+            // ainda não digitou o CEP, e o aviso de "sem endereço" nos campos
+            // de leva-e-traz é justamente o que vai lembrá-lo disso.
+            setNewTutors((prev) => [
+              ...prev,
+              { ...created, cep: null, street: null, city: null,
+                pet: created.pet.map((p) => ({ ...p, cep: null, street: null, city: null })) },
+            ]);
             setTutorId(created.id);
             setPetId(created.pet[0]?.id ?? "");
           }}

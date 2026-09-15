@@ -1,6 +1,8 @@
 import { z } from "zod";
 import {
   APPOINTMENT_STATUSES,
+  COLLABORATOR_ACCESS_ROLES,
+  DELIVERY_STOP_STATUSES,
   FEEDBACK_FIELD_TYPES,
   FINANCE_ENTRY_TYPES,
   PAYMENT_METHODS,
@@ -13,7 +15,35 @@ import {
 
 // DTOs de validação compartilhados entre os apps (formulários, server actions).
 
+/**
+ * Endereço (migração 0059), compartilhado por tutor e pet. Todo campo é
+ * opcional: endereço incompleto é melhor que endereço nenhum, e no pet o
+ * conjunto vazio tem significado próprio — ele mora com o tutor.
+ *
+ * CEP e UF são normalizados aqui do mesmo jeito que o trigger
+ * normalize_address_fields normaliza no banco; os checks lá recusam o resto.
+ */
+export const addressInput = z.object({
+  cep: z
+    .string()
+    .optional()
+    .transform((value) => value?.replace(/\D/g, "") || undefined)
+    .refine((value) => !value || value.length === 8, "CEP deve ter 8 dígitos"),
+  street: z.string().optional(),
+  street_number: z.string().optional(),
+  complement: z.string().optional(),
+  district: z.string().optional(),
+  city: z.string().optional(),
+  state: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim().toUpperCase() || undefined)
+    .refine((value) => !value || /^[A-Z]{2}$/.test(value), "UF deve ter 2 letras"),
+});
+export type AddressInput = z.infer<typeof addressInput>;
+
 export const tutorInput = z.object({
+  ...addressInput.shape,
   full_name: z.string().min(2, "Informe o nome"),
   email: z.string().email("E-mail inválido").optional().or(z.literal("")),
   phone: z.string().optional(),
@@ -25,9 +55,11 @@ export const tutorInput = z.object({
       (value) => !value || value.length === 11,
       "CPF deve ter 11 dígitos",
     ),
-  notes: z.string().optional(),
-  // O Clubinho saiu daqui: virou assinatura por pet (0047) e `tutor.clubinho`
-  // passou a ser um cache derivado que só o banco escreve.
+  // Sem `notes`: a observação é do pet (0060) — instrução de banho e tosa
+  // não é dado do cliente, e no tutor ela ainda era editável pelo próprio
+  // cliente no app. O Clubinho saiu daqui antes, pelo mesmo motivo de lugar
+  // errado: virou assinatura por pet (0047) e `tutor.clubinho` passou a ser
+  // um cache derivado que só o banco escreve.
 });
 export type TutorInput = z.infer<typeof tutorInput>;
 
@@ -58,6 +90,8 @@ export const petBirthDateInput = z
   );
 
 export const petInput = z.object({
+  // Endereço próprio do pet: vazio = mora com o tutor (ver 0059).
+  ...addressInput.shape,
   tutor_id: z.string().uuid(),
   name: z.string().min(1, "Informe o nome do pet"),
   species: z.string().optional(),
@@ -91,6 +125,11 @@ export const bookingRequest = z.object({
   collaborator_id: z.string().uuid("Escolha um profissional"),
   scheduled_at: z.string().min(1, "Escolha data e horário"),
   notes: z.string().optional(),
+  // Leva e traz (0062): buscar em casa antes, devolver depois. São dois
+  // campos porque é comum pedir só a volta — o tutor traz o pet de manhã a
+  // caminho do trabalho e pede a entrega à noite.
+  pickup: z.boolean().optional(),
+  dropoff: z.boolean().optional(),
 });
 export type BookingRequest = z.infer<typeof bookingRequest>;
 
@@ -116,6 +155,52 @@ export const collaboratorInput = z.object({
   schedules: z.array(collaboratorScheduleInput),
 });
 export type CollaboratorInput = z.infer<typeof collaboratorInput>;
+
+// --- Leva e traz (0062) ---
+
+/**
+ * Cargo de acesso escolhido no convite. Fica separado de collaboratorInput
+ * porque é o formulário de ACESSO que o define (quem tem login tem painel), e
+ * não o cadastro do profissional — um colaborador sem convite não tem painel
+ * nenhum para escolher.
+ */
+export const collaboratorAccessInput = z.object({
+  email: z.string().email("E-mail inválido"),
+  access_role: z.enum(COLLABORATOR_ACCESS_ROLES),
+});
+export type CollaboratorAccessInput = z.infer<typeof collaboratorAccessInput>;
+
+/**
+ * Mudança de status de uma parada pelo entregador. FAILED exige motivo: sem
+ * ele o petshop fica sem saber se o pet não foi buscado porque o portão estava
+ * fechado ou porque o tutor desistiu.
+ */
+export const deliveryStopStatusInput = z
+  .object({
+    stop_id: z.string().uuid(),
+    status: z.enum(DELIVERY_STOP_STATUSES),
+    fail_reason: z.string().optional(),
+  })
+  .refine((s) => s.status !== "FAILED" || (s.fail_reason ?? "").trim() !== "", {
+    message: "Diga o que impediu a parada",
+    path: ["fail_reason"],
+  });
+export type DeliveryStopStatusInput = z.infer<typeof deliveryStopStatusInput>;
+
+/**
+ * Posição do entregador vinda do GPS do aparelho. Os limites são os do próprio
+ * sistema de coordenadas: fora deles o dado está corrompido, e gravar seria
+ * pôr um pino no meio do oceano.
+ */
+export const routePositionInput = z.object({
+  route_id: z.string().uuid(),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+  accuracy_m: z.number().nonnegative().optional(),
+  heading: z.number().min(0).max(360).optional(),
+  speed_ms: z.number().nonnegative().optional(),
+});
+export type RoutePositionInput = z.infer<typeof routePositionInput>;
 
 // --- Formulário de avaliação configurável pelo petshop ---
 // O petshop monta, nas configurações, uma lista de campos. Cada campo tem um

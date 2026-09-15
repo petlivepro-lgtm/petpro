@@ -19,10 +19,23 @@ export default async function AgendarPage({
   const ctx = await getTutorContext(supabase);
   if (!ctx) return null;
 
+  // O endereço do tutor decide se o leva e traz pode ser oferecido: o pet sem
+  // endereço próprio mora com ele (0059).
+  const { data: meuEndereco } = await supabase
+    .from("tutor")
+    .select("cep, street, city")
+    .eq("id", ctx.tutorId)
+    .maybeSingle();
+
   const [{ data: pets }, { data: services }, { data: addons }, { data: collaborators }] =
     await Promise.all([
-    // O porte vem junto: é ele que define o preço do serviço (0058).
-    supabase.from("pet").select("id, name, size").eq("tutor_id", ctx.tutorId),
+    // O porte vem junto: é ele que define o preço do serviço (0058). O
+    // endereço também: é ele que diz se dá para oferecer leva e traz (0062),
+    // e no pet ele pode ser próprio ou herdado do tutor (0059).
+    supabase
+      .from("pet")
+      .select("id, name, size, cep, street, city")
+      .eq("tutor_id", ctx.tutorId),
     supabase
       .from("service_type")
       .select(
@@ -45,6 +58,9 @@ export default async function AgendarPage({
       .select("id, full_name, role_title, collaborator_schedule(weekday, start_time, end_time)")
       .eq("tenant_id", ctx.tenantId)
       .eq("active", true)
+      // O entregador (0062) não atende: o tutor não pode escolhê-lo para dar
+      // banho no pet.
+      .eq("access_role", "COLLABORATOR")
       .order("full_name"),
   ]);
 
@@ -68,6 +84,7 @@ export default async function AgendarPage({
         services={services ?? []}
         addons={addons ?? []}
         collaborators={collaborators ?? []}
+        tutorAddress={meuEndereco ?? null}
         tenantId={ctx.tenantId}
       />
     </div>

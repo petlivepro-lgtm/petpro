@@ -10,7 +10,9 @@ import {
   Input,
   Label,
   PhoneInput,
+  AddressFields,
 } from "@mylivepet/ui";
+import type { AddressParts } from "@mylivepet/types";
 import { updateTutor, type FormState } from "@/app/(app)/tutores/actions";
 
 export function EditTutorDialog({
@@ -22,8 +24,7 @@ export function EditTutorDialog({
     email: string | null;
     phone: string | null;
     cpf: string | null;
-    notes: string | null;
-  };
+  } & AddressParts;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -93,14 +94,7 @@ export function EditTutorDialog({
               defaultValue={tutor.cpf ?? ""}
             />
           </div>
-          <div>
-            <Label htmlFor={`edit-tutor-notes-${tutor.id}`}>Observações</Label>
-            <Input
-              id={`edit-tutor-notes-${tutor.id}`}
-              name="notes"
-              defaultValue={tutor.notes ?? ""}
-            />
-          </div>
+          <AddressFields idPrefix={`edit-tutor-${tutor.id}`} defaultValues={tutor} />
           {state.error &&<p className="text-sm text-danger">{state.error}</p>}
           <div className="flex justify-end gap-2">
             <Button

@@ -11,6 +11,8 @@ import {
   petInput,
   type PetInput,
   type PetSize,
+  addressColumns,
+  addressFromForm,
 } from "@mylivepet/types";
 
 export type FormState = {
@@ -50,7 +52,7 @@ export async function createTutor(
     email: str(formData.get("email")) ?? "",
     phone: str(formData.get("phone")),
     cpf: str(formData.get("cpf")),
-    notes: str(formData.get("notes")),
+    ...addressFromForm(formData),
   });
   if (!parsed.success) {
     return {
@@ -71,6 +73,9 @@ export async function createTutor(
       breed: str(formData.get("pet_breed")),
       size: str(formData.get("pet_size")),
       birth_date: str(formData.get("pet_birth_date")),
+      notes: str(formData.get("pet_notes")),
+      // Sem campos de endereço = "mesmo endereço do tutor" (ver 0059).
+      ...addressFromForm(formData, "pet_"),
     });
     if (!petParsed.success) {
       return {
@@ -93,7 +98,7 @@ export async function createTutor(
       email: parsed.data.email || null,
       phone: parsed.data.phone ?? null,
       cpf: parsed.data.cpf ?? null,
-      notes: parsed.data.notes ?? null,
+      ...addressColumns(parsed.data),
     })
     .select("id, full_name, phone, cpf")
     .single();
@@ -119,7 +124,9 @@ export async function createTutor(
         breed: petData.breed ?? null,
         size: petData.size,
         birth_date: petData.birth_date || null,
+        notes: petData.notes ?? null,
         photo_path: photoPath,
+        ...addressColumns(petData),
       })
       .select("id, name, size")
       .single();
@@ -151,7 +158,7 @@ export async function updateTutor(
     email: str(formData.get("email")) ?? "",
     phone: str(formData.get("phone")),
     cpf: str(formData.get("cpf")),
-    notes: str(formData.get("notes")),
+    ...addressFromForm(formData),
   });
   if (!parsed.success) {
     return {
@@ -173,7 +180,7 @@ export async function updateTutor(
       email: parsed.data.email || null,
       phone: parsed.data.phone ?? null,
       cpf: parsed.data.cpf ?? null,
-      notes: parsed.data.notes ?? null,
+      ...addressColumns(parsed.data),
     })
     .eq("id", tutorId)
     .eq("tenant_id", tenant.tenantId);
@@ -195,6 +202,9 @@ export async function createPet(
     breed: str(formData.get("breed")),
     size: str(formData.get("size")) as PetSize | undefined,
     birth_date: str(formData.get("birth_date")),
+    notes: str(formData.get("notes")),
+    // Sem campos de endereço = "mesmo endereço do tutor" (ver 0059).
+    ...addressFromForm(formData),
   });
   if (!parsed.success) {
     return {
@@ -222,7 +232,9 @@ export async function createPet(
     breed: parsed.data.breed ?? null,
     size: parsed.data.size ?? null,
     birth_date: parsed.data.birth_date || null,
+    notes: parsed.data.notes ?? null,
     photo_path: photoPath,
+    ...addressColumns(parsed.data),
   });
   if (error) return { ok: false, error: error.message };
 
