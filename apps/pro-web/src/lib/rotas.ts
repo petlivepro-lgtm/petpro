@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@mylivepet/types/database";
 import {
   formatAddressLine,
+  type AppointmentStatus,
   type DeliveryRouteStatus,
   type DeliveryStopKind,
   type DeliveryStopStatus,
@@ -42,6 +43,7 @@ type RawParada = {
   lat: number | null;
   lng: number | null;
   scheduled_at: string | null;
+  appointment_status: AppointmentStatus | null;
   pet_id: string | null;
   pet_name: string | null;
   photo_path: string | null;
@@ -68,8 +70,11 @@ export type ParadaRow = {
   tutorPhone: string | null;
   serviceName: string | null;
   scheduledAt: string | null;
+  appointmentStatus: AppointmentStatus | null;
   /** Endereço em uma linha, ou null quando não há nada preenchido. */
   endereco: string | null;
+  /** Bairro sozinho, para as listas compactas onde o endereço inteiro não cabe. */
+  bairro: string | null;
   lat: number | null;
   lng: number | null;
   /**
@@ -106,7 +111,9 @@ export function mapParadas(rows: RawParada[]): ParadaRow[] {
       tutorPhone: s.tutor_phone,
       serviceName: s.service_name,
       scheduledAt: s.scheduled_at,
+      appointmentStatus: s.appointment_status,
       endereco: formatAddressLine(s),
+      bairro: s.district,
       lat: s.lat === null ? null : Number(s.lat),
       lng: s.lng === null ? null : Number(s.lng),
       temPonto: s.lat !== null && s.lng !== null,
@@ -160,18 +167,94 @@ export async function fetchRota(
   };
 }
 
-/** Paradas que ainda vão acontecer, na ordem — o que ele tem pela frente. */
-export function paradasAbertas(paradas: ParadaRow[]): ParadaRow[] {
-  return paradas.filter((p) => p.status === "PENDING" || p.status === "EN_ROUTE");
+/**
+ * "14:30" de um timestamp, no fuso do petshop — mesmo motivo de `hojeKey`: o
+ * servidor roda em UTC e mostraria o horário três horas adiantado.
+ */
+export function horaSP(iso: string | null): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
 }
 
-/** A parada da vez: a que já está a caminho, senão a primeira pendente. */
+/**
+ * O horário que importa para cada parada, com uma legenda curta.
+ *
+ * O horário do ATENDIMENTO não serve sozinho: a busca acontece antes dele e a
+ * devolução depois. O que vale é o `eta_at` que build_delivery_route calcula
+ * (busca 1h antes; devolução no fim do atendimento, ou previsão de 2h).
+ */
+export function horarioDaParada(p: ParadaRow): { hora: string | null; legenda: string | null } {
+  const eta = horaSP(p.etaAt);
+  const atendimento = horaSP(p.scheduledAt);
+  if (p.kind === "PICKUP") {
+    return { hora: eta, legenda: atendimento ? `atend. ${atendimento}` : null };
+  }
+  if (p.appointmentStatus === "COMPLETED") return { hora: eta, legenda: "pronto" };
+  return { hora: eta ? `~${eta}` : null, legenda: "previsão" };
+}
+
+/** Parada que já saiu da fila, bem ou mal. */
+export function paradaEncerrada(p: ParadaRow): boolean {
+  return p.status === "DONE" || p.status === "FAILED";
+}
+
+/**
+ * A devolução só pode sair quando o atendimento terminou — antes disso o pet
+ * ainda está no banho. É o que separa "pronto para entregar" de "aguardando".
+ */
+export function devolucaoLiberada(p: ParadaRow): boolean {
+  return p.kind === "DROPOFF" && p.appointmentStatus === "COMPLETED";
+}
+
+/**
+ * As paradas do dia separadas pelo que o entregador pode fazer com cada uma.
+ * Não é uma fila: ele escolhe a ordem, e cada grupo tem o seu botão.
+ */
+export type ParadasAgrupadas = {
+  /** A caminho de uma casa — buscar ou devolver. */
+  aCaminho: ParadaRow[];
+  /** Pets no veículo, indo para o petshop. */
+  comVoce: ParadaRow[];
+  /** Buscas que ele ainda não começou. */
+  paraBuscar: ParadaRow[];
+  /** Devoluções com o atendimento pronto. */
+  prontasParaEntregar: ParadaRow[];
+  /** Devoluções com o pet ainda sendo atendido. */
+  aguardandoAtendimento: ParadaRow[];
+  encerradas: ParadaRow[];
+};
+
+export function agruparParadas(paradas: ParadaRow[]): ParadasAgrupadas {
+  const g: ParadasAgrupadas = {
+    aCaminho: [],
+    comVoce: [],
+    paraBuscar: [],
+    prontasParaEntregar: [],
+    aguardandoAtendimento: [],
+    encerradas: [],
+  };
+  for (const p of paradas) {
+    if (paradaEncerrada(p)) g.encerradas.push(p);
+    else if (p.status === "EN_ROUTE") g.aCaminho.push(p);
+    else if (p.status === "PICKED_UP") g.comVoce.push(p);
+    else if (p.kind === "PICKUP") g.paraBuscar.push(p);
+    else if (devolucaoLiberada(p)) g.prontasParaEntregar.push(p);
+    else g.aguardandoAtendimento.push(p);
+  }
+  return g;
+}
+
+/**
+ * A parada que importa agora, para os destaques (painel e mapa): a que já
+ * está a caminho; senão a próxima que dá para fazer, na ordem do dia.
+ */
 export function paradaAtual(paradas: ParadaRow[]): ParadaRow | null {
-  return (
-    paradas.find((p) => p.status === "EN_ROUTE") ??
-    paradas.find((p) => p.status === "PENDING") ??
-    null
-  );
+  const g = agruparParadas(paradas);
+  return g.aCaminho[0] ?? g.paraBuscar[0] ?? g.prontasParaEntregar[0] ?? null;
 }
 
 /**

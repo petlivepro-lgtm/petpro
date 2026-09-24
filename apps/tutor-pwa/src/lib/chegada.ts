@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@mylivepet/types";
-import type { DeliveryStopKind, DeliveryStopStatus } from "@mylivepet/types";
+import type { DeliveryStopKind, DeliveryStopStatus, DeliveryVehicle } from "@mylivepet/types";
 
 /**
  * "Alguém está a caminho da minha casa?" — o lado do tutor do leva-e-traz
@@ -43,7 +43,14 @@ export type Chegada = {
   destino: { lat: number; lng: number } | null;
 };
 
-export type PosicaoEntregador = { lat: number; lng: number; atualizadoEm: string };
+export type PosicaoEntregador = {
+  lat: number;
+  lng: number;
+  atualizadoEm: string;
+  heading: number | null;
+  /** Moto, bicicleta ou carro — o mesmo ícone que o entregador vê no mapa dele. */
+  veiculo: DeliveryVehicle | null;
+};
 
 export function mapChegadas(rows: RawChegada[]): Chegada[] {
   return rows.map((s) => ({
@@ -100,7 +107,7 @@ export async function fetchPosicao(
 ): Promise<PosicaoEntregador | null> {
   const { data } = await supabase
     .from("delivery_position")
-    .select("lat, lng, updated_at")
+    .select("lat, lng, updated_at, heading, vehicle")
     .eq("route_id", routeId)
     .maybeSingle();
 
@@ -109,6 +116,8 @@ export async function fetchPosicao(
     lat: Number(data.lat),
     lng: Number(data.lng),
     atualizadoEm: data.updated_at,
+    heading: data.heading === null ? null : Number(data.heading),
+    veiculo: data.vehicle,
   };
 }
 

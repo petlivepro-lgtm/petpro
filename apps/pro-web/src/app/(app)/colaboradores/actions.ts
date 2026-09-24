@@ -6,9 +6,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import {
   COLLABORATOR_ACCESS_ROLES,
+  DELIVERY_VEHICLES,
   collaboratorInput,
   type CollaboratorAccessRole,
   type CollaboratorScheduleInput,
+  type DeliveryVehicle,
 } from "@mylivepet/types";
 
 export type FormState = { ok: boolean; error?: string };
@@ -25,6 +27,14 @@ function parseSchedules(v: FormDataEntryValue | null): unknown {
   } catch {
     return [];
   }
+}
+
+/** Veículo do entregador (0067), ou undefined se o formulário não mandou um válido. */
+function vehicle(v: FormDataEntryValue | null): DeliveryVehicle | undefined {
+  const s = str(v);
+  return s && (DELIVERY_VEHICLES as readonly string[]).includes(s)
+    ? (s as DeliveryVehicle)
+    : undefined;
 }
 
 function parse(formData: FormData) {
@@ -174,11 +184,13 @@ export async function setCollaboratorAccess(
     };
   }
 
+  const veiculo = vehicle(formData.get("vehicle"));
   const { error } = await supabase
     .from("collaborator")
     .update({
       access_email: email,
       access_role: accessRole as CollaboratorAccessRole,
+      ...(accessRole === "DELIVERY" && veiculo ? { vehicle: veiculo } : {}),
     })
     .eq("id", id);
   if (error) {
@@ -188,6 +200,23 @@ export async function setCollaboratorAccess(
     }
     return { ok: false, error: error.message };
   }
+
+  revalidatePath("/colaboradores");
+  return { ok: true };
+}
+
+/** Troca o veículo do entregador — o ícone dele no mapa (0067). */
+export async function setCollaboratorVehicle(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const id = str(formData.get("id"));
+  const veiculo = vehicle(formData.get("vehicle"));
+  if (!id || !veiculo) return { ok: false, error: "Escolha o veículo" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("collaborator").update({ vehicle: veiculo }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
 
   revalidatePath("/colaboradores");
   return { ok: true };

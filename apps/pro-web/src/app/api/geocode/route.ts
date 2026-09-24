@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasAddress, type AddressParts } from "@mylivepet/types";
+import { consultarNominatim as consultar } from "@/lib/nominatim";
 
 /**
  * Endereço → coordenada, para as paradas da rota (0062).
@@ -19,11 +20,7 @@ import { hasAddress, type AddressParts } from "@mylivepet/types";
  * endereço escrito e o botão do Waze por busca textual.
  */
 
-const NOMINATIM = "https://nominatim.openstreetmap.org/search";
-
-// A política do Nominatim pede no máximo 1 requisição por segundo e um
-// User-Agent que identifique a aplicação e dê como falar com ela.
-const USER_AGENT = "PetLivePro/1.0 (leva-e-traz; contato@petlivepro.com.br)";
+// A política do Nominatim pede no máximo 1 requisição por segundo.
 const INTERVALO_MS = 1_100;
 
 /**
@@ -79,23 +76,6 @@ function consultasPara(p: AddressParts): URLSearchParams[] {
   tentativas.push({ ...base, street: rua });
 
   return tentativas.map((t) => new URLSearchParams(t));
-}
-
-async function consultar(params: URLSearchParams): Promise<{ lat: number; lng: number } | null> {
-  try {
-    const res = await fetch(`${NOMINATIM}?${params.toString()}`, {
-      headers: { "User-Agent": USER_AGENT, "Accept-Language": "pt-BR" },
-      signal: AbortSignal.timeout(8_000),
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { lat?: string; lon?: string }[];
-    const primeiro = json?.[0];
-    if (!primeiro?.lat || !primeiro?.lon) return null;
-    return { lat: Number(primeiro.lat), lng: Number(primeiro.lon) };
-  } catch {
-    return null; // rede do petshop bloqueando, timeout, resposta estranha
-  }
 }
 
 const espera = () => new Promise((r) => setTimeout(r, INTERVALO_MS));

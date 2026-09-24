@@ -64,3 +64,11 @@ export {
   type NotificationItem,
 } from "./notifications";
 export { usePush, type PushState, type UsePushOptions, type SavePushResult } from "./use-push";
+export {
+  VEHICLE_MARKER_SIZE,
+  animarMarcador,
+  aparaTrajeto,
+  duracaoAdaptativa,
+  shopMarkerHtml,
+  vehicleMarkerHtml,
+} from "./map-markers";

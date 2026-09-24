@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { EntregadorDashboard } from "@/components/entregador-dashboard";
+import { EntregadorRota } from "@/components/entregador-rota";
+import { carregarDiaDoEntregador, hojePorExtenso } from "@/lib/entregador-dia";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 
@@ -8,8 +9,9 @@ import { getActiveTenant } from "@/lib/tenant";
 export const dynamic = "force-dynamic";
 
 /**
- * /rota é o mesmo painel que o entregador vê na raiz — existe como endereço
- * próprio para o item de menu e para o href das notificações de rota (0063).
+ * /rota é a tela de trabalho do entregador: mapa, parada da vez e o que vem
+ * depois. O resumo do dia fica no painel da raiz. É também o href das
+ * notificações de rota (0063).
  */
 export default async function RotaPage() {
   const supabase = await createClient();
@@ -17,5 +19,15 @@ export default async function RotaPage() {
   if (!tenant) redirect("/login");
   if (tenant.role !== "DELIVERY") redirect("/");
 
-  return <EntregadorDashboard tenant={tenant} />;
+  const { me, rota, dia, petshop } = await carregarDiaDoEntregador(supabase);
+
+  return (
+    <EntregadorRota
+      rota={rota}
+      dia={dia}
+      subtitulo={hojePorExtenso()}
+      petshop={petshop}
+      veiculo={me?.vehicle ?? null}
+    />
+  );
 }

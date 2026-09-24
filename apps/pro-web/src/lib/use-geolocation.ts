@@ -40,7 +40,9 @@ export function useGeolocation(
   onPosicaoRef.current = onPosicao;
 
   const minMs = opcoes?.minMs ?? 15_000;
-  const minMetros = opcoes?.minMetros ?? 30;
+  // 15m: o bastante para o mapa do tutor andar quase contínuo (uma posição a
+  // cada 1–4s de moto) sem gravar a cada leitura parada no semáforo.
+  const minMetros = opcoes?.minMetros ?? 15;
 
   useEffect(() => {
     if (!ativo) {

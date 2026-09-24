@@ -22,7 +22,7 @@ export default async function ColaboradoresPage({
     supabase
       .from("collaborator")
       .select(
-        "id, full_name, role_title, active, access_email, access_role, profile_id, collaborator_schedule(id, weekday, start_time, end_time)",
+        "id, full_name, role_title, active, access_email, access_role, vehicle, profile_id, collaborator_schedule(id, weekday, start_time, end_time)",
       )
       .order("full_name"),
     getActiveTenant(supabase),
@@ -117,6 +117,7 @@ export default async function ColaboradoresPage({
                           access_email: c.access_email,
                           access_role: asAccessRole(c.access_role),
                           has_login: c.profile_id !== null,
+                          vehicle: c.vehicle,
                         }}
                       />
                     )}

@@ -7,11 +7,15 @@ import { Button, Dialog, Input, Label, Select } from "@mylivepet/ui";
 import {
   COLLABORATOR_ACCESS_ROLES,
   COLLABORATOR_ACCESS_ROLE_LABEL,
+  DELIVERY_VEHICLES,
+  DELIVERY_VEHICLE_LABEL,
   type CollaboratorAccessRole,
+  type DeliveryVehicle,
 } from "@mylivepet/types";
 import {
   revokeCollaboratorAccess,
   setCollaboratorAccess,
+  setCollaboratorVehicle,
   type FormState,
 } from "@/app/(app)/colaboradores/actions";
 
@@ -23,6 +27,8 @@ export type CollaboratorAccess = {
   access_role: CollaboratorAccessRole;
   /** Preenchido quando o colaborador já criou a senha e entrou pela primeira vez. */
   has_login: boolean;
+  /** Com o que o entregador anda — o ícone dele no mapa (0067). */
+  vehicle: DeliveryVehicle;
 };
 
 /** O que cada cargo enxerga — o texto que explica a escolha para quem convida. */
@@ -52,6 +58,17 @@ export function CollaboratorAccessDialog({
     revokeCollaboratorAccess,
     { ok: false },
   );
+  const [vehicleState, vehicleAction, vehiclePending] = useActionState<FormState, FormData>(
+    setCollaboratorVehicle,
+    { ok: false },
+  );
+  const [veiculo, setVeiculo] = useState<DeliveryVehicle>(collaborator.vehicle);
+
+  // Salvar o veículo não fecha o diálogo: é um ajuste dentro da tela de
+  // acesso, e fechar esconderia a confirmação de que deu certo.
+  useEffect(() => {
+    if (vehicleState.ok) router.refresh();
+  }, [vehicleState, router]);
 
   useEffect(() => {
     if (setState.ok || revokeState.ok) {
@@ -102,6 +119,42 @@ export function CollaboratorAccessDialog({
             </div>
 
             <p className="text-sm text-graphite">{O_QUE_VE[collaborator.access_role]}</p>
+
+            {collaborator.access_role === "DELIVERY" && (
+              <form action={vehicleAction} className="space-y-1.5">
+                <input type="hidden" name="id" value={collaborator.id} />
+                <Label htmlFor={`vehicle_${collaborator.id}`}>Veículo</Label>
+                <div className="flex gap-2">
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      id={`vehicle_${collaborator.id}`}
+                      name="vehicle"
+                      value={veiculo}
+                      onChange={(e) => setVeiculo(e.target.value as DeliveryVehicle)}
+                    >
+                      {DELIVERY_VEHICLES.map((v) => (
+                        <option key={v} value={v}>
+                          {DELIVERY_VEHICLE_LABEL[v]}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    disabled={vehiclePending || veiculo === collaborator.vehicle}
+                  >
+                    {vehiclePending ? "Salvando..." : "Salvar"}
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-neutral">
+                  É o ícone dele no mapa — o dele e o que o tutor acompanha.
+                </p>
+                {vehicleState.error && (
+                  <p className="text-sm text-danger">{vehicleState.error}</p>
+                )}
+              </form>
+            )}
 
             {(setState.error ?? revokeState.error) && (
               <p className="text-sm text-danger">{setState.error ?? revokeState.error}</p>
@@ -173,6 +226,26 @@ export function CollaboratorAccessDialog({
               </Select>
               <p className="mt-1.5 text-xs text-gray-neutral">{O_QUE_VE[cargo]}</p>
             </div>
+            {cargo === "DELIVERY" && (
+              <div>
+                <Label htmlFor={`vehicle_new_${collaborator.id}`}>Veículo</Label>
+                <Select
+                  id={`vehicle_new_${collaborator.id}`}
+                  name="vehicle"
+                  value={veiculo}
+                  onChange={(e) => setVeiculo(e.target.value as DeliveryVehicle)}
+                >
+                  {DELIVERY_VEHICLES.map((v) => (
+                    <option key={v} value={v}>
+                      {DELIVERY_VEHICLE_LABEL[v]}
+                    </option>
+                  ))}
+                </Select>
+                <p className="mt-1.5 text-xs text-gray-neutral">
+                  É o ícone dele no mapa de entregas.
+                </p>
+              </div>
+            )}
             {setState.error && <p className="text-sm text-danger">{setState.error}</p>}
             <div className="flex justify-end gap-2 pt-1">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>

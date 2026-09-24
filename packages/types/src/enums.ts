@@ -579,9 +579,15 @@ export const DELIVERY_STOP_KIND_LABEL: Record<DeliveryStopKind, string> = {
   DROPOFF: "Devolver",
 };
 
+/**
+ * PICKED_UP (0066) só existe na busca: o pet já está no veículo, a caminho do
+ * petshop. DONE da busca é "deixado no petshop"; DONE da devolução é
+ * "entregue em casa".
+ */
 export const DELIVERY_STOP_STATUSES = [
   "PENDING",
   "EN_ROUTE",
+  "PICKED_UP",
   "DONE",
   "FAILED",
 ] as const;
@@ -590,6 +596,7 @@ export type DeliveryStopStatus = (typeof DELIVERY_STOP_STATUSES)[number];
 export const DELIVERY_STOP_STATUS_LABEL: Record<DeliveryStopStatus, string> = {
   PENDING: "Aguardando",
   EN_ROUTE: "A caminho",
+  PICKED_UP: "Com o pet",
   DONE: "Concluída",
   FAILED: "Não realizada",
 };
@@ -598,8 +605,19 @@ export const DELIVERY_STOP_STATUS_LABEL: Record<DeliveryStopStatus, string> = {
 export const OPEN_STOP_STATUSES = [
   "PENDING",
   "EN_ROUTE",
+  "PICKED_UP",
 ] as const satisfies readonly DeliveryStopStatus[];
 
 export function isStopOpen(status: DeliveryStopStatus): boolean {
   return (OPEN_STOP_STATUSES as readonly DeliveryStopStatus[]).includes(status);
 }
+
+/** Com o que o entregador anda (0066) — decide o ícone dele no mapa. */
+export const DELIVERY_VEHICLES = ["MOTORCYCLE", "BICYCLE", "CAR"] as const;
+export type DeliveryVehicle = (typeof DELIVERY_VEHICLES)[number];
+
+export const DELIVERY_VEHICLE_LABEL: Record<DeliveryVehicle, string> = {
+  MOTORCYCLE: "Moto",
+  BICYCLE: "Bicicleta",
+  CAR: "Carro",
+};

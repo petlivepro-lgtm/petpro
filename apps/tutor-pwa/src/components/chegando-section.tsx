@@ -62,7 +62,11 @@ export function ChegandoSection({
   );
   const posicao = posicoes[0] ?? null;
 
-  const concluidasHoje = chegadas.filter((c) => c.status === "DONE");
+  // PICKED_UP entra junto: "foi buscado e está indo para o petshop" é notícia
+  // que o tutor quer ver mesmo sem ninguém mais a caminho da casa dele.
+  const concluidasHoje = chegadas.filter(
+    (c) => c.status === "DONE" || c.status === "PICKED_UP",
+  );
 
   if (!ativa) {
     return (
@@ -72,9 +76,11 @@ export function ChegandoSection({
             {concluidasHoje.map((c) => (
               <p key={c.id} className="flex items-center gap-2 text-sm text-graphite">
                 <PackageCheck className="h-4 w-4 text-success" />
-                {c.kind === "PICKUP"
-                  ? `${c.petName} foi buscado e está com o petshop.`
-                  : `${c.petName} já foi entregue em casa.`}
+                {c.kind === "DROPOFF"
+                  ? `${c.petName} já foi entregue em casa.`
+                  : c.status === "PICKED_UP"
+                    ? `${c.petName} foi buscado e está a caminho do petshop.`
+                    : `${c.petName} chegou ao petshop.`}
               </p>
             ))}
           </div>

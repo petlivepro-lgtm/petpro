@@ -3,6 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap, Marker, Polyline } from "leaflet";
 import "leaflet/dist/leaflet.css";
+import {
+  VEHICLE_MARKER_SIZE,
+  animarMarcador,
+  aparaTrajeto,
+  duracaoAdaptativa,
+  vehicleMarkerHtml,
+} from "@mylivepet/ui";
+import type { DeliveryVehicle } from "@mylivepet/types";
 import { distanciaEmMetros } from "@/lib/chegada";
 
 /**
@@ -32,7 +40,7 @@ export function MapaChegada({
   destino,
   className,
 }: {
-  entregador: Ponto | null;
+  entregador: (Ponto & { heading?: number | null; veiculo?: DeliveryVehicle | null }) | null;
   destino: Ponto | null;
   className?: string;
 }) {
@@ -42,6 +50,9 @@ export function MapaChegada({
   const entregadorRef = useRef<Marker | null>(null);
   const destinoRef = useRef<Marker | null>(null);
   const linhaRef = useRef<Polyline | null>(null);
+  /** O trajeto inteiro que veio do roteador — a linha visível é ele aparado. */
+  const trajetoRef = useRef<[number, number][] | null>(null);
+  const ultimaChegada = useRef<number | null>(null);
   const enquadrou = useRef(false);
 
   // Âncora do traçado: a posição chega pelo Realtime a cada poucos segundos, e
@@ -104,16 +115,32 @@ export function MapaChegada({
     }
 
     if (entregador) {
-      const icone = pino("#FF6A00", "🚚");
-      if (entregadorRef.current)
-        entregadorRef.current.setLatLng([entregador.lat, entregador.lng]);
-      else
+      // Mesmo ícone do mapa do entregador: moto, bicicleta ou carro.
+      const icone = L.divIcon({
+        className: "",
+        html: vehicleMarkerHtml(entregador.veiculo, entregador.heading),
+        iconSize: [VEHICLE_MARKER_SIZE, VEHICLE_MARKER_SIZE],
+        iconAnchor: [VEHICLE_MARKER_SIZE / 2, VEHICLE_MARKER_SIZE / 2],
+      });
+      if (entregadorRef.current) {
+        entregadorRef.current.setIcon(icone);
+        // A posição chega a cada ~15m andados — de 1s a 4s conforme a
+        // velocidade. Desliza o tempo que a última demorou, para o ícone não
+        // parar entre uma e outra; a linha encolhe atrás dele.
+        const duracao = duracaoAdaptativa(ultimaChegada, 1_000, 8_000);
+        animarMarcador(entregadorRef.current, entregador, duracao, (lat, lng) => {
+          if (trajetoRef.current && linhaRef.current) {
+            linhaRef.current.setLatLngs(aparaTrajeto(trajetoRef.current, lat, lng));
+          }
+        });
+      } else {
         entregadorRef.current = L.marker([entregador.lat, entregador.lng], {
           icon: icone,
           zIndexOffset: 1000,
         })
           .addTo(map)
           .bindPopup("Entregador do petshop");
+      }
     }
 
     // Enquadra uma vez só. Refazer isso a cada atualização puxaria o mapa de
@@ -139,6 +166,7 @@ export function MapaChegada({
     if (!ancora || !destino) {
       linhaRef.current?.remove();
       linhaRef.current = null;
+      trajetoRef.current = null;
       return;
     }
 
@@ -158,7 +186,9 @@ export function MapaChegada({
         if (!L || !map || cancelado) return;
 
         linhaRef.current?.remove();
-        linhaRef.current = L.polyline(linha, {
+        trajetoRef.current = linha;
+        const aqui = entregadorRef.current?.getLatLng();
+        linhaRef.current = L.polyline(aqui ? aparaTrajeto(linha, aqui.lat, aqui.lng) : linha, {
           color: "#FF6A00",
           weight: 5,
           opacity: 0.85,

@@ -37,6 +37,7 @@ type Linha = {
 const TOM: Record<DeliveryStopStatus, "success" | "warning" | "danger" | "neutral"> = {
   PENDING: "neutral",
   EN_ROUTE: "warning",
+  PICKED_UP: "warning",
   DONE: "success",
   FAILED: "danger",
 };

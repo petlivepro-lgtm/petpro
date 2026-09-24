@@ -1091,6 +1091,7 @@ export type Database = {
           profile_id: string | null
           role_title: string | null
           tenant_id: string
+          vehicle: Database["public"]["Enums"]["delivery_vehicle"]
         }
         Insert: {
           access_email?: string | null
@@ -1102,6 +1103,7 @@ export type Database = {
           profile_id?: string | null
           role_title?: string | null
           tenant_id: string
+          vehicle?: Database["public"]["Enums"]["delivery_vehicle"]
         }
         Update: {
           access_email?: string | null
@@ -1113,6 +1115,7 @@ export type Database = {
           profile_id?: string | null
           role_title?: string | null
           tenant_id?: string
+          vehicle?: Database["public"]["Enums"]["delivery_vehicle"]
         }
         Relationships: [
           {
@@ -1236,6 +1239,7 @@ export type Database = {
           speed_ms: number | null
           tenant_id: string
           updated_at: string
+          vehicle: Database["public"]["Enums"]["delivery_vehicle"] | null
         }
         Insert: {
           accuracy_m?: number | null
@@ -1247,6 +1251,7 @@ export type Database = {
           speed_ms?: number | null
           tenant_id: string
           updated_at?: string
+          vehicle?: Database["public"]["Enums"]["delivery_vehicle"] | null
         }
         Update: {
           accuracy_m?: number | null
@@ -1258,6 +1263,7 @@ export type Database = {
           speed_ms?: number | null
           tenant_id?: string
           updated_at?: string
+          vehicle?: Database["public"]["Enums"]["delivery_vehicle"] | null
         }
         Relationships: [
           {
@@ -3273,6 +3279,10 @@ export type Database = {
         Args: { _collaborator: string; _date: string }
         Returns: string
       }
+      build_delivery_route_internal: {
+        Args: { _collaborator: string; _date: string; _tenant: string }
+        Returns: string
+      }
       can_complete_appointment: {
         Args: { p_collaborator_id: string; p_tenant_id: string }
         Returns: boolean
@@ -3648,7 +3658,13 @@ export type Database = {
         | "EXPIRED"
       delivery_route_status: "PLANNED" | "IN_PROGRESS" | "DONE" | "CANCELLED"
       delivery_stop_kind: "PICKUP" | "DROPOFF"
-      delivery_stop_status: "PENDING" | "EN_ROUTE" | "DONE" | "FAILED"
+      delivery_stop_status:
+        | "PENDING"
+        | "EN_ROUTE"
+        | "PICKED_UP"
+        | "DONE"
+        | "FAILED"
+      delivery_vehicle: "MOTORCYCLE" | "BICYCLE" | "CAR"
       feedback_direction: "STAFF_TO_TUTOR" | "TUTOR_TO_PETSHOP"
       finance_entry_type: "INCOME" | "EXPENSE"
       finance_refund_kind: "PRODUCT_RETURN" | "SERVICE_REFUND"
@@ -3679,6 +3695,8 @@ export type Database = {
         | "DROPOFF_STARTED"
         | "DROPOFF_DONE"
         | "ROUTE_ASSIGNED"
+        | "PICKUP_ARRIVED"
+        | "DROPOFF_READY"
       payment_method:
         | "CASH"
         | "PIX"
@@ -3866,7 +3884,14 @@ export const Constants = {
       ],
       delivery_route_status: ["PLANNED", "IN_PROGRESS", "DONE", "CANCELLED"],
       delivery_stop_kind: ["PICKUP", "DROPOFF"],
-      delivery_stop_status: ["PENDING", "EN_ROUTE", "DONE", "FAILED"],
+      delivery_stop_status: [
+        "PENDING",
+        "EN_ROUTE",
+        "PICKED_UP",
+        "DONE",
+        "FAILED",
+      ],
+      delivery_vehicle: ["MOTORCYCLE", "BICYCLE", "CAR"],
       feedback_direction: ["STAFF_TO_TUTOR", "TUTOR_TO_PETSHOP"],
       finance_entry_type: ["INCOME", "EXPENSE"],
       finance_refund_kind: ["PRODUCT_RETURN", "SERVICE_REFUND"],
@@ -3898,6 +3923,8 @@ export const Constants = {
         "DROPOFF_STARTED",
         "DROPOFF_DONE",
         "ROUTE_ASSIGNED",
+        "PICKUP_ARRIVED",
+        "DROPOFF_READY",
       ],
       payment_method: [
         "CASH",
