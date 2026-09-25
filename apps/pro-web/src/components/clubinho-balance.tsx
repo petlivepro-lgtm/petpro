@@ -32,7 +32,7 @@ export function ClubinhoBalance({
     return (
       <p className={cn("text-sm text-warning", className)}>
         Ciclo vencido em {shortDate(subscription.period_end)} — o saldo volta na
-        próxima renovação.
+        próxima renovação (ou use renovar para abrir um ciclo a partir de hoje).
       </p>
     );
   }
@@ -92,6 +92,9 @@ export function ClubinhoBalance({
             : " · vencido")}
         {subscription.plan_rollover && " · o que sobrar acumula"}
         {!subscription.auto_renew && " · não renova sozinho"}
+        {subscription.current_period_end &&
+          subscription.period_start > subscription.current_period_end &&
+          ` · próximo ciclo já pago, começa em ${shortDate(subscription.period_start)}`}
       </p>
     </div>
   );

@@ -64,6 +64,7 @@ import {
   syncClubinho,
 } from "@/lib/clubinho";
 import { ClubinhoBalance } from "@/components/clubinho-balance";
+import { ClubinhoCard } from "@/components/clubinho-card";
 import { ClubinhoScheduleList } from "@/components/clubinho-schedule-list";
 import { ClubinhoScheduleDialog } from "@/components/clubinho-schedule-dialog";
 import { ClubinhoSubscriptionDialog } from "@/components/clubinho-subscription-dialog";
@@ -409,100 +410,103 @@ export default async function FichaPetPage({ params }: { params: Promise<{ petId
       </Card>
 
       {/* Clubinho: o saldo é do pet, então é aqui que ele mora */}
-      {showClubinho && (subscription || clubinhoPlans.length > 0) && (
-        <Card className="mb-6">
-          {subscription ? (
+      {showClubinho && subscription && (
+        <ClubinhoCard
+          header={
             <>
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-graphite/5 pb-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Crown className="h-4 w-4 shrink-0 text-petrol" />
-                    <p className="font-heading font-semibold text-graphite">
-                      {subscription.plan_name}
-                    </p>
-                    {subscription.status !== "ACTIVE" && (
-                      <StatusChip tone="warning">
-                        {CLUBINHO_STATUS_LABEL[subscription.status]}
-                      </StatusChip>
-                    )}
-                  </div>
-                  <p className="mt-0.5 text-sm text-gray-neutral">
-                    {formatBRL(subscription.price_cents)} ·{" "}
-                    {clubinhoCycleLabel(
-                      subscription.plan_cycle,
-                      subscription.plan_cycle_days,
-                    )}
-                  </p>
-                </div>
-                {canEdit && (
-                  <div className="flex shrink-0 items-center">
-                    <ClubinhoSubscriptionDialog
-                      subscription={subscription}
-                      plans={clubinhoPlans}
-                      terminals={clubinhoTerminals}
-                    />
-                    <ClubinhoStatusActions subscription={subscription} />
-                  </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Crown className="h-4 w-4 shrink-0 text-petrol" />
+                <p className="font-heading font-semibold text-graphite">
+                  {subscription.plan_name}
+                </p>
+                {subscription.status !== "ACTIVE" && (
+                  <StatusChip tone="warning">
+                    {CLUBINHO_STATUS_LABEL[subscription.status]}
+                  </StatusChip>
                 )}
               </div>
-              <ClubinhoBalance subscription={subscription} className="pt-3" />
-
-              {subscription.period_id && (
-                <ClubinhoUsageList
-                  usages={clubinhoUsages}
-                  petId={petId_}
-                  canManage={canEdit && subscription.status === "ACTIVE"}
-                  className="mt-3 border-t border-graphite/5 pt-3"
-                >
-                  <ClubinhoUsageDialog subscription={subscription} />
-                </ClubinhoUsageList>
-              )}
-
-              <ClubinhoScheduleList
-                schedules={clubinhoSchedules}
-                occurrences={clubinhoOccurrences}
-                petId={petId_}
-                canManage={canEdit && subscription.status === "ACTIVE"}
-                className="mt-3 border-t border-graphite/5 pt-3"
-              >
-                <ClubinhoScheduleDialog
-                  subscription={subscription}
-                  collaborators={bookingOptions.collaborators}
-                />
-              </ClubinhoScheduleList>
+              <p className="mt-0.5 text-sm text-gray-neutral">
+                {formatBRL(subscription.price_cents)} ·{" "}
+                {clubinhoCycleLabel(
+                  subscription.plan_cycle,
+                  subscription.plan_cycle_days,
+                )}
+              </p>
             </>
-          ) : (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <Crown className="h-5 w-5 shrink-0 text-petrol" />
-                <div>
-                  <p className="font-heading font-semibold text-graphite">
-                    Fora do Clubinho
-                  </p>
-                  <p className="text-sm text-gray-neutral">
-                    O pacote é por pet: assinar aqui não mexe nos outros pets do
-                    tutor.
-                  </p>
-                </div>
-              </div>
-              {canEdit && (
+          }
+          actions={
+            canEdit && (
+              <div className="flex items-center">
                 <ClubinhoSubscriptionDialog
+                  subscription={subscription}
                   plans={clubinhoPlans}
-                  pets={[
-                    {
-                      id: petId_,
-                      name: petName,
-                      tutor_name: tutor?.full_name ?? "",
-                    },
-                  ]}
-                  presetPetId={petId_}
                   terminals={clubinhoTerminals}
-                  trigger="cta"
-                  size="sm"
                 />
-              )}
-            </div>
+                <ClubinhoStatusActions subscription={subscription} />
+              </div>
+            )
+          }
+        >
+          <ClubinhoBalance subscription={subscription} className="pt-3" />
+
+          {subscription.period_id && (
+            <ClubinhoUsageList
+              usages={clubinhoUsages}
+              petId={petId_}
+              canManage={canEdit && subscription.status === "ACTIVE"}
+              className="mt-3 border-t border-graphite/5 pt-3"
+            >
+              <ClubinhoUsageDialog subscription={subscription} />
+            </ClubinhoUsageList>
           )}
+
+          <ClubinhoScheduleList
+            schedules={clubinhoSchedules}
+            occurrences={clubinhoOccurrences}
+            petId={petId_}
+            canManage={canEdit && subscription.status === "ACTIVE"}
+            className="mt-3 border-t border-graphite/5 pt-3"
+          >
+            <ClubinhoScheduleDialog
+              subscription={subscription}
+              collaborators={bookingOptions.collaborators}
+            />
+          </ClubinhoScheduleList>
+        </ClubinhoCard>
+      )}
+
+      {showClubinho && !subscription && clubinhoPlans.length > 0 && (
+        <Card className="mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Crown className="h-5 w-5 shrink-0 text-petrol" />
+              <div>
+                <p className="font-heading font-semibold text-graphite">
+                  Fora do Clubinho
+                </p>
+                <p className="text-sm text-gray-neutral">
+                  O pacote é por pet: assinar aqui não mexe nos outros pets do
+                  tutor.
+                </p>
+              </div>
+            </div>
+            {canEdit && (
+              <ClubinhoSubscriptionDialog
+                plans={clubinhoPlans}
+                pets={[
+                  {
+                    id: petId_,
+                    name: petName,
+                    tutor_name: tutor?.full_name ?? "",
+                  },
+                ]}
+                presetPetId={petId_}
+                terminals={clubinhoTerminals}
+                trigger="cta"
+                size="sm"
+              />
+            )}
+          </div>
         </Card>
       )}
 

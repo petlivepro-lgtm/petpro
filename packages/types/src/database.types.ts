@@ -3332,6 +3332,7 @@ export type Database = {
         Args: { p_credit: string; p_note?: string; p_used_at?: string }
         Returns: string
       }
+      clubinho_renew_subscription: { Args: { p_id: string }; Returns: string }
       clubinho_resume_subscription: {
         Args: { p_id: string }
         Returns: undefined

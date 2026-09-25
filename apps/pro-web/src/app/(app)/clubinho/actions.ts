@@ -277,6 +277,30 @@ export async function setClubinhoSubscriptionStatus(
 }
 
 /**
+ * Renova a assinatura na mão: antecipa o próximo ciclo se o atual ainda está
+ * valendo, ou recomeça hoje se já venceu. A RPC (0068) abre o ciclo, cria o
+ * saldo e lança a mensalidade com a data de hoje.
+ */
+export async function renewClubinhoSubscription(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const id = str(formData.get("id"));
+  if (!id) return { ok: false, error: "Assinatura inválida" };
+
+  const context = await clubinhoContext();
+  if ("error" in context) return { ok: false, error: context.error };
+
+  const { error } = await context.supabase.rpc("clubinho_renew_subscription", {
+    p_id: id,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidateClubinho(str(formData.get("pet_id")));
+  return { ok: true };
+}
+
+/**
  * Marca um serviço do pacote como já realizado, sem atendimento por trás.
  *
  * É o caso do pet que já era do Clubinho antes de entrar no sistema: a

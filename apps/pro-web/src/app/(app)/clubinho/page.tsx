@@ -29,6 +29,7 @@ import {
   syncClubinho,
 } from "@/lib/clubinho";
 import { ClubinhoBalance } from "@/components/clubinho-balance";
+import { ClubinhoCard } from "@/components/clubinho-card";
 import { ClubinhoScheduleList } from "@/components/clubinho-schedule-list";
 import { ClubinhoScheduleDialog } from "@/components/clubinho-schedule-dialog";
 import { ClubinhoUsageList } from "@/components/clubinho-usage-list";
@@ -230,36 +231,51 @@ export default async function ClubinhoPage() {
               action={newSubscription}
             />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid items-start gap-4 md:grid-cols-2">
               {subscriptions.map((sub) => (
-                <Card key={sub.id} className="flex flex-col">
-                  <div className="flex items-start gap-3 border-b border-graphite/5 pb-4">
-                    <Avatar
-                      name={sub.pet_name}
-                      src={sub.pet_photo_path}
-                      size="md"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link
-                          href={`/pets/${sub.pet_id}`}
-                          className="truncate font-heading font-semibold text-graphite hover:text-orange"
-                        >
-                          {sub.pet_name}
-                        </Link>
-                        {sub.status !== "ACTIVE" && (
-                          <StatusChip tone="warning">
-                            {CLUBINHO_STATUS_LABEL[sub.status]}
-                          </StatusChip>
-                        )}
+                <ClubinhoCard
+                  key={sub.id}
+                  className=""
+                  header={
+                    <>
+                      <div className="flex items-start gap-3">
+                        <Avatar
+                          name={sub.pet_name}
+                          src={sub.pet_photo_path}
+                          size="md"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Link
+                              href={`/pets/${sub.pet_id}`}
+                              className="truncate font-heading font-semibold text-graphite hover:text-orange"
+                            >
+                              {sub.pet_name}
+                            </Link>
+                            {sub.status !== "ACTIVE" && (
+                              <StatusChip tone="warning">
+                                {CLUBINHO_STATUS_LABEL[sub.status]}
+                              </StatusChip>
+                            )}
+                          </div>
+                          <p className="truncate text-sm text-gray-neutral">
+                            {sub.tutor_name}
+                          </p>
+                        </div>
                       </div>
-                      <p className="truncate text-sm text-gray-neutral">
-                        {sub.tutor_name}
+                      <p className="mt-3 flex flex-wrap items-center gap-x-1.5 text-sm">
+                        <Crown className="h-4 w-4 text-petrol" />
+                        <span className="text-graphite">{sub.plan_name}</span>
+                        <span className="text-gray-neutral">
+                          · {formatBRL(sub.price_cents)} ·{" "}
+                          {clubinhoCycleLabel(sub.plan_cycle, sub.plan_cycle_days)}
+                        </span>
                       </p>
-                    </div>
-
-                    {canManage && (
-                      <div className="flex shrink-0 items-center">
+                    </>
+                  }
+                  actions={
+                    canManage && (
+                      <div className="flex items-center">
                         <ClubinhoSubscriptionDialog
                           subscription={sub}
                           plans={plans}
@@ -267,24 +283,10 @@ export default async function ClubinhoPage() {
                         />
                         <ClubinhoStatusActions subscription={sub} />
                       </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-2 py-3">
-                    <span className="inline-flex items-center gap-1.5 text-sm text-graphite">
-                      <Crown className="h-4 w-4 text-petrol" />
-                      {sub.plan_name}
-                    </span>
-                    <span className="text-sm text-gray-neutral">
-                      {formatBRL(sub.price_cents)} ·{" "}
-                      {clubinhoCycleLabel(sub.plan_cycle, sub.plan_cycle_days)}
-                    </span>
-                  </div>
-
-                  <ClubinhoBalance
-                    subscription={sub}
-                    className="border-t border-graphite/5 pt-3"
-                  />
+                    )
+                  }
+                >
+                  <ClubinhoBalance subscription={sub} className="pt-3" />
 
                   {sub.period_id && (
                     <ClubinhoUsageList
@@ -309,7 +311,7 @@ export default async function ClubinhoPage() {
                       collaborators={bookingOptions.collaborators}
                     />
                   </ClubinhoScheduleList>
-                </Card>
+                </ClubinhoCard>
               ))}
             </div>
           )}
