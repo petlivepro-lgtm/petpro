@@ -780,9 +780,9 @@ function LinhaParada({
               : (parada.bairro ?? parada.endereco ?? "Sem endereço")}
           </span>
         </span>
-        {hora && (
+        {(hora || legenda) && (
           <span className="shrink-0 text-right">
-            <span className="block text-sm tabular-nums text-graphite">{hora}</span>
+            {hora && <span className="block text-sm tabular-nums text-graphite">{hora}</span>}
             {legenda && (
               <span className="block text-[11px] leading-tight text-gray-neutral">
                 {legenda}

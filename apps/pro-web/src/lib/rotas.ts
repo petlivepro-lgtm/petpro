@@ -183,18 +183,14 @@ export function horaSP(iso: string | null): string | null {
 /**
  * O horário que importa para cada parada, com uma legenda curta.
  *
- * O horário do ATENDIMENTO não serve sozinho: a busca acontece antes dele e a
- * devolução depois. O que vale é o `eta_at` que build_delivery_route calcula
- * (busca 1h antes; devolução no fim do atendimento, ou previsão de 2h).
+ * Nada é estimado (0069): a busca é no horário agendado do atendimento, e a
+ * devolução só tem horário quando o petshop finaliza o serviço — antes disso
+ * ela está só aguardando.
  */
 export function horarioDaParada(p: ParadaRow): { hora: string | null; legenda: string | null } {
-  const eta = horaSP(p.etaAt);
-  const atendimento = horaSP(p.scheduledAt);
-  if (p.kind === "PICKUP") {
-    return { hora: eta, legenda: atendimento ? `atend. ${atendimento}` : null };
-  }
-  if (p.appointmentStatus === "COMPLETED") return { hora: eta, legenda: "pronto" };
-  return { hora: eta ? `~${eta}` : null, legenda: "previsão" };
+  if (p.kind === "PICKUP") return { hora: horaSP(p.scheduledAt), legenda: null };
+  if (p.appointmentStatus === "COMPLETED") return { hora: horaSP(p.etaAt), legenda: "pronto" };
+  return { hora: null, legenda: "aguardando" };
 }
 
 /** Parada que já saiu da fila, bem ou mal. */

@@ -233,11 +233,12 @@ function Aviso({ icone, cor, texto }: { icone: React.ReactNode; cor: string; tex
 }
 
 function ProximaParada({ parada, agora }: { parada: ParadaRow; agora: number | null }) {
-  const hora = horaSP(parada.etaAt);
-  const atendimento = horaSP(parada.scheduledAt);
-  // Só a busca tem prazo: a hora de buscar vem antes do atendimento. Na
-  // devolução liberada o pet já está pronto — "atrasada" não diria nada.
-  const falta = parada.kind === "PICKUP" ? contagem(parada.etaAt, agora) : null;
+  const busca = parada.kind === "PICKUP";
+  // A busca é no horário agendado; a devolução liberada tem o horário em que
+  // o serviço terminou. Só a busca tem prazo — na devolução o pet já está
+  // pronto, e "atrasada" não diria nada.
+  const hora = horaSP(busca ? parada.scheduledAt : parada.etaAt);
+  const falta = busca ? contagem(parada.scheduledAt, agora) : null;
 
   return (
     <Card className="bg-orange/5 ring-1 ring-orange/30">
@@ -262,7 +263,7 @@ function ProximaParada({ parada, agora }: { parada: ParadaRow; agora: number | n
             {hora && (
               <span className="flex items-center gap-1.5 text-graphite">
                 <Clock className="h-3.5 w-3.5 text-gray-neutral" />
-                {parada.kind === "PICKUP" ? "Buscar às " : "Pronto desde "}
+                {busca ? "Atendimento às " : "Pronto desde "}
                 <span className="font-medium tabular-nums">{hora}</span>
                 {falta && (
                   <span className={falta.atrasada ? "text-danger" : "text-gray-neutral"}>
@@ -270,9 +271,6 @@ function ProximaParada({ parada, agora }: { parada: ParadaRow; agora: number | n
                   </span>
                 )}
               </span>
-            )}
-            {parada.kind === "PICKUP" && atendimento && (
-              <span className="text-gray-neutral">atendimento {atendimento}</span>
             )}
             {(parada.bairro ?? parada.endereco) && (
               <span className="flex min-w-0 items-center gap-1.5 text-gray-neutral">
