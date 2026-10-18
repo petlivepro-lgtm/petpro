@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Quadro do dia</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#1F2A33;--orange:#FF6A00;--petrol:#1D4E5F;--mute:#5d6873;--line:#E3E8EC;--soft:#F4F6F8;--live:#d12b20;
+    --chegou:#1F2A33;--banho:#2a73b8;--tosa:#8a4fc0;--seca:#e0a12a;--pronto:#237a4b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1440px;background:#fff;font-family:Inter,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+  nav{height:80px;display:flex;align-items:center;gap:36px;padding:0 64px}
+  nav img{height:42px}
+  nav .links{display:flex;gap:28px;font:500 15px Inter;color:var(--mute);margin-left:auto}
+  nav .in{font:600 15px Inter}
+  .btn{background:var(--orange);color:var(--ink);font:700 15px Inter;padding:12px 18px;border-radius:10px}
+  .top{padding:44px 64px 36px;display:grid;grid-template-columns:1fr 470px;gap:64px;align-items:end}
+  h1{font:800 68px/1 Manrope;letter-spacing:-.04em}
+  h1 span{color:var(--mute);font-weight:700}
+  .side p{font:400 18px/1.55 Inter;color:var(--mute)}
+  .form{margin-top:20px;display:flex;gap:8px}
+  .field{flex:1;border:1.5px solid #cfd6dc;border-radius:12px;padding:14px 16px;font:500 16px Inter;color:#8a949d}
+  .form .btn{display:flex;align-items:center;border-radius:12px;padding:0 20px;font-size:16px}
+  /* o quadro */
+  .board{margin:0 64px;border-radius:22px;background:var(--soft);padding:22px;border:1px solid var(--line)}
+  .bhead{display:flex;align-items:center;justify-content:space-between;padding:4px 6px 18px}
+  .bhead b{font:700 18px Manrope}
+  .bhead span{font:500 14px Inter;color:var(--mute)}
+  .bhead .watch{display:flex;align-items:center;gap:8px;font:600 13px Inter;color:var(--ink);background:#fff;border:1px solid var(--line);padding:7px 12px;border-radius:999px}
+  .bhead .watch i{width:8px;height:8px;border-radius:50%;background:var(--live)}
+  .cols{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .col h3{display:flex;align-items:center;gap:8px;font:700 14px Manrope;text-transform:uppercase;letter-spacing:.08em;padding:0 4px 12px}
+  .col h3 i{width:10px;height:10px;border-radius:50%}
+  .col h3 small{margin-left:auto;font:600 13px Sora;color:var(--mute)}
+  .mag{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(31,42,51,.05),0 4px 14px rgba(31,42,51,.06);display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:center;position:relative}
+  .mag img{width:52px;height:52px;border-radius:12px;object-fit:cover}
+  .mag b{font:700 16px Manrope}
+  .mag p{font:500 12.5px Inter;color:var(--mute);margin-top:2px}
+  .mag .w{grid-column:1/-1;display:flex;align-items:center;gap:8px;font:600 12px Inter;color:var(--ink);background:#fff4ec;border-radius:8px;padding:7px 10px}
+  .mag .w i{width:7px;height:7px;border-radius:50%;background:var(--live)}
+  .mag .cam{grid-column:1/-1;position:relative;height:150px;border-radius:10px;overflow:hidden}
+  .mag .cam img{width:100%;height:100%;border-radius:0}
+  .mag .cam span{position:absolute;left:8px;top:8px;background:var(--live);color:#fff;font:800 10px Manrope;letter-spacing:.12em;padding:4px 7px;border-radius:4px}
+  .mag.drag{transform:rotate(-2deg) translateY(-4px);box-shadow:0 18px 40px rgba(31,42,51,.18)}
+  .ex{font:500 12px Inter;color:var(--mute);margin:12px 64px 0}
+  /* abaixo */
+  .below{padding:110px 64px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:48px;border-top:1px solid var(--line);margin-top:80px}
+  .below h2{grid-column:1/-1;font:800 44px/1.08 Manrope;letter-spacing:-.03em;max-width:760px}
+  .item b{display:block;font:700 19px Manrope}
+  .item p{font:400 16px/1.6 Inter;color:var(--mute);margin-top:8px}
+  .item .ui{height:160px;border-radius:16px;background:var(--soft);margin-bottom:22px;position:relative;overflow:hidden}
+</style>
+</head>
+<body>
+<nav><img src="logopet.svg" alt=""><div class="links"><span>Recursos</span><span>Câmera ao vivo</span><span>Preços</span></div><span class="in">Entrar</span><span class="btn">Criar conta</span></nav>
+<section class="top">
+  <h1>Todo pet do dia num quadro só. <span>E o tutor acompanhando junto.</span></h1>
+  <div class="side"><p>O Pet Live Pro organiza agenda, atendimentos, leva-e-traz e caixa. Quando o pet entra na sala, a câmera abre no celular do tutor.</p>
+    <div class="form"><div class="field">Nome do seu petshop</div><span class="btn">Criar conta</span></div></div>
+</section>
+<div class="board">
+  <div class="bhead"><div><b>Terça, 14 de outubro</b> <span>· 8 atendimentos · 2 no leva-e-traz</span></div><span class="watch"><i></i>3 tutores assistindo agora</span></div>
+  <div class="cols">
+    <div class="col"><h3><i style="background:var(--chegou)"></i>Chegou<small>2</small></h3>
+      <div class="mag"><img src="img/1583534778255-5d67d3dcf95d.jpg"><div><b>Nina</b><p>Banho · Porte P · 13:30</p></div></div>
+      <div class="mag"><img src="img/1603741745244-07111d102dda.jpg"><div><b>Bob</b><p>Banho · Porte M · leva-e-traz</p></div></div>
+    </div>
+    <div class="col"><h3><i style="background:var(--banho)"></i>No banho<small>1</small></h3>
+      <div class="mag"><img src="img/1581887936036-3f4f7f0b6679.jpg"><div><b>Thor</b><p>Banho + hidratação · Porte G</p></div>
+        <div class="cam"><img src="img/1581887936036-3f4f7f0b6679.jpg"><span>AO VIVO</span></div>
+        <div class="w"><i></i>Ana, tutora do Thor, está assistindo</div></div>
+    </div>
+    <div class="col"><h3><i style="background:var(--tosa)"></i>Na tosa<small>1</small></h3>
+      <div class="mag drag"><img src="img/1719464454959-9cf304ef4774.jpg"><div><b>Luna</b><p>Tosa na tesoura · Porte M</p></div>
+        <div class="cam"><img src="img/1719464454959-9cf304ef4774.jpg"><span>AO VIVO</span></div>
+        <div class="w"><i></i>Rafael, tutor da Luna, está assistindo</div></div>
+    </div>
+    <div class="col"><h3><i style="background:var(--pronto)"></i>Pronto<small>2</small></h3>
+      <div class="mag"><img src="img/1611173622933-91942d394b04.jpg"><div><b>Pipoca</b><p>Boletim enviado · tranquila no secador</p></div></div>
+      <div class="mag"><img src="img/1625277743460-43716b93507a.jpg"><div><b>Mel</b><p>Saiu para entrega · chega em 9 min</p></div></div>
+    </div>
+  </div>
+</div>
+<p class="ex">Quadro com dados de exemplo</p>
+<section class="below">
+  <h2>Quando o pet muda de coluna, o tutor fica sabendo.</h2>
+  <div class="item"><div class="ui"><img src="img/1719464454959-9cf304ef4774.jpg" style="width:100%;height:100%;object-fit:cover"></div><b>Câmera que acompanha a sala</b><p>Do banho para a tosa, a transmissão vai junto. Cada tutor vê só o próprio pet.</p></div>
+  <div class="item"><div class="ui"><svg viewBox="0 0 400 160" style="width:100%;height:100%" fill="none"><g stroke="#e3e8ec" stroke-width="12"><path d="M0 50H400M0 115H400M110 0V160M270 0V160"/></g><path d="M30 140 L110 115 L110 50 L270 50 L270 18 L370 18" stroke="#FF6A00" stroke-width="5" stroke-linejoin="round"/><circle cx="30" cy="140" r="8" fill="#1F2A33"/><circle cx="270" cy="50" r="8" fill="#1F2A33"/><circle cx="190" cy="50" r="12" fill="#FF6A00" stroke="#fff" stroke-width="4"/></svg><span style="position:absolute;left:14px;bottom:14px;background:#fff;border-radius:10px;padding:8px 12px;font:700 14px Manrope;box-shadow:0 4px 14px rgba(31,42,51,.08)">Mel · a caminho · 9 min</span></div><b>Leva-e-traz com rota</b><p>A rota do dia no mapa e o aviso de “a caminho” no app do tutor.</p></div>
+  <div class="item"><div class="ui" style="display:flex;align-items:center;padding:20px"><div style="background:#fff;border-radius:14px;padding:16px;display:grid;grid-template-columns:56px 1fr;gap:12px;align-items:center;width:100%;box-shadow:0 4px 14px rgba(31,42,51,.06)"><img src="img/1611173622933-91942d394b04.jpg" style="width:56px;height:56px;border-radius:12px;object-fit:cover"><div><b style="font:700 15px Manrope">Pipoca ficou tranquila</b><p style="font:500 12.5px Inter;color:#5d6873;margin-top:2px">Secador: calma · Tosa: colaborou</p><div style="display:flex;gap:4px;margin-top:8px"><i style="flex:1;height:5px;border-radius:3px;background:#237a4b"></i><i style="flex:1;height:5px;border-radius:3px;background:#237a4b"></i><i style="flex:1;height:5px;border-radius:3px;background:#237a4b"></i><i style="flex:1;height:5px;border-radius:3px;background:#237a4b"></i><i style="flex:1;height:5px;border-radius:3px;background:#e3e8ec"></i></div></div></div></div><b>Boletim no fim</b><p>Como o pet se comportou no secador e na tosa, junto com a gravação do dia.</p></div>
+</section>
+</body>
+</html>

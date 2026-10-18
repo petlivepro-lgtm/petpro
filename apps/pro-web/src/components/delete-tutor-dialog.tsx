@@ -43,7 +43,7 @@ export function DeleteTutorDialog({
           <p className="text-sm text-graphite">
             Isso remove permanentemente o cadastro, os pets, atendimentos, reservas e consentimentos
             deste tutor
-            {hasAccess ? ", além do acesso dele ao app MyLivePet" : ""}. Esta ação não pode ser
+            {hasAccess ? ", além do acesso dele ao app do tutor" : ""}. Esta ação não pode ser
             desfeita.
           </p>
 

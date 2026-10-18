@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-18T12:00:00.000Z",
+  "title": "Design System: Pet Live Pro — landing pública",
+  "extensions": {
+    "colorMeta": {
+      "orange": { "role": "primary", "displayName": "Laranja Pet Live", "canonical": "#ff6a00", "tonalRamp": ["#5c2600", "#8f3c00", "#e65c00", "#ff6a00", "#ff7d24", "#ffe2cc", "#fff1e6", "#fff4ec"] },
+      "orange-hover": { "role": "primary", "displayName": "Laranja Hover", "canonical": "#ff7d24" },
+      "orange-text": { "role": "primary", "displayName": "Laranja de Texto", "canonical": "#e65c00" },
+      "petrol": { "role": "secondary", "displayName": "Petróleo", "canonical": "#1d4e5f", "tonalRamp": ["#0b1f26", "#143742", "#1d4e5f", "#2c6b80", "#4f8ea3", "#86b5c4", "#c3dce4", "#eaf3f6"] },
+      "live": { "role": "tertiary", "displayName": "Vermelho No Ar", "canonical": "#d12b20", "tonalRamp": ["#4a0f0b", "#7d1a13", "#d12b20", "#e2554b", "#ee8b84", "#f7c3bf", "#fde6e4", "#fff4ec"] },
+      "live-tint": { "role": "tertiary", "displayName": "Faixa Assistindo", "canonical": "#fff4ec" },
+      "st-banho": { "role": "tertiary", "displayName": "Estado Banho", "canonical": "#2a73b8", "tonalRamp": ["#0e2840", "#1a4a78", "#2a73b8", "#4f91cf", "#7fb0de", "#b0cfec", "#d9e8f6", "#f1f6fc"] },
+      "st-tosa": { "role": "tertiary", "displayName": "Estado Tosa", "canonical": "#8a4fc0", "tonalRamp": ["#2e1842", "#55307a", "#8a4fc0", "#a273d0", "#bb98dd", "#d4bdea", "#ebdff5", "#f8f3fc"] },
+      "st-pronto": { "role": "tertiary", "displayName": "Estado Pronto", "canonical": "#237a4b", "tonalRamp": ["#0f3520", "#1d6a41", "#237a4b", "#3b9a66", "#5fd39a", "#b5e3cb", "#e2f2e9", "#e8f3ee"] },
+      "pronto-deep": { "role": "tertiary", "displayName": "Verde Selo", "canonical": "#1d6a41" },
+      "pronto-tint": { "role": "tertiary", "displayName": "Fundo Selo", "canonical": "#e2f2e9" },
+      "ink": { "role": "neutral", "displayName": "Grafite", "canonical": "#1f2a33", "tonalRamp": ["#0d1317", "#1f2a33", "#2b3843", "#2b3a46", "#33424e", "#3a4651", "#3d4954", "#4a5864"] },
+      "ink-hover": { "role": "neutral", "displayName": "Grafite Hover", "canonical": "#2b3a46" },
+      "ink-strong-body": { "role": "neutral", "displayName": "Grafite de Leitura", "canonical": "#3a4651" },
+      "ink-nav": { "role": "neutral", "displayName": "Grafite do Menu", "canonical": "#3d4954" },
+      "mute": { "role": "neutral", "displayName": "Cinza de Apoio", "canonical": "#5d6873", "tonalRamp": ["#3a4651", "#4a5864", "#5d6873", "#6b7680", "#aab5be", "#c9d1d8", "#d5dbe0", "#e3e8ec"] },
+      "placeholder": { "role": "neutral", "displayName": "Placeholder", "canonical": "#6b7680" },
+      "line": { "role": "neutral", "displayName": "Linha", "canonical": "#e6eaee", "tonalRamp": ["#c9d1d8", "#d5dbe0", "#e3e8ec", "#e5e9ec", "#e6eaee", "#f0f2f4", "#f4f6f8", "#ffffff"] },
+      "line-field": { "role": "neutral", "displayName": "Borda do Campo", "canonical": "#d5dbe0" },
+      "line-dashed": { "role": "neutral", "displayName": "Tracejado", "canonical": "#c9d1d8" },
+      "track": { "role": "neutral", "displayName": "Trilho", "canonical": "#e3e8ec" },
+      "soft": { "role": "neutral", "displayName": "Palco", "canonical": "#f4f6f8" },
+      "white": { "role": "neutral", "displayName": "Branco", "canonical": "#ffffff" },
+      "device": { "role": "neutral", "displayName": "Aparelho", "canonical": "#0d1317" },
+      "on-dark-mute": { "role": "neutral", "displayName": "Apoio no Escuro", "canonical": "#aab5be" },
+      "on-dark-text": { "role": "neutral", "displayName": "Texto no Escuro", "canonical": "#c9d1d8" },
+      "on-dark-line": { "role": "neutral", "displayName": "Linha no Escuro", "canonical": "#33424e" },
+      "on-dark-surface": { "role": "neutral", "displayName": "Pílula no Escuro", "canonical": "#2b3843" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Título do herói, em duas cores." },
+      "headline": { "displayName": "Headline", "purpose": "Títulos de seção em duas cores e título do fechamento." },
+      "price": { "displayName": "Preço", "purpose": "Valor do plano, Sora tabular." },
+      "title-plan": { "displayName": "Título de plano", "purpose": "Nome do plano." },
+      "title-lg": { "displayName": "Título grande", "purpose": "Título do bloco de requisitos." },
+      "title": { "displayName": "Título", "purpose": "Títulos dos cards de recurso." },
+      "title-sm": { "displayName": "Título pequeno", "purpose": "Títulos de passo e item; marca no menu." },
+      "lede": { "displayName": "Lede", "purpose": "Subtítulos de seção e do herói; pergunta do FAQ em Manrope." },
+      "body-faq": { "displayName": "Corpo FAQ", "purpose": "Resposta do FAQ, até 68ch." },
+      "body": { "displayName": "Corpo", "purpose": "Texto padrão, campo e botões." },
+      "body-step": { "displayName": "Corpo de passo", "purpose": "Texto dos passos e requisitos." },
+      "body-sm": { "displayName": "Corpo menor", "purpose": "Descrições de card, itens de plano, links do rodapé." },
+      "nav": { "displayName": "Menu", "purpose": "Links da cápsula do menu." },
+      "caption": { "displayName": "Legenda", "purpose": "Legendas de mock e data do quadro." },
+      "label": { "displayName": "Rótulo", "purpose": "Chips, garantias, cabeçalho de coluna, títulos do rodapé." },
+      "mock-meta": { "displayName": "Mock meta", "purpose": "Linha de apoio dentro dos mocks." },
+      "caption-xs": { "displayName": "Nota", "purpose": "Notas de dados de exemplo." },
+      "mock-sm": { "displayName": "Mock pequeno", "purpose": "Texto de interface dentro dos mocks." },
+      "mock-xs": { "displayName": "Mock extra pequeno", "purpose": "Legendas de câmera e linhas do celular." },
+      "live-tag": { "displayName": "Etiqueta AO VIVO", "purpose": "Só a etiqueta AO VIVO." },
+      "mock-micro": { "displayName": "Mock micro", "purpose": "Rótulos do celular de mockup; nunca fora de mock." }
+    },
+    "shadows": [
+      { "name": "pet-card", "value": "0 1px 2px rgba(31,42,51,.05), 0 4px 14px rgba(31,42,51,.06)", "purpose": "Cards do quadro em repouso." },
+      { "name": "pet-card-focus", "value": "0 0 0 2px var(--orange), 0 18px 40px rgba(31,42,51,.16)", "purpose": "Card acompanhado pelo tutor." },
+      { "name": "mock-float", "value": "0 4px 14px rgba(31,42,51,.08)", "purpose": "Cartão do boletim e etiqueta da rota." },
+      { "name": "plan", "value": "0 1px 2px rgba(31,42,51,.05), 0 20px 50px rgba(31,42,51,.08)", "purpose": "Plano claro." },
+      { "name": "phone", "value": "0 30px 60px rgba(31,42,51,.28)", "purpose": "Celular do tutor." },
+      { "name": "push", "value": "0 10px 30px rgba(0,0,0,.25)", "purpose": "Notificação sobre a tela de bloqueio." },
+      { "name": "nav-active", "value": "0 1px 2px rgba(31,42,51,.08)", "purpose": "Link ativo na cápsula do menu." },
+      { "name": "ring-live", "value": "0 0 0 3px var(--orange)", "purpose": "Câmera ativa." },
+      { "name": "ring-step", "value": "0 0 0 4px #fff1e6", "purpose": "Halo do passo ao vivo na linha do tempo." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.23, 1, 0.32, 1)", "purpose": "Entradas, push, boletim, destaque de câmera, ícone do FAQ." },
+      { "name": "ease-in-out", "value": "cubic-bezier(0.77, 0, 0.175, 1)", "purpose": "Card mudando de coluna (FLIP 560ms) e saída do push." },
+      { "name": "board-step", "value": "3600ms", "purpose": "Intervalo entre passos do quadro do dia." },
+      { "name": "room-step", "value": "3800ms", "purpose": "Troca da câmera ativa." },
+      { "name": "push-loop", "value": "6s", "purpose": "Ciclo da notificação." },
+      { "name": "report-loop", "value": "5s", "purpose": "Ciclo do boletim se preenchendo." },
+      { "name": "route-loop", "value": "6500ms", "purpose": "Ciclo da van na rota." },
+      { "name": "live-blink", "value": "1.4s ease-in-out", "purpose": "Ponto da etiqueta AO VIVO." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botão Criar conta",
+      "kind": "button",
+      "refersTo": "button-cta",
+      "description": "CTA principal: laranja com texto grafite.",
+      "html": "<button class=\"ds-btn-cta\">Criar conta</button>",
+      "css": ".ds-btn-cta { height: 54px; padding: 0 24px; border: 0; border-radius: 14px; background: #ff6a00; color: #1f2a33; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: background-color 150ms; } .ds-btn-cta:hover { background: #ff7d24; } .ds-btn-cta:active { transform: translateY(1px); } .ds-btn-cta:focus-visible { outline: 2px solid #e65c00; outline-offset: 3px; }"
+    },
+    {
+      "name": "Botão escuro",
+      "kind": "button",
+      "refersTo": "button-ink",
+      "description": "Criar conta no menu e no plano claro.",
+      "html": "<a class=\"ds-btn-ink\" href=\"#\">Criar conta</a>",
+      "css": ".ds-btn-ink { display: inline-block; padding: 11px 16px; border-radius: 10px; background: #1f2a33; color: #fff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 15px; font-weight: 600; text-decoration: none; transition: background-color 150ms; } .ds-btn-ink:hover { background: #2b3a46; } .ds-btn-ink:focus-visible { outline: 2px solid #e65c00; outline-offset: 3px; }"
+    },
+    {
+      "name": "Campo + CTA",
+      "kind": "input",
+      "refersTo": "input-signup",
+      "description": "Nome do petshop levado ao cadastro.",
+      "html": "<form class=\"ds-signup\"><input class=\"ds-input\" placeholder=\"Nome do seu petshop\"><button class=\"ds-btn-cta\" type=\"button\">Criar conta</button></form>",
+      "css": ".ds-signup { display: flex; gap: 8px; } .ds-input { flex: 1; height: 54px; padding: 0 16px; border: 1px solid #d5dbe0; border-radius: 14px; background: #fff; color: #1f2a33; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 16px; } .ds-input::placeholder { color: #6b7680; } .ds-input:focus-visible { outline: 2px solid #e65c00; outline-offset: 3px; } .ds-signup .ds-btn-cta { height: 54px; padding: 0 24px; border: 0; border-radius: 14px; background: #ff6a00; color: #1f2a33; font-size: 16px; font-weight: 700; } .ds-signup .ds-btn-cta:hover { background: #ff7d24; }"
+    },
+    {
+      "name": "Cápsula do menu",
+      "kind": "nav",
+      "refersTo": "nav-capsule",
+      "description": "Links de seção numa cápsula cinza; ativo vira pílula branca.",
+      "html": "<nav class=\"ds-nav\"><a href=\"#\" class=\"ds-nav-link\">Recursos</a><a href=\"#\" class=\"ds-nav-link is-active\"><i class=\"ds-live-dot\"></i>Câmera ao vivo</a><a href=\"#\" class=\"ds-nav-link\">Preços</a></nav>",
+      "css": ".ds-nav { display: inline-flex; gap: 4px; padding: 5px; border-radius: 9999px; background: #f4f6f8; } .ds-nav-link { display: flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 9999px; color: #3d4954; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14.5px; font-weight: 600; text-decoration: none; transition: color 200ms; } .ds-nav-link:hover { color: #1f2a33; } .ds-nav-link.is-active { background: #fff; color: #1f2a33; box-shadow: 0 1px 2px rgba(31,42,51,.08); } .ds-nav-link:focus-visible { outline: 2px solid #e65c00; outline-offset: 3px; } .ds-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #d12b20; box-shadow: 0 0 0 3px rgb(209 43 32 / 0.15); }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Pílula branca sobre o palco.",
+      "html": "<div class=\"ds-chip-wrap\"><span class=\"ds-chip\">Reserva: ração 10 kg</span></div>",
+      "css": ".ds-chip-wrap { padding: 16px; background: #f4f6f8; } .ds-chip { display: inline-block; padding: 7px 12px; border-radius: 9999px; background: #fff; color: #1f2a33; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 600; }"
+    },
+    {
+      "name": "Card de pet",
+      "kind": "card",
+      "refersTo": "pet-card",
+      "description": "Card do quadro do dia; em atendimento leva a faixa de quem assiste.",
+      "html": "<div class=\"ds-stage\"><div class=\"ds-col\"><span class=\"ds-col-dot\"></span>Na tosa<small>1</small></div><div class=\"ds-pet\"><span class=\"ds-pet-img\"></span><div><b>Luna</b><p>Tosa na tesoura</p></div><p class=\"ds-pet-live\"><i class=\"ds-live-dot\"></i>Rafael está assistindo</p></div></div>",
+      "css": ".ds-stage { width: 260px; padding: 20px; border: 1px solid #e6eaee; border-radius: 24px; background: #f4f6f8; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #1f2a33; } .ds-col { display: flex; align-items: center; gap: 8px; padding: 0 4px 12px; font-family: Manrope, ui-sans-serif, sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; } .ds-col small { margin-left: auto; font-family: Sora, ui-sans-serif, sans-serif; font-size: 12.5px; font-weight: 600; color: #5d6873; font-variant-numeric: tabular-nums; } .ds-col-dot { width: 9px; height: 9px; border-radius: 50%; background: #8a4fc0; } .ds-pet { display: grid; grid-template-columns: 44px 1fr; gap: 10px 11px; align-items: center; padding: 12px; border-radius: 14px; background: #fff; box-shadow: 0 0 0 2px #ff6a00, 0 18px 40px rgba(31,42,51,.16); } .ds-pet-img { width: 44px; height: 44px; border-radius: 11px; background: #e3e8ec; } .ds-pet b { font-family: Manrope, ui-sans-serif, sans-serif; font-size: 15px; font-weight: 700; } .ds-pet p { margin: 2px 0 0; font-size: 12px; color: #5d6873; } .ds-pet .ds-pet-live { grid-column: span 2; display: flex; align-items: center; gap: 7px; margin: 0; padding: 6px 9px; border-radius: 8px; background: #fff4ec; color: #1f2a33; font-size: 11.5px; font-weight: 600; } .ds-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #d12b20; box-shadow: 0 0 0 3px rgb(209 43 32 / 0.15); }"
+    },
+    {
+      "name": "Card de recurso",
+      "kind": "card",
+      "refersTo": "feature-card",
+      "description": "Card plano do bento de recursos.",
+      "html": "<article class=\"ds-feature\"><h3>Preço por porte</h3><p>Serviços e adicionais com valor para cada tamanho.</p></article>",
+      "css": ".ds-feature { padding: 28px; border-radius: 20px; background: #f4f6f8; color: #1f2a33; } .ds-feature h3 { margin: 0; font-family: Manrope, ui-sans-serif, sans-serif; font-size: 20px; font-weight: 700; } .ds-feature p { margin: 8px 0 0; max-width: 300px; font-family: Inter, ui-sans-serif, sans-serif; font-size: 15px; line-height: 1.625; color: #5d6873; }"
+    },
+    {
+      "name": "Etiqueta AO VIVO",
+      "kind": "custom",
+      "refersTo": "live-tag",
+      "description": "Única aplicação do vermelho, com ponto piscando.",
+      "html": "<span class=\"ds-live-tag\"><i></i>AO VIVO</span>",
+      "css": ".ds-live-tag { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 4px; background: #d12b20; color: #fff; font-family: Manrope, ui-sans-serif, sans-serif; font-size: 10px; font-weight: 800; letter-spacing: .12em; } .ds-live-tag i { width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: ds-blink 1.4s ease-in-out infinite; } @keyframes ds-blink { 50% { opacity: .3; } } @media (prefers-reduced-motion: reduce) { .ds-live-tag i { animation: none; } }"
+    },
+    {
+      "name": "Título em duas cores",
+      "kind": "custom",
+      "refersTo": "headline",
+      "description": "Frase grafite + complemento em laranja de texto.",
+      "html": "<h2 class=\"ds-title\">Dúvidas <span>de balcão.</span></h2>",
+      "css": ".ds-title { margin: 0; font-family: Manrope, ui-sans-serif, sans-serif; font-size: clamp(2rem, 3.6vw, 2.75rem); font-weight: 800; line-height: 1.08; letter-spacing: -.03em; color: #1f2a33; text-wrap: balance; } .ds-title span { color: #e65c00; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Quadro do dia",
+    "overview": "A página é o balcão do petshop visto de cima: fundo branco com muito respiro, e no centro um palco cinza-claro arredondado onde o dia acontece em quatro colunas (Chegou, No banho, Na tosa, Pronto). Ao lado do quadro, o celular do tutor mostra o mesmo atendimento ao vivo. A prova é o próprio produto em movimento, desenhado com capricho de interface real: cards brancos com sombra suave, cor de estado com contraste AA, números em fonte tabular.\n\nO tom é o da categoria executado com cuidado, não um cartaz. Os títulos são Manrope 800 em duas cores: a primeira frase em grafite, o complemento em laranja de texto. O laranja puro aparece em preenchimento (botão, linha da rota, progresso, destaque da câmera) e como texto apenas sobre fundo escuro. O vermelho existe só para dizer \"ao vivo\".\n\nO movimento conta a história: os pets mudam de coluna (FLIP de 560ms), o celular segue a Luna, a notificação desce como push, a van percorre a rota até \"entregue\", o boletim se preenche e o destaque \"ao vivo\" das câmeras segue o pet de sala em sala. Toda animação pausa fora da tela, tem controle de pausa e assenta num estado final legível com `prefers-reduced-motion`.",
+    "keyCharacteristics": [
+      "Fundo branco, palco `soft` com borda `line` e cantos de 24px.",
+      "Títulos em duas cores (grafite + laranja de texto), tracking negativo, `text-wrap: balance`.",
+      "Cards brancos com sombra difusa em grafite translúcido; nada de sombra dura.",
+      "Cor de estado por coluna (Chegou, Banho, Tosa, Pronto), sempre em ponto ou barra, nunca como fundo de página.",
+      "Vermelho exclusivo do \"ao vivo\"; laranja puro como preenchimento e texto só no escuro.",
+      "Mocks de produto (quadro, celular, push, rota, boletim) como ilustração principal, com dados marcados como exemplo."
+    ],
+    "rules": [
+      { "name": "The Laranja Que Lê Rule", "body": "Texto laranja sobre claro é sempre `orange-text`, e só em título grande, ícone ou marca. `orange` como texto só sobre grafite. Como preenchimento (botão, rota, progresso, anel), `orange` é o tom certo.", "section": "colors" },
+      { "name": "The Vermelho É Ao Vivo Rule", "body": "`live` só sinaliza transmissão: ponto, etiqueta AO VIVO e a faixa de quem está assistindo. Erro, alerta ou destaque nunca usam esse vermelho.", "section": "colors" },
+      { "name": "The Estado Tem Cor Rule", "body": "Cada coluna do quadro tem uma cor fixa, aplicada como ponto ou barra pequena. A mesma cor significa o mesmo estado em qualquer mock.", "section": "colors" },
+      { "name": "The Título Em Duas Cores Rule", "body": "Todo título de seção é uma frase em grafite seguida do complemento em laranja de texto, numa só tag, com `text-wrap: balance`.", "section": "typography" },
+      { "name": "The Número É Sora Rule", "body": "Preço, horário, contagem e valor monetário usam Sora com `tabular-nums`; texto nunca usa Sora.", "section": "typography" },
+      { "name": "The Mock Fica No Mock Rule", "body": "Tamanhos abaixo de 12px vivem só dentro de mocks de produto e da etiqueta AO VIVO.", "section": "typography" },
+      { "name": "The Sombra Macia Rule", "body": "Sombra é sempre difusa e em grafite translúcido; destaque se faz com anel laranja, não com sombra mais escura.", "section": "elevation" }
+    ],
+    "dos": [
+      "**Do** separar seções só com espaço (96px / 128px) sobre branco; o cinza `soft` é para palcos e cards.",
+      "**Do** escrever todo título de seção como frase grafite + complemento em `orange-text`.",
+      "**Do** usar `orange` como preenchimento (CTA com texto grafite, rota, progresso, anel de destaque) e como texto apenas sobre grafite.",
+      "**Do** mostrar o produto em mocks com dados marcados como exemplo e cenas marcadas como ilustrativas.",
+      "**Do** pausar animações fora da tela, oferecer botão de pausa e assentar num estado final legível com `prefers-reduced-motion`.",
+      "**Do** usar Sora tabular para todo número."
+    ],
+    "donts": [
+      "**Don't** usar `orange` (#ff6a00) como cor de texto sobre fundo claro.",
+      "**Don't** usar o vermelho `live` para algo que não seja transmissão ao vivo.",
+      "**Don't** usar sombras duras ou deslocadas; destaque é anel laranja ou sombra difusa.",
+      "**Don't** trocar a cor de um estado do quadro entre mocks.",
+      "**Don't** usar tamanhos abaixo de 12px fora de mocks de produto e da etiqueta AO VIVO.",
+      "**Don't** usar campos nativos estilizados à mão; formulários usam os componentes de `@mylivepet/ui`."
+    ]
+  }
+}

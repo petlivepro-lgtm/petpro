@@ -40,7 +40,7 @@ export default async function SolicitacoesPage() {
     <div>
       <PageHeader
         title="Solicitações"
-        subtitle="Agendamentos e produtos reservados pelos tutores no MyLivePet, aguardando confirmação ou retirada."
+        subtitle="Agendamentos e produtos reservados pelos tutores no app, aguardando confirmação ou retirada."
       />
 
       <SolicitacoesList initialGroups={groups} terminals={terminals} />

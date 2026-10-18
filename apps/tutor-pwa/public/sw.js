@@ -13,10 +13,10 @@ self.addEventListener("push", (event) => {
   try {
     payload = event.data ? event.data.json() : {};
   } catch {
-    payload = { title: "MyLivePet", body: event.data ? event.data.text() : "" };
+    payload = { title: "Pet Live Pro", body: event.data ? event.data.text() : "" };
   }
 
-  const title = payload.title || "MyLivePet";
+  const title = payload.title || "Pet Live Pro";
   const options = {
     body: payload.body || "",
     icon: "/brand/faviconpet.svg",
@@ -38,7 +38,7 @@ self.addEventListener("notificationclick", (event) => {
   const url = new URL(href, self.location.origin).href;
 
   // Reaproveita uma aba já aberta em vez de abrir outra: o tutor
-  // pode estar com o MyLivePet já aberto acompanhando o pet.
+  // pode estar com o Pet Live Pro já aberto acompanhando o pet.
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })

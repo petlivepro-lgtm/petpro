@@ -129,7 +129,7 @@ export function NewTutorDialog({
           </div>
           <p className="text-sm text-gray-neutral">
             Com e-mail cadastrado, o tutor cria a própria senha no primeiro
-            acesso ao app MyLivePet.
+            acesso ao app do tutor.
           </p>
           <AddressFields idPrefix="new-tutor" />
           <div className="rounded-xl border border-dashed border-graphite/15 p-4">

@@ -1,4 +1,4 @@
-// Tokens de marca — derivados do documento de branding MyLivePet / Pet Live Pro.
+// Tokens de marca — derivados do documento de branding Pet Live Pro.
 export const colors = {
   graphite: "#1F2A33", // base institucional, títulos, fundos escuros
   orange: "#FF6A00", // destaque, CTA, energia (uso pontual)

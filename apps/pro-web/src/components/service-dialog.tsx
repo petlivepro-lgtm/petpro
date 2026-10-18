@@ -124,7 +124,7 @@ export function ServiceDialog({
         open={open}
         onOpenChange={setOpen}
         title={isEdit ? "Editar serviço" : "Novo serviço"}
-        description="Disponível para agendamento no MyLivePet."
+        description="Disponível para agendamento no app do tutor."
       >
         <form action={formAction} className="space-y-4">
           {isEdit && <input type="hidden" name="id" value={service!.id} />}

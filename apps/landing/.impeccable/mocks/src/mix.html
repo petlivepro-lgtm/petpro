@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Clean + Quadro do dia</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#1F2A33;--orange:#FF6A00;--petrol:#1D4E5F;--mute:#5d6873;--line:#E6EAEE;--soft:#F4F6F8;--live:#d12b20;--orange-text:#E65C00;
+    --chegou:#1F2A33;--banho:#2a73b8;--tosa:#8a4fc0;--pronto:#237a4b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-width:1440px;background:#fff;font-family:Inter,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+
+  /* menu: ocupa a tela toda, conteúdo centralizado em 1440 */
+  .nav{width:100%;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);position:sticky;top:0;z-index:10}
+  .nav .in{max-width:1440px;margin:0 auto;height:84px;padding:0 72px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+  .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+  .brand img{height:38px}
+  .brand b{display:block;font:800 19px/1 Manrope;letter-spacing:-.01em}
+  .brand b span{color:var(--orange-text)}
+  .brand small{display:block;font:500 12px Inter;color:var(--mute);margin-top:4px}
+  .links{display:flex;gap:4px;background:var(--soft);border-radius:999px;padding:5px}
+  .links a{font:600 14.5px Inter;color:#3d4954;padding:9px 16px;border-radius:999px;display:flex;align-items:center;gap:8px}
+  .links a.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(31,42,51,.08)}
+  .links a i{width:7px;height:7px;border-radius:50%;background:var(--live);box-shadow:0 0 0 3px rgba(209,43,32,.15)}
+  .nav .r{justify-self:end;display:flex;gap:8px;align-items:center}
+  .nav .r a{font:600 15px Inter;color:var(--ink);padding:11px 16px;border-radius:10px}
+  .btn-ink{background:var(--ink);color:#fff !important;font:600 15px Inter;padding:11px 18px;border-radius:10px}
+  .page{width:1440px;margin:0 auto}
+
+  /* topo do Quadro: título largo à esquerda, cadastro à direita */
+  .top{padding:64px 72px 40px;display:grid;grid-template-columns:1fr 500px;gap:64px;align-items:end}
+  h1{font:800 64px/1.02 Manrope;letter-spacing:-.04em}
+  h1 span,.below h2 span,.feat h2 span{color:var(--orange-text)} .below h2,.feat h2{text-wrap:balance}
+  .side p{font:400 18px/1.55 Inter;color:var(--mute)}
+  .form{margin-top:20px;display:flex;gap:8px}
+  .field{flex:1;border:1px solid #d5dbe0;border-radius:12px;padding:15px 16px;font:500 16px Inter;color:#8a949d}
+  .form .go{display:flex;align-items:center;border-radius:12px;padding:0 22px;font:700 16px Inter;background:var(--orange);color:var(--ink)}
+  .checks{display:flex;gap:16px;margin-top:16px;font:500 13px Inter;color:var(--mute);white-space:nowrap}
+  .checks span::before{content:"";display:inline-block;width:15px;height:15px;border-radius:50%;margin-right:6px;vertical-align:-3px;box-shadow:inset 0 0 0 5px #e8f3ee,inset 0 0 0 8px var(--pronto)}
+
+  /* palco do Clean com o quadro dentro */
+  .stage{position:relative;margin:0 72px;height:560px;border-radius:24px;background:var(--soft);border:1px solid var(--line)}
+  .bhead{position:absolute;left:28px;right:330px;top:24px;display:flex;align-items:center;justify-content:space-between}
+  .bhead b{font:700 18px Manrope}
+  .bhead span{font:500 14px Inter;color:var(--mute)}
+  .watch{display:flex;align-items:center;gap:8px;font:600 13px Inter;background:#fff;border:1px solid var(--line);padding:7px 12px;border-radius:999px}
+  .watch i{width:8px;height:8px;border-radius:50%;background:var(--live)}
+  .cols{position:absolute;left:28px;right:330px;top:76px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .col h3{display:flex;align-items:center;gap:8px;font:700 13px Manrope;text-transform:uppercase;letter-spacing:.08em;padding:0 4px 12px}
+  .col h3 i{width:9px;height:9px;border-radius:50%}
+  .col h3 small{margin-left:auto;font:600 12.5px Sora;color:var(--mute)}
+  .mag{background:#fff;border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 1px 2px rgba(31,42,51,.05),0 4px 14px rgba(31,42,51,.06);display:grid;grid-template-columns:44px 1fr;gap:11px;align-items:center;position:relative}
+  .mag img{width:44px;height:44px;border-radius:11px;object-fit:cover}
+  .mag b{font:700 15px Manrope}
+  .mag p{font:500 12px Inter;color:var(--mute);margin-top:2px}
+  .pill{grid-column:1/-1;display:flex;align-items:center;gap:7px;font:600 11.5px Inter;background:#fff4ec;border-radius:8px;padding:6px 9px}
+  .pill i{width:7px;height:7px;border-radius:50%;background:var(--live)}
+  .mag .cam{grid-column:1/-1;position:relative;height:150px;border-radius:10px;overflow:hidden}
+  .mag .cam img{width:100%;height:100%;border-radius:0}
+  .mag .cam span{position:absolute;left:8px;top:8px;background:var(--live);color:#fff;font:800 10px Manrope;letter-spacing:.12em;padding:4px 7px;border-radius:4px}
+  .mag.focus{box-shadow:0 0 0 2px var(--orange),0 18px 40px rgba(31,42,51,.16);transform:translateY(-4px)}
+  /* celular do tutor */
+  .phone{position:absolute;right:44px;top:30px;width:240px;height:496px;border-radius:38px;background:#0d1317;padding:10px;box-shadow:0 30px 60px rgba(31,42,51,.28)}
+  .scr{height:100%;border-radius:29px;background:#fff;overflow:hidden;display:flex;flex-direction:column}
+  .vid{position:relative;height:220px}.vid img{width:100%;height:100%;object-fit:cover}
+  .live{position:absolute;left:10px;top:10px;background:var(--live);color:#fff;font:800 10px Manrope;letter-spacing:.12em;padding:4px 7px;border-radius:4px}
+  .scr .in{padding:14px}.scr b{font:700 15px Manrope}.scr p{font:500 11.5px Inter;color:var(--mute);margin-top:2px}
+  .prog{display:flex;gap:4px;margin-top:12px}.prog i{flex:1;height:5px;border-radius:3px;background:var(--orange)}.prog i.o{background:#e5e9ec}
+  .pl{display:flex;justify-content:space-between;font:600 9.5px Inter;color:var(--mute);margin-top:5px}
+  .rec{margin-top:14px;border-top:1px solid var(--soft);padding-top:10px}
+  .rec small{font:700 9.5px Manrope;letter-spacing:.12em;color:var(--mute)}
+  .rec div{display:flex;justify-content:space-between;font:500 11px Inter;padding:6px 0;border-bottom:1px solid var(--soft)}
+  .rec div span{color:var(--mute)}
+  .link{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+  .tag{position:absolute;right:296px;top:356px;background:var(--ink);color:#fff;font:600 12px Inter;padding:6px 10px;border-radius:999px}
+  .ex{font:500 12px Inter;color:var(--mute);margin:12px 72px 0;text-align:right}
+
+  /* seção do Quadro: o tutor fica sabendo */
+  .below{padding:120px 72px 0;display:grid;grid-template-columns:repeat(3,1fr);gap:40px}
+  .below h2{grid-column:1/-1;font:800 44px/1.08 Manrope;letter-spacing:-.03em;max-width:760px}
+  .item b{display:block;font:700 19px Manrope}
+  .item p{font:400 16px/1.6 Inter;color:var(--mute);margin-top:8px}
+  .item .ui{height:170px;border-radius:18px;background:var(--soft);margin-bottom:22px;position:relative;overflow:hidden;display:flex;align-items:center;padding:20px}
+  .note{background:#fff;border-radius:14px;padding:14px 16px;width:100%;box-shadow:0 4px 14px rgba(31,42,51,.08);display:grid;grid-template-columns:40px 1fr;gap:12px;align-items:center}
+  .note .ic{width:40px;height:40px;border-radius:10px;background:#fff1e6;display:grid;place-items:center}
+  .note b{font:700 14.5px Manrope}.note p{font:500 12.5px Inter;color:var(--mute);margin-top:2px}
+
+  /* bento do Clean */
+  .feat{padding:130px 72px 0}
+  .feat h2{font:800 44px/1.08 Manrope;letter-spacing:-.03em;max-width:700px}
+  .feat .sub{font:400 18px/1.6 Inter;color:var(--mute);max-width:560px;margin-top:14px}
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:150px;gap:20px;margin-top:52px}
+  .card{background:var(--soft);border-radius:20px;padding:28px;position:relative;overflow:hidden}
+  .card h3{font:700 20px Manrope}
+  .card p{font:400 15px/1.55 Inter;color:var(--mute);margin-top:8px;max-width:300px}
+  .g1{grid-column:span 4;grid-row:span 2}.g2,.g3,.g4,.g5{grid-column:span 2;grid-row:span 2}.g6{grid-column:span 6;grid-row:span 1;display:flex;align-items:center;gap:28px}.g6 .chips{margin-top:0}
+  .cams{position:absolute;right:28px;bottom:28px;left:310px;top:28px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .sizes{display:flex;gap:8px;position:absolute;left:28px;bottom:28px}
+  .sizes div{background:#fff;border-radius:12px;padding:10px 14px;text-align:center}.sizes b{display:block;font:700 18px Manrope}.sizes small{font:600 12px Sora;color:var(--mute)}
+  .stamps{display:flex;gap:8px;position:absolute;left:28px;bottom:30px}.stamps i{width:28px;height:28px;border-radius:50%;background:var(--orange)}.stamps i.o{background:#fff;box-shadow:inset 0 0 0 2px #d5dbe0}
+  .ledger{position:absolute;left:28px;right:28px;bottom:24px;font:500 13px Inter}
+  .ledger div{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #e3e8ec}.ledger b{font:600 13px Sora}
+  .chips{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}.chips span{background:#fff;border-radius:999px;padding:7px 12px;font:600 13px Inter}
+
+  /* fechamento */
+  .close{margin:130px 72px 72px;border-radius:24px;background:var(--ink);color:#fff;padding:56px;display:grid;grid-template-columns:1fr 470px;gap:48px;align-items:center}
+  .close h2{font:800 44px/1.06 Manrope;letter-spacing:-.03em}
+  .close h2 span{color:var(--orange)}
+  .close .field{background:#fff;border:0}
+
+  /* rodapé */
+  footer{margin:0 72px;border-top:1px solid var(--line);padding:56px 0 40px}
+  .fgrid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:48px}
+  .fbrand img{height:56px}
+  .fbrand p{font:400 15px/1.6 Inter;color:var(--mute);margin-top:14px;max-width:320px}
+  .fcol b{display:block;font:700 13px Manrope;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);margin-bottom:16px}
+  .fcol a{display:block;font:500 15px Inter;color:var(--mute);text-decoration:none;padding:6px 0}
+  .fbar{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:1px solid var(--line);font:500 13px Inter;color:var(--mute)}
+  .fbar .live{position:static;display:inline-flex;align-items:center;gap:6px}
+
+  /* animações da seção “o tutor fica sabendo” */
+  :root{--ease-out:cubic-bezier(.23,1,.32,1);--ease-in-out:cubic-bezier(.77,0,.175,1)}
+  .item .ui.ui-phone{padding:0;display:block;background:#1F2A33 url(img/1719464454959-9cf304ef4774.jpg) center/cover}
+  .item .ui.ui-phone::before{content:"";position:absolute;inset:0;backdrop-filter:blur(14px) brightness(.62);background:rgba(20,28,34,.25)}
+  .sbar{position:relative;display:flex;justify-content:space-between;align-items:center;padding:12px 22px 0;font:600 13px Inter;color:#fff}
+  .sic{display:flex;gap:6px;align-items:center}
+  .push{position:absolute;left:14px;right:14px;top:40px;display:grid;grid-template-columns:38px 1fr;gap:11px;align-items:center;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-radius:18px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.25);animation:push 6s var(--ease-out) infinite}
+  .push .app{width:38px;height:38px;border-radius:10px;background:#fff;display:grid;place-items:center;box-shadow:inset 0 0 0 1px #e6eaee}
+  .push .app img{width:28px}
+  .ph{display:flex;justify-content:space-between;font:600 11px Inter;color:var(--mute)}
+  .ph b{font:700 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:var(--mute)}
+  .pt{display:block;font:700 14.5px Manrope;margin-top:2px}
+  .push p{font:500 12.5px Inter;color:var(--mute);margin-top:1px}
+  @keyframes push{
+    0%{transform:translateY(-140%) scale(.96);opacity:0}
+    9%{transform:translateY(0) scale(1);opacity:1}
+    72%{transform:translateY(0) scale(1);opacity:1;animation-timing-function:var(--ease-in-out)}
+    82%,100%{transform:translateY(-140%) scale(.98);opacity:0}
+  }
+  .eta{position:absolute;left:14px;top:14px;background:#fff;border-radius:10px;padding:8px 12px;font:700 14px Manrope;box-shadow:0 4px 14px rgba(31,42,51,.08);display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;transition:background-color .3s ease,color .3s ease}
+  .eta.done{background:#237a4b;color:#fff}
+  .bol{position:relative}
+  .segs{display:flex;gap:4px;margin-top:8px}
+  .segs i{flex:1;height:5px;border-radius:3px;background:#e3e8ec;position:relative;overflow:hidden}
+  .segs i::after{content:"";position:absolute;inset:0;background:#237a4b;transform-origin:left;transform:scaleX(0);animation:fill 5s var(--ease-out) infinite}
+  .segs i.off::after{display:none}
+  .segs i:nth-child(2)::after{animation-delay:.28s}.segs i:nth-child(3)::after{animation-delay:.56s}.segs i:nth-child(4)::after{animation-delay:.84s}
+  @keyframes fill{0%,6%{transform:scaleX(0)}16%,82%{transform:scaleX(1)}92%,100%{transform:scaleX(0)}}
+  .sent{position:absolute;right:30px;bottom:18px;display:flex;align-items:center;gap:6px;font:600 12px Inter;color:#1d6a41;background:#e2f2e9;border-radius:999px;padding:5px 10px;animation:sent 5s var(--ease-out) infinite}
+  @keyframes sent{0%,30%{opacity:0;transform:translateY(6px)}38%,82%{opacity:1;transform:none}90%,100%{opacity:0;transform:translateY(6px)}}
+  @media (prefers-reduced-motion:reduce){
+    .push,.sent{animation:none}
+    .segs i::after{animation:none;transform:scaleX(1)}
+  }
+
+  /* câmeras por sala em vídeo: o destaque segue o pet */
+  .cams .cam{position:relative;border-radius:12px;overflow:hidden;background:#1F2A33;box-shadow:0 0 0 0 var(--orange);transition:box-shadow .5s var(--ease-out)}
+  .cams video{width:100%;height:100%;object-fit:cover;display:block;filter:brightness(.62) saturate(.8);transition:filter .6s ease}
+  .cams .cam.on{box-shadow:0 0 0 3px var(--orange)}
+  .cams .cam.on video{filter:none}
+  .cams .lbl{position:absolute;left:8px;bottom:8px;background:rgba(15,22,27,.72);color:#fff;font:600 11px Inter;padding:4px 7px;border-radius:5px}
+  .cams time{position:absolute;right:8px;bottom:8px;color:#fff;font:600 11px Sora;font-variant-numeric:tabular-nums;text-shadow:0 1px 4px rgba(0,0,0,.7);opacity:.85}
+  .tag-live{position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:5px;background:var(--live);color:#fff;font:800 9.5px Manrope;letter-spacing:.12em;padding:4px 7px;border-radius:4px;opacity:0;transform:translateY(-4px);transition:opacity .35s var(--ease-out),transform .35s var(--ease-out)}
+  .tag-live i{width:6px;height:6px;border-radius:50%;background:#fff;animation:blink 1.4s ease-in-out infinite}
+  .cams .cam.on .tag-live{opacity:1;transform:none}
+  @keyframes blink{50%{opacity:.3}}
+  .now{margin-top:18px !important;font:500 14px Inter;color:var(--mute)}
+  .now b{color:var(--ink)}
+  @media (prefers-reduced-motion:reduce){.tag-live i{animation:none}}
+
+  /* câmera ao vivo: como funciona */
+  .howlive,.price,.faq{padding:130px 72px 0}
+  .howlive h2,.price h2,.faq h2{font:800 44px/1.08 Manrope;letter-spacing:-.03em;max-width:760px;text-wrap:balance}
+  .howlive h2 span,.price h2 span,.faq h2 span{color:var(--orange-text)}
+  .howlive .sub,.price .sub{font:400 18px/1.6 Inter;color:var(--mute);max-width:560px;margin-top:14px}
+  .steps{list-style:none;display:grid;grid-template-columns:repeat(4,1fr);gap:32px;margin-top:56px;position:relative}
+  .steps::before{content:"";position:absolute;left:0;right:0;top:18px;height:2px;background:repeating-linear-gradient(90deg,#d5dbe0 0 8px,transparent 8px 14px)}
+  .steps li{position:relative}
+  .steps time{position:relative;display:inline-flex;align-items:center;gap:7px;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 14px;font:600 13px Sora;font-variant-numeric:tabular-nums}
+  .steps li:nth-child(2) time{border-color:var(--orange);box-shadow:0 0 0 4px #fff1e6}
+  .steps li:nth-child(2) time::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--live)}
+  .steps b{display:block;font:700 19px Manrope;margin-top:20px}
+  .steps p{font:400 15.5px/1.6 Inter;color:var(--mute);margin-top:8px}
+  .needs{margin-top:56px;background:var(--soft);border-radius:20px;padding:32px;display:grid;grid-template-columns:240px 1fr;gap:32px}
+  .needs h3{font:700 22px Manrope}
+  .needs ul{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:20px 32px}
+  .needs li{display:grid;grid-template-columns:40px 1fr;gap:12px;align-items:start;font:400 15.5px/1.55 Inter;color:#3a4651}
+  .needs li span{width:40px;height:40px;border-radius:10px;background:#fff;display:grid;place-items:center}
+  .nocam{font:500 15px Inter;color:var(--mute);margin-top:18px}
+  /* preços: dois planos */
+  .price{display:block}
+  .ptext{display:flex;justify-content:space-between;align-items:end;gap:48px}
+  .ptext .sub{max-width:440px;margin:0}
+  .plans{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:48px;align-items:stretch}
+  .plan{display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:24px;padding:36px;box-shadow:0 1px 2px rgba(31,42,51,.05),0 20px 50px rgba(31,42,51,.08)}
+  .plan.dark{background:var(--ink);border-color:var(--ink);color:#fff}
+  .phead{display:flex;justify-content:space-between;align-items:center}
+  .phead b{font:800 26px Manrope}
+  .draft{font:600 12px Inter;color:var(--mute);border:1px dashed #c9d1d8;border-radius:999px;padding:4px 10px}
+  .plan.dark .draft{color:#aab5be;border-color:#4a5864}
+  .pdesc{margin-top:12px;height:14px}
+  .pdesc i,.plan li i{display:block;height:10px;border-radius:999px;background:#e6eaee}
+  .plan.dark .pdesc i,.plan.dark li i{background:#33424e}
+  .pval{display:flex;align-items:baseline;gap:6px;margin-top:22px;padding-bottom:24px;border-bottom:1px solid var(--line)}
+  .plan.dark .pval{border-color:#33424e}
+  .pval b{font:700 40px Sora;letter-spacing:-.02em}
+  .pval span{font:500 15px Inter;color:var(--mute)}
+  .plan.dark .pval span{color:#aab5be}
+  .pval em{margin-left:auto;font:600 13px Inter;font-style:normal;color:var(--mute);background:var(--soft);border-radius:999px;padding:5px 11px}
+  .plan.dark .pval em{background:#2b3843;color:#c9d1d8}
+  .plan ul{list-style:none;display:grid;gap:16px;margin:24px 0 30px}
+  .plan li{display:flex;align-items:center;gap:12px}
+  .plan li svg{flex-shrink:0}
+  .pgo{display:block;text-align:center;margin-top:auto;background:var(--orange);color:var(--ink);font:700 16px Inter;padding:16px;border-radius:12px;text-decoration:none}
+  .plan:not(.dark) .pgo{background:var(--ink);color:#fff}
+  .pnote{font:500 13px Inter;color:var(--mute);margin-top:16px}
+  /* dúvidas */
+  .faq{display:grid;grid-template-columns:420px 1fr;gap:64px}
+  .qs details{border-bottom:1px solid var(--line)}
+  .qs details:first-child{border-top:1px solid var(--line)}
+  .qs summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:24px;padding:22px 0;font:700 18px Manrope}
+  .qs summary::-webkit-details-marker{display:none}
+  .qs summary svg{flex-shrink:0;transition:transform .2s var(--ease-out)}
+  .qs details[open] summary svg{transform:rotate(45deg)}
+  .qs p{font:400 16.5px/1.65 Inter;color:var(--mute);padding:0 48px 24px 0;max-width:68ch}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header class="nav"><div class="in">
+  <a class="brand"><img src="faviconpet.svg" alt=""><span><b>Pet Live <span>Pro</span></b><small>Sistema para banho &amp; tosa</small></span></a>
+  <nav class="links"><a class="on" href="#recursos">Recursos</a><a href="#ao-vivo"><i></i>Câmera ao vivo</a><a href="#precos">Preços</a><a href="#duvidas">Dúvidas</a></nav>
+  <div class="r"><a>Entrar</a><a class="btn-ink">Criar conta</a></div>
+</div></header>
+<div class="page">
+
+<section class="top">
+  <h1>Todo pet do dia num quadro só. <span>E o tutor acompanhando junto.</span></h1>
+  <div class="side"><p>O Pet Live Pro organiza agenda, atendimentos, leva-e-traz e caixa. Quando o pet entra na sala, a câmera abre no celular do tutor.</p>
+    <div class="form"><div class="field">Nome do seu petshop</div><span class="go">Criar conta</span></div>
+    <div class="checks"><span>Cadastro pelo site</span><span>Funciona sem câmera</span><span>App do tutor incluso</span></div></div>
+</section>
+
+<div class="stage">
+  <div class="bhead"><div><b>Terça, 14 de outubro</b> <span>· 8 atendimentos · 2 no leva-e-traz</span></div><span class="watch"><i></i>3 tutores assistindo</span></div>
+  <div class="cols">
+    <div class="col"><h3><i style="background:var(--chegou)"></i>Chegou<small>3</small></h3>
+      <div class="mag"><img src="img/1583534778255-5d67d3dcf95d.jpg"><div><b>Nina</b><p>Banho · Porte P</p></div></div>
+      <div class="mag"><img src="img/1603741745244-07111d102dda.jpg"><div><b>Bob</b><p>Banho · leva-e-traz</p></div></div>
+      <div class="mag"><img src="img/1592887302112-b87aca16ad2c.jpg"><div><b>Max</b><p>Banho e tosa · 15:00</p></div></div>
+    </div>
+    <div class="col"><h3><i style="background:var(--banho)"></i>No banho<small>1</small></h3>
+      <div class="mag"><img src="img/1581887936036-3f4f7f0b6679.jpg"><div><b>Thor</b><p>Banho + hidratação</p></div><div class="cam"><img src="img/1581887936036-3f4f7f0b6679.jpg"><span>AO VIVO</span></div><div class="pill"><i></i>Ana está assistindo</div></div>
+    </div>
+    <div class="col"><h3><i style="background:var(--tosa)"></i>Na tosa<small>1</small></h3>
+      <div class="mag focus"><img src="img/1719464454959-9cf304ef4774.jpg"><div><b>Luna</b><p>Tosa na tesoura</p></div>
+        <div class="cam"><img src="img/1719464454959-9cf304ef4774.jpg"><span>AO VIVO</span></div>
+        <div class="pill"><i></i>Rafael está assistindo</div></div>
+    </div>
+    <div class="col"><h3><i style="background:var(--pronto)"></i>Pronto<small>2</small></h3>
+      <div class="mag"><img src="img/1611173622933-91942d394b04.jpg"><div><b>Pipoca</b><p>Boletim enviado</p></div></div>
+      <div class="mag"><img src="img/1625277743460-43716b93507a.jpg"><div><b>Mel</b><p>A caminho · 9 min</p></div></div>
+    </div>
+  </div>
+  <svg class="link" viewBox="0 0 1296 590" preserveAspectRatio="none" fill="none"><path d="M730 300 C 830 300, 900 330, 1006 330" stroke="#FF6A00" stroke-width="2.5" stroke-dasharray="6 6"/><circle cx="1006" cy="330" r="5" fill="#FF6A00"/></svg>
+  <span class="tag">O que o Rafael vê no celular</span>
+  <div class="phone"><div class="scr"><div class="vid"><img src="img/1719464454959-9cf304ef4774.jpg"><span class="live">AO VIVO</span></div>
+    <div class="in"><b>Luna está na tosa</b><p>Tosa na tesoura · com a Carla · há 12 min</p>
+      <div class="prog"><i></i><i></i><i class="o"></i></div><div class="pl"><span>Chegou</span><span>Na tosa</span><span>Pronto</span></div>
+      <div class="rec"><small>GRAVAÇÕES</small><div>12/10 · Banho e tosa<span>13 dias</span></div><div>05/10 · Banho<span>6 dias</span></div></div></div></div></div>
+</div>
+<p class="ex">Quadro e telas com dados de exemplo</p>
+
+<section class="below">
+  <h2>Quando o pet muda de coluna, <span>o&nbsp;tutor fica sabendo.</span></h2>
+  <div class="item"><div class="ui ui-phone">
+      <div class="sbar"><span>12:40</span><span class="sic"><svg width="17" height="11" viewBox="0 0 17 11" fill="#fff"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg><svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="#fff" opacity=".7"/><rect x="2" y="2" width="14" height="7" rx="1.6" fill="#fff"/><rect x="21.5" y="3.5" width="1.6" height="4" rx=".8" fill="#fff" opacity=".7"/></svg></span></div>
+      <div class="push"><span class="app"><img src="faviconpet.svg" alt=""></span><div><div class="ph"><b>MyLivePet</b><span>agora</span></div><b class="pt">Luna está pronta!</b><p>Pode buscar a partir das 12h40.</p></div></div>
+    </div><b>Aviso de pronto</b><p>Saiu da tosa e foi para “Pronto”? O tutor recebe o aviso no celular, sem você parar para mandar mensagem.</p></div>
+  <div class="item"><div class="ui" style="padding:0"><svg class="map" viewBox="0 0 400 170" style="width:100%;height:100%" fill="none">
+      <g stroke="#e3e8ec" stroke-width="12"><path d="M0 55H400M0 120H400M110 0V170M270 0V170"/></g>
+      <path d="M30 150 L110 120 L110 55 L270 55 L270 20 L352 20" stroke="#c9d1d8" stroke-width="3" stroke-dasharray="4 7" stroke-linecap="round"/>
+      <path id="routeDone" d="M30 150 L110 120 L110 55 L270 55 L270 20 L352 20" stroke="#FF6A00" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="30" cy="150" r="8" fill="#1F2A33"/>
+      <circle id="destPulse" cx="362" cy="20" r="10" fill="#FF6A00" opacity="0"/>
+      <g transform="translate(362 26)"><path d="M0 4 C -7 -4, -9 -9, -9 -13 A 9 9 0 1 1 9 -13 C 9 -9, 7 -4, 0 4 Z" fill="#1F2A33"/><circle cx="0" cy="-13" r="3.6" fill="#fff"/></g>
+      <circle id="van" cx="30" cy="150" r="11" fill="#FF6A00" stroke="#fff" stroke-width="4"/>
+    </svg><span class="eta" id="eta">Mel · a caminho · 9 min</span></div><b>Leva-e-traz com rota</b><p>A rota do dia no mapa e o aviso de “a caminho” no app do tutor, até a entrega.</p></div>
+  <div class="item"><div class="ui"><div class="note bol" style="grid-template-columns:52px 1fr"><img src="img/1611173622933-91942d394b04.jpg" style="width:52px;height:52px;border-radius:12px;object-fit:cover"><div><b>Pipoca ficou tranquila</b><p>Secador: calma · Tosa: colaborou</p><div class="segs"><i></i><i></i><i></i><i></i><i class="off"></i></div></div></div><span class="sent"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#237a4b" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Enviado para a Júlia</span></div><b>Boletim no fim</b><p>Como o pet se comportou no secador e na tosa, junto com a gravação do dia.</p></div>
+</section>
+
+<section class="feat" id="recursos">
+  <h2>Tudo o que acontece no balcão, <span>num lugar só.</span></h2>
+  <p class="sub">O quadro é a parte que o tutor vê. Por trás dele, o petshop inteiro.</p>
+  <div class="grid">
+    <div class="card g1"><h3>Câmera ao vivo por sala</h3><p>O pet troca de sala e a transmissão vai junto. Cada tutor vê só o próprio pet.</p><p class="now" id="camNow">Agora: <b>Banho</b> · CAM 01</p>
+      <div class="cams" id="cams">
+        <div class="cam"><video src="video/banho-1.mp4" muted loop playsinline preload="auto"></video><span class="tag-live"><i></i>AO VIVO</span><span class="lbl">CAM 01 · Banho</span><time>10:32:08</time></div>
+        <div class="cam"><video src="video/banho-2.mp4" muted loop playsinline preload="auto"></video><span class="tag-live"><i></i>AO VIVO</span><span class="lbl">CAM 02 · Enxágue</span><time>10:41:15</time></div>
+        <div class="cam"><video src="video/tosa-b.mp4" muted loop playsinline preload="auto"></video><span class="tag-live"><i></i>AO VIVO</span><span class="lbl">CAM 03 · Tosa</span><time>11:05:42</time></div>
+        <div class="cam"><video src="video/secagem.mp4" muted loop playsinline preload="auto"></video><span class="tag-live"><i></i>AO VIVO</span><span class="lbl">CAM 04 · Secagem</span><time>11:30:03</time></div>
+      </div></div>
+    <div class="card g2"><h3>Preço por porte</h3><p>Serviços e adicionais com valor para cada tamanho.</p><div class="sizes"><div><b>P</b><small>R$ 55</small></div><div><b>M</b><small>R$ 70</small></div><div><b>G</b><small>R$ 90</small></div></div></div>
+    <div class="card g3"><h3>Clubinho</h3><p>Pacotes recorrentes com saldo de banhos.</p><div class="stamps"><i></i><i></i><i></i><i></i><i class="o"></i><i class="o"></i></div></div>
+    <div class="card g4"><h3>Caixa e estoque</h3><p>Receitas, despesas e vendas de balcão.</p><div class="ledger"><div>Banho · Thor<b>R$ 90,00</b></div><div style="border:0">Balcão · shampoo<b>R$ 39,90</b></div></div></div>
+    <div class="card g5"><h3>Pedidos dos tutores</h3><p>Agendamentos e reservas de produtos feitos pelo app chegam no painel.</p><div class="chips" style="position:absolute;left:28px;right:28px;bottom:26px"><span>Reserva: ração 10 kg</span><span>Novo: banho do Max · sáb, 9h</span></div></div>
+    <div class="card g6"><h3>Cada um com seu painel</h3><div class="chips"><span>Dono: do caixa à visão geral</span><span>Colaboradores: a agenda do dia</span><span>Entregador: a rota</span></div></div>
+  </div>
+</section>
+
+
+<section class="howlive" id="ao-vivo">
+  <h2>Da sala de banho <span>ao celular do tutor.</span></h2>
+  <p class="sub">Como a câmera ao vivo funciona no dia a dia do petshop.</p>
+  <ol class="steps"><li><time>11:00</time><b>O atendimento começa</b><p>No painel, você inicia o atendimento e escolhe a sala. A câmera daquela sala passa a transmitir para aquele pet.</p></li><li><time>11:01</time><b>O tutor assiste</b><p>No app MyLivePet, com cerca de 1 segundo de atraso. Só o tutor daquele pet recebe acesso.</p></li><li><time>11:24</time><b>O pet muda de sala</b><p>Saiu do banho e foi para a tosa? Troque a sala no atendimento e a transmissão vai junto.</p></li><li><time>12:05</time><b>Terminou, desliga</b><p>A câmera para ao finalizar. A gravação fica no app pelo prazo que você escolher e o tutor recebe o boletim.</p></li></ol>
+  <div class="needs"><h3>O que você precisa</h3><ul><li><span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4E5F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.75 12h3.63a1 1 0 0 1 .7 1.71l-1.88 1.88a1 1 0 0 1-.7.29H15"/><path d="m7 14 7.5-7.5a2.1 2.1 0 0 0-3-3L4 11"/><path d="M4 11 2 13l5 5 2-2"/><path d="M9 21v-3"/></svg></span>Câmeras Tapo C200 nas salas de banho, tosa e secagem.</li><li><span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4E5F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span>Um computador ligado no petshop, que conecta as câmeras com segurança, sem abrir portas no roteador.</li><li><span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4E5F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg></span>O tutor assiste pelo navegador do celular e pode instalar o app na tela inicial.</li><li><span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4E5F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Termo de uso de imagem (LGPD) no primeiro acesso e gravações apagadas após 7, 15 ou 30 dias.</li></ul></div>
+  <p class="nocam">Sem câmera, o Pet Live Pro funciona do mesmo jeito: agenda, atendimentos, leva-e-traz, Clubinho, estoque e caixa não dependem dela.</p>
+</section>
+
+<section class="price" id="precos">
+  <div class="ptext"><h2>Planos <span>para o seu petshop.</span></h2><p class="sub">Compare os dois planos e comece pelo que faz mais sentido para o seu dia a dia.</p></div>
+  <div class="plans">
+    <div class="plan">
+      <div class="phead"><b>Plano 1</b><span class="draft">nome provisório</span></div>
+      <p class="pdesc"><i style="width:78%"></i></p>
+      <div class="pval"><b>R$ —</b><span>/mês</span><em>Valor a confirmar</em></div>
+      <ul><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E65C00" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><i style="width:72%"></i></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E65C00" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><i style="width:58%"></i></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E65C00" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><i style="width:80%"></i></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E65C00" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><i style="width:64%"></i></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E65C00" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><i style="width:50%"></i></li></ul>
+      <a class="pgo" href="#">Criar conta do petshop</a>
+    </div>
+    <div class="plan dark">
+      <div class="phead"><b>Plano 2</b><span class="draft">nome provisório</span></div>
+      <p class="pdesc"><i style="width:78%"></i></p>
+      <div class="pval"><b>R$ —</b><span>/mês</span><em>Valor a confirmar</em></div>
+      <ul><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><i style="width:76%"></i></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><i style="width:62%"></i></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><i style="width:84%"></i></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><i style="width:58%"></i></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><i style="width:70%"></i></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><i style="width:54%"></i></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><i style="width:66%"></i></li></ul>
+      <a class="pgo" href="#">Criar conta do petshop</a>
+    </div>
+  </div>
+  <p class="pnote">Planos e valores em definição.</p>
+</section>
+
+<section class="faq" id="duvidas">
+  <h2>Dúvidas <span>de balcão.</span></h2>
+  <div class="qs"><details open><summary>Preciso de câmera para usar o Pet Live Pro?<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E65C00" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary><p>Não. Agenda, atendimentos, leva-e-traz, Clubinho, estoque e caixa funcionam sem câmera. A transmissão ao vivo é um recurso a mais, que você liga quando quiser.</p></details><details><summary>Quais câmeras funcionam?<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E65C00" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary><p>Hoje, a Tapo C200. Ela fica na sala e se conecta por um serviço instalado num computador do próprio petshop, sem abrir portas no roteador.</p></details><details><summary>Outro tutor consegue ver o pet do meu cliente?<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E65C00" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary><p>Não. Cada tutor recebe acesso apenas ao atendimento do próprio pet, por tempo limitado, e aceita o termo de uso de imagem no primeiro acesso.</p></details><details><summary>Por quanto tempo as gravações ficam guardadas?<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E65C00" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary><p>Por 7, 15 ou 30 dias, conforme você configurar. Depois disso, elas são apagadas automaticamente.</p></details><details><summary>O tutor precisa baixar um aplicativo?<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E65C00" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary><p>Não precisa ir à loja de apps. O MyLivePet abre no navegador do celular e pode ser instalado na tela inicial com um toque.</p></details><details><summary>Meus colaboradores usam o mesmo sistema?<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E65C00" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary><p>Sim. Cada colaborador tem seu próprio acesso, e o entregador do leva-e-traz vê a rota do dia no painel dele.</p></details></div>
+</section>
+
+<section class="close">
+  <h2>Monte o quadro de hoje. <span>O tutor agradece amanhã.</span></h2>
+  <div><div class="form" style="margin:0"><div class="field">Nome do seu petshop</div><span class="go">Criar conta</span></div>
+    <div class="checks" style="color:#aab5be"><span>Cadastro pelo site</span><span>Funciona sem câmera</span></div></div>
+</section>
+
+<footer>
+  <div class="fgrid">
+    <div class="fbrand"><img src="logopet.svg" alt="MyLivePet: transparência e cuidado"><p>Pet Live Pro, o sistema do petshop. MyLivePet, o app em que o tutor acompanha o pet.</p></div>
+    <div class="fcol"><b>Produto</b><a href="#recursos">Recursos</a><a href="#ao-vivo">Câmera ao vivo</a><a href="#precos">Preços</a><a href="#duvidas">Dúvidas</a></div>
+    <div class="fcol"><b>Petshop</b><a>Criar conta</a><a>Entrar no painel</a></div>
+    <div class="fcol"><b>Tutor</b><a>Área do tutor</a><a href="#ao-vivo">Como funciona a câmera</a></div>
+  </div>
+  <div class="fbar"><span>© 2026 Pet Live Pro · petlivepro.com.br</span><span>Fotos: Unsplash · Vídeos: Pexels</span></div>
+</footer>
+</div>
+
+<script>
+// Leva-e-traz: a van percorre a rota, a contagem cai e, na chegada, “entregue”.
+(() => {
+  const path = document.getElementById("routeDone");
+  const van = document.getElementById("van");
+  const pulse = document.getElementById("destPulse");
+  const eta = document.getElementById("eta");
+  const L = path.getTotalLength();
+  path.style.strokeDasharray = L;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const CYCLE = 6500, TRAVEL = 0.68;
+  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const check = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+  function frame(now) {
+    const t = reduce ? 1 : (now % CYCLE) / CYCLE;
+    const p = ease(Math.min(t / TRAVEL, 1));
+    const pt = path.getPointAtLength(p * L);
+    van.setAttribute("cx", pt.x); van.setAttribute("cy", pt.y);
+    path.style.strokeDashoffset = L * (1 - p);
+    const arrived = t >= TRAVEL;
+    const after = arrived ? (t - TRAVEL) / (1 - TRAVEL) : 0;
+    pulse.setAttribute("r", arrived ? 10 + after * 26 : 10);
+    pulse.setAttribute("opacity", arrived && !reduce ? Math.max(0, 0.45 - after * 0.6) : 0);
+    if (arrived) { eta.classList.add("done"); eta.innerHTML = check + "Mel · entregue"; }
+    else { eta.classList.remove("done"); eta.textContent = "Mel · a caminho · " + Math.max(1, Math.ceil(9 * (1 - p))) + " min"; }
+    if (!reduce) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+
+<script>
+// Câmera por sala: o destaque “ao vivo” acompanha o pet de sala em sala.
+(() => {
+  const box = document.getElementById("cams");
+  const cams = [...box.querySelectorAll(".cam")];
+  const vids = cams.map((c) => c.querySelector("video"));
+  const now = document.getElementById("camNow");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let i = 0, timer, clock;
+  const show = (k) => {
+    cams.forEach((c, j) => c.classList.toggle("on", j === k));
+    const name = cams[k].querySelector(".lbl").textContent.split(" · ");
+    now.innerHTML = "Agora: <b>" + name[1] + "</b> · " + name[0];
+  };
+  const tick = () => {
+    const t = cams[i].querySelector("time");
+    const [h, m, s] = t.textContent.split(":").map(Number);
+    const d = new Date(0, 0, 0, h, m, s + 1);
+    t.textContent = [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, "0")).join(":");
+  };
+  show(0);
+  if (reduce) return;
+  new IntersectionObserver(([e]) => {
+    if (e.isIntersecting) {
+      vids.forEach((v) => v.play().catch(() => {}));
+      timer ??= setInterval(() => { i = (i + 1) % cams.length; show(i); }, 3800);
+      clock ??= setInterval(tick, 1000);
+    } else {
+      vids.forEach((v) => v.pause());
+      clearInterval(timer); clearInterval(clock); timer = clock = undefined;
+    }
+  }, { threshold: 0.3 }).observe(box);
+})();
+</script>
+</body>
+</html>

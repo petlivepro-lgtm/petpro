@@ -1,0 +1,52 @@
+{
+  "title": "Mais modelos de landing",
+  "question": "Rodada mais familiar (safer): três modelos convencionais e um clean no padrão da categoria. O Letreiro já construído continua valendo se nenhum destes for melhor.",
+  "options": [
+    {
+      "id": "quadro",
+      "label": "Quadro do dia",
+      "lineage": "o quadro de status que todo petshop mantém na parede",
+      "thesis": "Todo pet do dia num quadro só, com a câmera aberta nos cards de quem está em atendimento.",
+      "palette": ["#FFFFFF", "#F4F6F8", "#1F2A33", "#FF6A00"],
+      "materials": ["quadro claro", "cards de ímã", "colunas de estado"],
+      "viewport": "Título largo e cadastro à direita; abaixo, o quadro Chegou / No banho / Na tosa / Pronto, com a câmera ao vivo dentro dos cards.",
+      "risk": "Pode lembrar um quadro kanban de software genérico se os cards perderem as fotos e os nomes dos pets.",
+      "comp": ".impeccable/mocks/decision/r1-quadro.png"
+    },
+    {
+      "id": "ficha",
+      "label": "Ficha de atendimento",
+      "lineage": "a ficha de papel presa à baia de cada pet",
+      "thesis": "A ficha do pet com checklist e horários, e a câmera grampeada nela: a tutora assiste enquanto a ficha anda.",
+      "palette": ["#E8ECEF", "#FFFFFF", "#1D4E5F", "#FF6A00"],
+      "materials": ["papel picotado", "checklist", "foto com clipe"],
+      "viewport": "Título à esquerda com o cadastro; à direita, a ficha nº 0412 do Thor com etapas marcadas e a foto ao vivo presa por um clipe.",
+      "risk": "A metáfora de papel pode soar antiquada para quem quer sair do caderno.",
+      "comp": ".impeccable/mocks/decision/r1-ficha.png"
+    },
+    {
+      "id": "monitor",
+      "label": "Monitor de câmeras",
+      "lineage": "a parede de câmeras de segurança",
+      "thesis": "Cada sala do petshop vira uma câmera, e cada câmera mostra qual tutor está assistindo.",
+      "palette": ["#10171C", "#18222A", "#FF6A00", "#FFFFFF"],
+      "materials": ["tela escura", "mosaico de câmeras", "legenda de câmera"],
+      "viewport": "Título e cadastro numa coluna escura; à direita, o mosaico de três câmeras (tosa grande, banho e secagem) com o tutor que assiste cada uma.",
+      "risk": "Pode remeter a vigilância e segurança em vez de cuidado, e esconde a parte de gestão.",
+      "comp": ".impeccable/mocks/decision/r1-monitor.png"
+    }
+  ],
+  "reroll": { "registers": ["safer", "bolder"] },
+  "buildPath": { "value": "code" },
+  "canon": true,
+  "canonCard": {
+    "label": "Clean (padrão da categoria)",
+    "thesis": "O que MoeGo, Gingr e DaySmart Pet fazem, executado com capricho: branco, respiro e o produto em destaque.",
+    "palette": ["#FFFFFF", "#F4F6F8", "#1F2A33", "#FF6A00"],
+    "materials": ["fundo branco", "painel em janela de navegador", "celular do tutor", "cards suaves"],
+    "viewport": "Título e cadastro à esquerda; à direita, o painel da agenda com o celular do tutor mostrando a tosa ao vivo; bento claro abaixo.",
+    "risk": "Fica parecido com a concorrência por definição; o diferencial depende só do texto e da câmera.",
+    "comp": ".impeccable/mocks/decision/r1-clean.png"
+  },
+  "steer": true
+}

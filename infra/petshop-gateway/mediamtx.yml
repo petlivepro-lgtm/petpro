@@ -1,4 +1,4 @@
-# Configuração do MediaMTX do gateway MyLivePet.
+# Configuração do MediaMTX do gateway Pet Live Pro.
 # Os paths das câmeras NÃO ficam aqui: o app cria/remove `cam-<id>` pela API
 # a cada atendimento (o stream só existe enquanto o serviço está em andamento).
 

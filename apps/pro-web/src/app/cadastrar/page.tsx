@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -18,6 +18,15 @@ export default function CadastrarPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const petshopNameRef = useRef<HTMLInputElement>(null);
+
+  // A landing (petlivepro.com.br) manda o nome digitado em ?petshop=.
+  // Lido no cliente para não exigir Suspense em volta de useSearchParams.
+  useEffect(() => {
+    const name = new URLSearchParams(window.location.search).get("petshop")?.trim();
+    const input = petshopNameRef.current;
+    if (name && input && !input.value) input.value = name.slice(0, 80);
+  }, []);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -70,6 +79,7 @@ export default function CadastrarPage() {
           <div>
             <Label htmlFor="petshop_name">Nome do petshop</Label>
             <Input
+              ref={petshopNameRef}
               id="petshop_name"
               name="petshop_name"
               required

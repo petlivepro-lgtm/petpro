@@ -15,7 +15,7 @@ export default async function ProdutosPage() {
     <div>
       <PageHeader
         title="Produtos"
-        subtitle="Itens à venda no MyLivePet e de uso interno do petshop (estoque)."
+        subtitle="Itens à venda no app do tutor e de uso interno do petshop (estoque)."
         actions={<ProductDialog />}
       />
 

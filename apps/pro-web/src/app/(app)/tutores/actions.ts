@@ -40,7 +40,7 @@ function str(v: FormDataEntryValue | null): string | undefined {
 
 /**
  * Cria um tutor e, opcionalmente, o primeiro pet (na mesma submissão).
- * Não gera login/senha: o próprio tutor ativa o acesso no app MyLivePet no
+ * Não gera login/senha: o próprio tutor ativa o acesso no app do tutor no
  * primeiro acesso (confirma o e-mail por código e define a senha).
  */
 export async function createTutor(

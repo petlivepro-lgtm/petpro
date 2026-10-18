@@ -1,6 +1,6 @@
 import { colors } from "./tokens.js";
 
-/** Preset Tailwind compartilhado pelos apps (branding MyLivePet / Pet Live Pro). */
+/** Preset Tailwind compartilhado pelos apps (branding Pet Live Pro). */
 /** @type {import('tailwindcss').Config} */
 export default {
   theme: {

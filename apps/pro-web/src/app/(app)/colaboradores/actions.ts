@@ -167,7 +167,7 @@ export async function setCollaboratorAccess(
     return { ok: false, error: "Só o dono ou o gerente pode criar acessos" };
   }
 
-  // E-mail que já tem conta no MyLivePet (um tutor, por exemplo) não pode
+  // E-mail que já tem conta no Pet Live Pro (um tutor, por exemplo) não pode
   // virar acesso de colaborador: a ativação criaria uma senha nova por cima
   // de uma conta que não é nossa para reivindicar.
   const admin = createAdminClient();
@@ -180,7 +180,7 @@ export async function setCollaboratorAccess(
   if ((target as { user_id?: string | null } | null)?.user_id) {
     return {
       ok: false,
-      error: "Este e-mail já tem uma conta no MyLivePet. Use outro endereço.",
+      error: "Este e-mail já tem uma conta de tutor no Pet Live Pro. Use outro endereço.",
     };
   }
 

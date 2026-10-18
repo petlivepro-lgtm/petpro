@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Ficha de atendimento</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#1F2A33;--orange:#FF6A00;--petrol:#1D4E5F;--mute:#5d6873;--ground:#E8ECEF;--live:#d12b20}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1440px;background:var(--ground);font-family:Inter,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+  nav{height:80px;display:flex;align-items:center;gap:34px;padding:0 72px}
+  nav img{height:42px}
+  nav .links{display:flex;gap:28px;font:500 15px Inter;color:var(--mute);margin-left:auto}
+  nav .in{font:600 15px Inter}
+  .btn{background:var(--petrol);color:#fff;font:700 15px Inter;padding:12px 18px;border-radius:8px}
+  .hero{display:grid;grid-template-columns:1fr 660px;gap:24px;padding:56px 72px 0;height:740px}
+  h1{font:800 66px/1.02 Manrope;letter-spacing:-.035em;margin-top:40px}
+  h1 em{font-style:normal;color:var(--petrol)}
+  .lede{font:400 19px/1.6 Inter;color:var(--mute);margin-top:24px;max-width:520px}
+  .form{margin-top:34px;max-width:520px;background:#fff;border-radius:12px;padding:8px;display:flex;gap:8px;box-shadow:0 1px 2px rgba(31,42,51,.06)}
+  .field{flex:1;padding:12px 12px;font:500 16px Inter;color:#8a949d}
+  .form .btn{display:flex;align-items:center;padding:0 20px;font-size:16px;background:var(--orange);color:var(--ink)}
+  /* a ficha */
+  .ticket{position:relative;width:470px;margin:6px 0 0 30px;background:#fff;border-radius:6px;transform:rotate(-1.5deg);box-shadow:0 2px 4px rgba(31,42,51,.06),0 24px 50px rgba(31,42,51,.14)}
+  .ticket::before{content:"";position:absolute;left:0;right:0;top:-9px;height:18px;background:radial-gradient(circle at 9px 9px,var(--ground) 5px,transparent 5.5px) 0 0/22px 18px repeat-x}
+  .th{background:var(--petrol);color:#fff;padding:22px 26px 18px;border-radius:6px 6px 0 0;display:flex;justify-content:space-between;align-items:baseline}
+  .th b{font:800 15px Manrope;letter-spacing:.14em}
+  .th span{font:600 14px Sora;opacity:.85}
+  .tb{padding:22px 26px 26px}
+  .fields{display:grid;grid-template-columns:1.3fr 1fr .7fr;border:1.5px solid #d9dfe4;border-radius:6px}
+  .fields div{padding:10px 12px;border-right:1.5px solid #d9dfe4}.fields div:last-child{border:0}
+  .fields small{display:block;font:700 10px Manrope;letter-spacing:.14em;color:var(--mute);text-transform:uppercase}
+  .fields b{font:700 17px Manrope}
+  .list{margin-top:18px}
+  .li{display:grid;grid-template-columns:26px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1.5px dashed #dfe4e8;font:600 15px Inter}
+  .box{width:22px;height:22px;border:2px solid var(--ink);border-radius:4px;position:relative}
+  .box.ok::after{content:"";position:absolute;left:5px;top:0;width:7px;height:13px;border:solid var(--petrol);border-width:0 3.5px 3.5px 0;transform:rotate(42deg)}
+  .li time{font:600 13px Sora;color:var(--mute)}
+  .li.now{color:var(--petrol)}
+  .li.now time{color:var(--live)}
+  .tutor{margin-top:16px;display:flex;align-items:center;gap:12px;background:#fff4ec;border-radius:8px;padding:11px 14px;font:600 14px Inter}
+  .tutor i{width:9px;height:9px;border-radius:50%;background:var(--live);box-shadow:0 0 0 4px rgba(209,43,32,.15)}
+  .photo{position:absolute;right:-175px;top:300px;width:220px;background:#fff;padding:10px 10px 36px;transform:rotate(5deg);box-shadow:0 18px 40px rgba(31,42,51,.22)}
+  .photo .clip{position:absolute;left:50%;top:-18px;width:22px;height:46px;margin-left:-11px;border:4px solid #8f989f;border-radius:11px;border-bottom-color:transparent}
+  .photo img{width:100%;height:170px;object-fit:cover;display:block}
+  .photo span{position:absolute;left:18px;top:18px;background:var(--live);color:#fff;font:800 10px Manrope;letter-spacing:.12em;padding:4px 7px;border-radius:4px}
+  .photo p{position:absolute;left:12px;bottom:10px;font:600 13px Inter;color:var(--ink)}
+  .ex{font:500 12px Inter;color:var(--mute);margin:24px 0 0 30px}
+  /* abaixo: outras fichas */
+  .more{background:#fff;padding:110px 72px}
+  .more h2{font:800 44px/1.08 Manrope;letter-spacing:-.03em;max-width:720px}
+  .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:52px}
+  .card{background:var(--ground);border-radius:10px;padding:26px;min-height:260px;position:relative}
+  .card .tag{font:700 11px Manrope;letter-spacing:.14em;color:var(--petrol)}
+  .card b{display:block;font:700 20px Manrope;margin-top:8px}
+  .card p{font:400 15px/1.55 Inter;color:var(--mute);margin-top:8px}
+  .stamps{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-top:22px}
+  .stamps i{aspect-ratio:1;border-radius:50%;border:2px dashed #b7c0c7}.stamps i.on{border:0;background:var(--petrol)}
+</style>
+</head>
+<body>
+<nav><img src="logopet.svg" alt=""><div class="links"><span>Recursos</span><span>Câmera ao vivo</span><span>Preços</span></div><span class="in">Entrar</span><span class="btn">Criar conta</span></nav>
+<section class="hero">
+  <div>
+    <h1>A ficha do pet, <em>agora com o tutor assistindo.</em></h1>
+    <p class="lede">No Pet Live Pro, cada atendimento tem checklist, horário de cada etapa e câmera da sala. O tutor acompanha pelo app MyLivePet e recebe o boletim no fim.</p>
+    <div class="form"><div class="field">Nome do seu petshop</div><span class="btn">Criar conta</span></div>
+  </div>
+  <div>
+    <div class="ticket">
+      <div class="th"><b>FICHA DE ATENDIMENTO</b><span>Nº 0412 · 14/10</span></div>
+      <div class="tb">
+        <div class="fields"><div><small>Pet</small><b>Thor</b></div><div><small>Raça</small><b>Golden</b></div><div><small>Porte</small><b>G</b></div></div>
+        <div class="list">
+          <div class="li"><span class="box ok"></span>Chegou ao petshop<time>10:28</time></div>
+          <div class="li"><span class="box ok"></span>Banho com shampoo neutro<time>10:32</time></div>
+          <div class="li now"><span class="box"></span>Hidratação · em andamento<time>ao vivo</time></div>
+          <div class="li"><span class="box"></span>Secagem e escovação<time>—</time></div>
+          <div class="li" style="border:0"><span class="box"></span>Perfume e laço<time>—</time></div>
+        </div>
+        <div class="tutor"><i></i>Ana, tutora do Thor, está assistindo pelo app</div>
+      </div>
+      <div class="photo"><span class="clip"></span><img src="img/1581887936036-3f4f7f0b6679.jpg"><span>AO VIVO</span><p>Banho 1 · câmera 2</p></div>
+    </div>
+    <p class="ex">Ficha de exemplo</p>
+  </div>
+</section>
+<section class="more">
+  <h2>O resto do petshop também sai do caderno.</h2>
+  <div class="row3">
+    <div class="card"><span class="tag">CLUBINHO</span><b>Cartão de banhos, sem carimbo</b><p>Pacotes recorrentes com saldo que o tutor acompanha no app.</p><div class="stamps"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div></div>
+    <div class="card"><span class="tag">LEVA-E-TRAZ</span><b>Rota do dia no mapa</b><p>O entregador vê a sequência de paradas e o tutor recebe o “a caminho”.</p><svg viewBox="0 0 300 80" style="width:100%;margin-top:18px" fill="none"><path d="M10 70 L70 50 L70 20 L190 20 L190 8 L290 8" stroke="#1D4E5F" stroke-width="4" stroke-linejoin="round"/><circle cx="10" cy="70" r="6" fill="#1F2A33"/><circle cx="190" cy="20" r="6" fill="#1F2A33"/><circle cx="130" cy="20" r="9" fill="#FF6A00" stroke="#fff" stroke-width="3"/></svg></div>
+    <div class="card"><span class="tag">CAIXA</span><b>Receitas, despesas e balcão</b><p>Vendas de balcão, produtos com variações e controle de estoque.</p><div style="margin-top:16px;font:500 14px Inter"><div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1.5px dashed #cdd4da">Banho · Thor<b style="font:600 14px Sora">R$ 90,00</b></div><div style="display:flex;justify-content:space-between;padding:7px 0">Balcão · shampoo 500 ml<b style="font:600 14px Sora">R$ 39,90</b></div></div></div>
+  </div>
+</section>
+</body>
+</html>

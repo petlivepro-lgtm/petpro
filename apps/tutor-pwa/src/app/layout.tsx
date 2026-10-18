@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const sora = Sora({ subsets: ["latin"], variable: "--font-accent" });
 
 export const metadata: Metadata = {
-  title: "MyLivePet",
+  title: "Pet Live Pro",
   description: "Acompanhe o cuidado do seu pet com clareza e tranquilidade.",
   icons: {
     icon: "/brand/faviconpet.svg",

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Pintura do leva-e-traz</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#1F2A33;--orange:#FF6A00;--petrol:#1D4E5F;--mute:#66717C;--soft:#F4F6F8;--board:#11181d;--live:#E5372B}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1440px;background:#fff;font-family:Inter,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+  .body{position:relative;overflow:hidden;background:linear-gradient(180deg,#fff 0,#f7f9fa 100%)}
+  /* emendas da lataria */
+  .seam{position:absolute;top:0;bottom:0;width:2px;background:linear-gradient(90deg,#d9dfe3,#fff);z-index:1}
+  nav{position:relative;z-index:4;height:88px;display:flex;align-items:center;gap:34px;padding:0 56px}
+  nav img{height:50px}
+  nav b.n{font:800 20px Manrope}
+  nav b.n span{color:var(--orange)}
+  nav .links{margin-left:auto;display:flex;gap:28px;font:600 15px Inter}
+  nav .cta{background:var(--ink);color:#fff;font:700 15px Inter;padding:12px 18px;border-radius:8px}
+
+  .hero{position:relative;height:760px}
+  /* faixa: espinha da página */
+  .stripe{position:absolute;z-index:2;left:0;right:0;top:430px;height:180px}
+  .stripe .o{position:absolute;left:0;right:0;top:0;height:112px;background:var(--orange);clip-path:polygon(0 0,74% 0,84% -60%,100% -60%,100% 100%,0 100%)}
+  .stripe .p{position:absolute;left:0;right:0;top:126px;height:38px;background:var(--petrol);clip-path:polygon(0 0,100% 0,100% 100%,0 100%)}
+  .copy{position:relative;z-index:3;padding:48px 56px 0;width:860px}
+  .kick{font:800 13px Manrope;letter-spacing:.2em;text-transform:uppercase;color:var(--petrol)}
+  h1{font:800 84px/.94 Manrope;letter-spacing:-.035em;margin-top:18px}
+  h1 em{font-style:normal;color:var(--orange)}
+  .lede{font:500 19px/1.5 Inter;color:#3a4651;max-width:600px;margin-top:22px}
+  /* números de corrida = pets em atendimento */
+  .roundels{position:absolute;z-index:4;left:56px;top:440px;display:flex;gap:26px}
+  .rd{width:92px;height:92px;border-radius:50%;background:#fff;border:5px solid var(--ink);display:grid;place-items:center;font:800 40px Sora;color:var(--ink);position:relative}
+  .rd small{position:absolute;bottom:-47px;left:50%;transform:translateX(-50%);white-space:nowrap;font:800 12px Manrope;letter-spacing:.14em;color:#fff}
+  .rd.on{border-color:var(--live)}
+  .rd.on::after{content:"";position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:var(--live);border:3px solid #fff}
+  /* telefone pintado da van = cadastro */
+  .phoneline{position:absolute;z-index:4;left:440px;top:458px;color:#fff}
+  .phoneline small{font:800 12px Manrope;letter-spacing:.18em;text-transform:uppercase;opacity:.9}
+  .phoneline b{display:block;font:800 30px Sora;letter-spacing:-.01em;margin-top:2px}
+  .form{position:absolute;z-index:4;left:56px;top:650px;display:flex;gap:10px;align-items:center}
+  .form .f{width:360px;border:2px solid var(--ink);border-radius:10px;padding:14px 16px;font:500 16px Inter;color:#9aa3ab;background:#fff}
+  .form button{border:0;background:var(--ink);color:#fff;font:700 16px Inter;padding:16px 22px;border-radius:10px}
+  .form span{font:600 14px Inter;color:var(--mute);margin-left:8px}
+  /* quadro de box */
+  .pit{position:absolute;z-index:5;right:56px;top:40px;width:450px;background:var(--board);border-radius:14px;padding:16px;box-shadow:0 30px 60px rgba(17,24,29,.35);color:#fff}
+  .feed{position:relative;height:250px;border-radius:8px;overflow:hidden}
+  .feed img{width:100%;height:100%;object-fit:cover;object-position:50% 35%}
+  .feed .t{position:absolute;left:12px;top:12px;display:flex;gap:8px}
+  .lv{display:inline-flex;gap:6px;align-items:center;background:var(--live);font:800 11px Manrope;letter-spacing:.12em;padding:5px 9px;border-radius:4px}
+  .lv i{width:7px;height:7px;border-radius:50%;background:#fff}
+  .tg{background:rgba(0,0,0,.55);font:600 12px Inter;padding:5px 9px;border-radius:4px}
+  .pith{display:flex;justify-content:space-between;font:800 11px Manrope;letter-spacing:.18em;color:#7f8d97;margin:16px 4px 6px}
+  .slot{display:grid;grid-template-columns:44px 1fr 1fr 70px;align-items:center;gap:8px;padding:10px 4px;border-top:1px solid #23303a;font:700 15px Sora;letter-spacing:.04em;text-transform:uppercase}
+  .slot .n{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#fff;color:var(--ink);font:800 14px Sora}
+  .slot .s{font:700 12px Manrope;letter-spacing:.12em;color:#c9d2d8}
+  .slot .s.b{color:#7cc0ff}.slot .s.d{color:#F2B84B}.slot .s.r{color:#5fd39a}.slot .s.v{color:var(--orange)}
+  .slot time{text-align:right;color:var(--orange)}
+  .exn{font:600 11px Inter;color:#6f7d87;margin:8px 4px 0}
+
+  /* painéis da carroceria = bento */
+  .panels{background:var(--soft);padding:96px 56px}
+  .panels header{display:flex;justify-content:space-between;align-items:end;margin-bottom:44px}
+  .panels h2{font:800 60px/1 Manrope;letter-spacing:-.03em;max-width:760px}
+  .panels h2 em{font-style:normal;color:var(--orange)}
+  .panels header p{max-width:380px;font:500 17px/1.5 Inter;color:var(--mute)}
+  .grid{position:relative;padding-top:18px;display:grid;grid-template-columns:repeat(12,1fr);grid-auto-rows:100px;gap:3px;background:#cfd6db;border:3px solid #cfd6db;border-radius:22px;overflow:hidden}
+  .pn{background:#fff;padding:24px;position:relative;overflow:hidden}
+  .pn h3{font:800 20px Manrope;position:relative;z-index:2}
+  .pn p.d{font:500 14px/1.45 Inter;color:var(--mute);margin-top:6px;position:relative;z-index:2;max-width:300px}
+  .pn .num{position:absolute;right:20px;top:18px;width:46px;height:46px;border-radius:50%;border:3px solid var(--ink);display:grid;place-items:center;font:800 18px Sora;z-index:2;background:#fff}
+  /* a faixa atravessa os painéis na mesma altura */
+  .grid::before,.grid::after{content:"";position:absolute;left:0;right:0;z-index:1;pointer-events:none}
+  .grid::before{top:0;height:10px;background:var(--orange)}
+  .grid::after{top:13px;height:5px;background:var(--petrol)}
+  .p-live{grid-column:1/6;grid-row:span 5;padding:0}
+  .p-live img{width:100%;height:100%;object-fit:cover}
+  .p-live .ov{position:absolute;inset:0;z-index:3;padding:24px;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(180deg,rgba(17,24,29,.5),transparent 35%,transparent 55%,rgba(17,24,29,.85))}
+  .p-live h3{color:#fff}.p-live p.d{color:#dce3e8}
+  .p-rota{grid-column:6/10;grid-row:span 3}
+  .p-rota .eta{position:absolute;z-index:3;left:24px;bottom:20px;background:var(--ink);color:#fff;border-radius:10px;padding:10px 14px;font:600 13px Inter}
+  .p-rota .eta b{display:block;font:800 18px Manrope}
+  .p-agenda{grid-column:10/13;grid-row:span 3}
+  .ag{margin-top:12px;position:relative;z-index:2}
+  .ag div{display:flex;justify-content:space-between;font:600 14px Inter;padding:7px 0;border-bottom:1px solid #eef1f4}
+  .ag span{font:700 12px Manrope;letter-spacing:.08em;text-transform:uppercase}
+  .p-clube{grid-column:6/9;grid-row:span 2}
+  .p-porte{grid-column:9/13;grid-row:span 2}
+  .sz{display:flex;gap:8px;margin-top:12px;position:relative;z-index:2}
+  .sz span{flex:1;text-align:center;border:2px solid var(--ink);border-radius:999px;padding:6px 0;font:800 14px Sora}
+  .sz span.on{background:var(--ink);color:#fff}
+  .p-bol{grid-column:1/5;grid-row:span 2}
+  .p-caixa{grid-column:5/9;grid-row:span 2}
+  .p-equipe{grid-column:9/13;grid-row:span 2}
+  .exemplo{font:600 12px Inter;color:var(--mute);margin-top:16px}
+</style>
+</head>
+<body>
+<div class="body">
+  <span class="seam" style="left:920px"></span>
+  <nav><img src="logopet.svg" alt=""><b class="n">Pet Live <span>Pro</span></b><div class="links"><span>Ao vivo</span><span>Recursos</span><span>Leva-e-traz</span><span>Preços</span><span>Entrar</span></div><span class="cta">Criar conta</span></nav>
+  <section class="hero">
+    <div class="copy">
+      <div class="kick">Sistema para banho, tosa e leva-e-traz</div>
+      <h1>Da busca ao banho, <em>o tutor vê tudo.</em></h1>
+      <p class="lede">Agenda, atendimentos, rota do leva-e-traz, Clubinho, estoque e caixa no Pet Live Pro. Câmera, “a caminho” e boletim no celular do tutor.</p>
+    </div>
+    <div class="stripe"><div class="o"></div><div class="p"></div></div>
+    <div class="roundels"><div class="rd on">07<small>THOR</small></div><div class="rd">12<small>LUNA</small></div><div class="rd">03<small>MEL</small></div></div>
+    <div class="phoneline"><small>Crie a conta do seu petshop</small><b>petlivepro.com.br</b></div>
+    <div class="form"><div class="f">Nome do seu petshop</div><button>Criar conta →</button><span>Cadastro direto, sem vendedor.</span></div>
+    <aside class="pit">
+      <div class="feed"><img src="img/1528846104175-4fd300ee59da.jpg" alt="Tosador escovando um spitz na mesa"><div class="t"><span class="lv"><i></i>AO VIVO</span><span class="tg">Tosa · nº 07 Thor</span></div></div>
+      <div class="pith"><span>BOX DO DIA</span><span>TERÇA 14:32</span></div>
+      <div class="slot"><span class="n">07</span>Thor<span class="s v">Tosa</span><time>+18'</time></div>
+      <div class="slot"><span class="n">12</span>Luna<span class="s d">Secagem</span><time>+06'</time></div>
+      <div class="slot"><span class="n">03</span>Mel<span class="s r">A caminho</span><time>6 min</time></div>
+      <div class="slot"><span class="n">21</span>Bob<span class="s b">Banho</span><time>+31'</time></div>
+      <p class="exn">Pets e horários de exemplo.</p>
+    </aside>
+  </section>
+</div>
+<section class="panels">
+  <header><h2>Cada parte do petshop, <em>numa carroceria só.</em></h2><p>O que hoje fica entre caderno, planilha e WhatsApp, com o tutor vendo o que importa para ele.</p></header>
+  <div class="grid">
+    <div class="pn p-live"><img src="img/1583534778255-5d67d3dcf95d.jpg" alt="Dachshund na banheira"><div class="ov"><div><span class="lv"><i></i>AO VIVO</span></div><div><h3>Câmera ao vivo</h3><p class="d">A transmissão troca de sala junto com o pet. Cerca de 1 segundo de atraso, gravação com prazo.</p></div></div></div>
+    <div class="pn p-rota"><span class="num">01</span><h3>Leva-e-traz</h3><p class="d">Rota do dia no mapa e aviso de “a caminho” para o tutor.</p>
+      <svg style="position:absolute;right:0;bottom:0;width:70%;height:75%" viewBox="0 0 300 200" fill="none"><g stroke="#eef1f4" stroke-width="12"><path d="M0 60H300M0 150H300M90 0V200M210 0V200"/></g><path d="M30 190 L90 150 L90 60 L210 60 L210 20 L290 20" stroke="#1F2A33" stroke-width="5"/><circle cx="150" cy="60" r="12" fill="#FF6A00" stroke="#fff" stroke-width="4"/></svg>
+      <div class="eta"><b>Mel · 6 min</b>Entrega · 3ª parada</div></div>
+    <div class="pn p-agenda"><span class="num">02</span><h3>Agenda</h3><div class="ag"><div>08:30 Mel<span>Pronto</span></div><div>10:30 Thor<span>Tosa</span></div><div>11:00 Luna<span>Secagem</span></div><div>13:30 Pipoca<span>Chegou</span></div></div></div>
+    <div class="pn p-clube"><span class="num">03</span><h3>Clubinho</h3><p class="d">Pacotes recorrentes com saldo de banhos.</p></div>
+    <div class="pn p-porte"><span class="num">04</span><h3>Preço por porte</h3><div class="sz"><span>P</span><span class="on">M</span><span>G</span><span>GG</span></div></div>
+    <div class="pn p-bol"><span class="num">05</span><h3>Boletim do pet</h3><p class="d">Como o pet se comportou no atendimento.</p></div>
+    <div class="pn p-caixa"><span class="num">06</span><h3>Caixa e estoque</h3><p class="d">Receitas, despesas e vendas de balcão.</p></div>
+    <div class="pn p-equipe"><span class="num">07</span><h3>Equipe</h3><p class="d">Painel do banhista, do tosador e do entregador.</p></div>
+  </div>
+  <p class="exemplo">Nomes, horários e valores são exemplos.</p>
+</section>
+</body>
+</html>

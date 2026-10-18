@@ -66,7 +66,7 @@ export function SolicitacoesList({
         <EmptyState
           icon={<CalendarClock className="h-6 w-6" />}
           title="Nenhuma solicitação pendente"
-          description="Quando um tutor agendar ou reservar produtos pelo MyLivePet, o pedido aparece aqui para você confirmar."
+          description="Quando um tutor agendar ou reservar produtos pelo app, o pedido aparece aqui para você confirmar."
         />
       )}
     </div>

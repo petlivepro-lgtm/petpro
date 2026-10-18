@@ -1,9 +1,9 @@
-# MyLivePet · Pet Live Pro
+# Pet Live Pro
 
-Plataforma para o mercado pet (SaaS multi-tenant) composta por dois produtos que compartilham a mesma base de dados:
+Plataforma para o mercado pet (SaaS multi-tenant). Slogan: *Transparência e cuidado*. Um só produto com duas faces que compartilham a mesma base de dados:
 
-- **Pet Live Pro** (`apps/pro-web`) — CRM/gestão do petshop (B2B).
-- **MyLivePet** (`apps/tutor-pwa`) — app do tutor (B2C, PWA): histórico, agendamento, feedbacks, reserva de produtos e (Fase 2) câmera ao vivo.
+- **Painel do petshop** (`apps/pro-web`) — CRM/gestão do petshop (B2B).
+- **App do tutor** (`apps/tutor-pwa`) — B2C, PWA: histórico, agendamento, feedbacks, reserva de produtos e (Fase 2) câmera ao vivo.
 
 Backend gerenciado: **Supabase** (Postgres + Auth + Storage + Realtime). Isolamento multi-tenant via **Row Level Security**.
 
@@ -14,7 +14,7 @@ apps/
   pro-web/      Next.js — painel do petshop (staff)
   tutor-pwa/    Next.js (PWA) — app do tutor
 packages/
-  ui/           design system (branding MyLivePet)
+  ui/           design system (branding Pet Live Pro; o pacote se chama @mylivepet/ui por histórico)
   types/        tipos do banco (gerados) + DTOs (zod)
   config/       tailwind preset + tsconfig compartilhados
 supabase/

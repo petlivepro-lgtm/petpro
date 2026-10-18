@@ -1,0 +1,117 @@
+{
+  "title": "Escolha o mundo visual da landing",
+  "question": "Três desenhos da landing do Pet Live Pro. Fique com o sorteado, escolha uma alternativa ou peça outro sorteio.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Letreiro de bairro",
+      "kicker": "THE ROLL",
+      "lineage": "letreiro pintado à mão das fachadas de petshop",
+      "thesis": "A página é a parede pintada do petshop, e nela há uma janela que transmite o banho ao vivo.",
+      "palette": ["#FF6A00", "#1F2A33", "#FFFFFF", "#1D4E5F"],
+      "materials": ["tinta sobre reboco", "letra com sombra de bloco", "caixilho de alumínio"],
+      "viewport": "Parede laranja inteira, letreiro SEU CLIENTE VÊ O BANHO AO VIVO, janela com a câmera e plaquinha de cadastro.",
+      "risk": "Se a pintura ficar tímida, vira um site laranja comum; se exagerar, pode parecer popular demais para um SaaS.",
+      "raised": [
+        { "from": "challenger-teletext", "raise": "Bento numa grade modular rígida, como azulejo: toda célula ocupa módulos inteiros." },
+        { "from": "challenger-onebit", "raise": "Um vocabulário único de estados pintados (Chegou, No banho, Secando, Pronto), igual em toda a página." },
+        { "from": "challenger-breton", "raise": "Letreiro construído: toda linha de destaque usa a mesma sombra de bloco de 0,05em." }
+      ],
+      "comp": ".impeccable/mocks/decision/assigned.png"
+    },
+    {
+      "id": "model-pick",
+      "label": "A vitrine do banho",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "a vitrine de vidro da sala de banho e tosa",
+      "thesis": "O visitante está na calçada; atrás do vidro, o dia do petshop acontece ao vivo.",
+      "palette": ["#1F2A33", "#AEB6BD", "#FF6A00", "#FBFCFD"],
+      "materials": ["vidro com reflexo", "letra de vinil", "faixa de segurança laranja", "azulejo"],
+      "viewport": "Fachada com três vãos de vidro e câmeras atrás, título em vinil, faixa laranja passando os pets ao vivo e adesivo de cadastro na porta.",
+      "risk": "É a leitura mais literal de 'Live' e a mais próxima do visual de câmera que muitos produtos ao vivo usam.",
+      "comp": ".impeccable/mocks/decision/model-pick.png"
+    },
+    {
+      "id": "challenger-livery",
+      "label": "Pintura do leva-e-traz",
+      "verdict": "competitive",
+      "lineage": "pinturas de equipe de endurance (Gulf, Martini) aplicadas à van do petshop",
+      "thesis": "A faixa laranja e petróleo da van atravessa a página; cada pet em atendimento ganha um número e um tempo no quadro de box.",
+      "palette": ["#FFFFFF", "#FF6A00", "#1D4E5F", "#11181D"],
+      "materials": ["lataria branca", "faixa de pintura", "números redondos", "quadro de box"],
+      "viewport": "Título sobre a lataria branca, faixa com os números 07, 12 e 03 e o endereço pintado, quadro de box com a câmera e o tempo de cada pet.",
+      "case": "Funde bem: o quadro de box mostra o status ao vivo com mais clareza; perde na identificação, porque o dono de petshop não vive no box de corrida.",
+      "risk": "Pode soar como transporte ou logística em vez de banho e tosa.",
+      "comp": ".impeccable/mocks/decision/challenger-livery.png",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-endurance-livery-garage-hero.webp"
+    },
+    {
+      "id": "challenger-teletext",
+      "label": "Teletexto",
+      "verdict": "declined",
+      "lineage": "revistas de teletexto em grade 40×24",
+      "thesis": "O petshop como canal de páginas numeradas.",
+      "palette": ["#000000", "#FFFF00", "#00FFFF", "#FFFFFF"],
+      "materials": ["mosaico de blocos", "fonte bitmap"],
+      "viewport": "Página 100 com o índice do petshop.",
+      "case": "Funde mal: o dono de petshop não reconhece teletexto e a clareza cai.",
+      "risk": "Novidade retrô sem ligação com o balcão.",
+      "kept": "A disciplina da grade rígida, levada para o bento do Letreiro.",
+      "hero": "https://impeccable.style/worlds/cards/broadcast-programming-teletext-service-hero.webp"
+    },
+    {
+      "id": "challenger-onebit",
+      "label": "Desktop de 1 bit",
+      "verdict": "declined",
+      "lineage": "primeiros desktops monocromáticos",
+      "thesis": "O petshop em janelas sobrepostas.",
+      "palette": ["#000000", "#FFFFFF"],
+      "materials": ["pontilhado", "cromo de janela"],
+      "viewport": "Janelas com a agenda e a câmera.",
+      "case": "Funde mal: perde a marca laranja e não fala com o público.",
+      "risk": "Nostalgia de tecnologia sem relação com pets.",
+      "kept": "Um vocabulário de estados único e consistente.",
+      "hero": "https://impeccable.style/worlds/cards/medium-native-one-bit-desktop-hero.webp"
+    },
+    {
+      "id": "challenger-breton",
+      "label": "Programa de ornamentos",
+      "verdict": "declined",
+      "lineage": "livro de pranchas de um movimento regional",
+      "thesis": "Alfabeto e ornamentos construídos como sistema.",
+      "palette": ["#5E6670", "#E9E1D2", "#9E2B25"],
+      "materials": ["prancha impressa", "filete fino"],
+      "viewport": "Prancha numerada com unidades montando uma borda.",
+      "case": "Funde mal: decorativo demais para um balcão corrido.",
+      "risk": "Vira enfeite.",
+      "kept": "Letreiro construído com uma única regra de sombra.",
+      "hero": "https://impeccable.style/worlds/cards/design-canon-breton-ornament-program-hero.webp"
+    },
+    {
+      "id": "challenger-accretion",
+      "label": "Disco de acreção",
+      "verdict": "declined",
+      "lineage": "imagem de buraco negro",
+      "thesis": "Tudo orbita um centro.",
+      "palette": ["#000000", "#F4F7FF", "#D9A441"],
+      "materials": ["luz curvada", "anéis"],
+      "viewport": "Disco com rótulos orbitando.",
+      "case": "Funde mal nos dois eixos.",
+      "risk": "Ficção científica sem relação com o produto.",
+      "kept": "Um único ponto focal (a câmera) que organiza o herói.",
+      "hero": "https://impeccable.style/worlds/cards/galaxies-nebulae-deep-time-accretion-disk-threshold-hero.webp"
+    }
+  ],
+  "reroll": { "registers": ["safer", "bolder"] },
+  "buildPath": { "value": "code" },
+  "canon": true,
+  "canonCard": {
+    "label": "O padrão da categoria",
+    "thesis": "O que MoeGo e os sistemas de petshop entregam, feito com capricho.",
+    "palette": ["#FFFFFF", "#1F2A33", "#FF6A00"],
+    "materials": ["foto de pet feliz", "print do painel", "cards de recursos"],
+    "viewport": "Título à esquerda, print do sistema à direita e seis cards de recursos abaixo.",
+    "risk": "Igual à concorrência por definição."
+  },
+  "steer": true
+}

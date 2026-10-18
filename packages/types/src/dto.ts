@@ -106,7 +106,7 @@ export const petInput = z.object({
 export type PetInput = z.infer<typeof petInput>;
 
 // Agendamento de serviços, nas duas origens: solicitação feita pelo tutor no
-// MyLivePet (origin TUTOR, nasce REQUESTED) e agendamento que o petshop cria em
+// app do tutor (origin TUTOR, nasce REQUESTED) e agendamento que o petshop cria em
 // nome do tutor no Pet Live Pro (origin STAFF, nasce CONFIRMED).
 // Pode conter vários serviços — cada um vira um appointment compartilhando
 // o mesmo request_group_id (ver migração 0008).

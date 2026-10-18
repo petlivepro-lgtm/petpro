@@ -39,7 +39,7 @@ export default async function ServicosPage() {
     <div>
       <PageHeader
         title="Serviços"
-        subtitle="Catálogo de serviços disponível para agendamento no MyLivePet."
+        subtitle="Catálogo de serviços disponível para agendamento no app do tutor."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <AddonDialog />

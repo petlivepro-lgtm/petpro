@@ -122,7 +122,7 @@ export function ProductDialog({ product }: { product?: ProductRow }) {
         open={open}
         onOpenChange={setOpen}
         title={isEdit ? "Editar produto" : "Novo produto"}
-        description="À venda no MyLivePet ou de uso interno do petshop (estoque)."
+        description="À venda no app do tutor ou de uso interno do petshop (estoque)."
       >
         <form action={formAction} className="space-y-4">
           {isEdit && <input type="hidden" name="id" value={product!.id} />}

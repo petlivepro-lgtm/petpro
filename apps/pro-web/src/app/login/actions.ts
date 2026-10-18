@@ -91,14 +91,14 @@ export async function activateCollaboratorAccess(
   if (target.status !== "first_access") {
     return { ok: false, error: "E-mail não encontrado no painel do petshop." };
   }
-  // O e-mail já pertence a uma conta do MyLivePet (um tutor, por exemplo).
+  // O e-mail já pertence a uma conta de tutor no Pet Live Pro, por exemplo.
   // Criar senha por cima seria tomar a conta — o petshop precisa usar outro
   // endereço. setCollaboratorAccess já barra isso no cadastro; aqui é a
   // segunda linha de defesa, para o caso de a conta ter nascido depois.
   if (target.user_id) {
     return {
       ok: false,
-      error: "Este e-mail já tem uma conta no MyLivePet. Fale com o petshop.",
+      error: "Este e-mail já tem uma conta de tutor no Pet Live Pro. Fale com o petshop.",
     };
   }
 

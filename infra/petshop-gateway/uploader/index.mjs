@@ -1,4 +1,4 @@
-// Uploader do gateway MyLivePet.
+// Uploader do gateway Pet Live Pro.
 // Varre ./recordings a cada 30s; quando um segmento MP4 termina de ser
 // gravado (sem escrita há 90s), pede uma signed upload URL ao app, sobe o
 // arquivo DIRETO ao Supabase Storage, confirma o registro e apaga o local.

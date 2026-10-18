@@ -94,7 +94,7 @@ export function CollaboratorDialog({ collaborator }: { collaborator?: Collaborat
         open={open}
         onOpenChange={setOpen}
         title={isEdit ? "Editar colaborador" : "Novo colaborador"}
-        description="Os horários de trabalho definem a agenda disponível no MyLivePet."
+        description="Os horários de trabalho definem a agenda disponível no app do tutor."
       >
         <form action={formAction} className="space-y-4">
           {isEdit && <input type="hidden" name="id" value={collaborator!.id} />}

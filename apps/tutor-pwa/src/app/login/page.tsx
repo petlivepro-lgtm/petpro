@@ -61,7 +61,7 @@ function LoginForm() {
 
   const accessError =
     searchParams.get("erro") === "acesso"
-      ? "Este acesso nao pertence ao app MyLivePet."
+      ? "Este acesso não pertence ao app do tutor."
       : null;
 
   /** O que o tutor digitou, no formato que as Server Actions esperam. */
@@ -210,7 +210,7 @@ function LoginForm() {
       <div className="mb-8 text-center">
         <img
           src="/brand/logopet.svg"
-          alt="MyLivePet"
+          alt="Pet Live Pro"
           className="mx-auto h-24 w-auto"
         />
         <h1 className="mt-1 font-heading text-2xl font-bold text-graphite">
