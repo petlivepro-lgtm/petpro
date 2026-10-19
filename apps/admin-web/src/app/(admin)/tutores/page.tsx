@@ -21,7 +21,7 @@ const APP_FILTERS = ["all", "app", "never"] as const;
 export default async function TutoresPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; petshop?: string; app?: string; desde?: string }>;
+  searchParams: Promise<{ q?: string; petshop?: string; app?: string; desde?: string; foco?: string }>;
 }) {
   const admin = await requireAdminPage();
   const sp = await searchParams;
@@ -29,6 +29,8 @@ export default async function TutoresPage({
   const petshop = z.string().uuid().safeParse(sp.petshop).success ? sp.petshop! : "";
   const app = APP_FILTERS.find((f) => f === sp.app) ?? "all";
   const offset = Math.max(0, Number.parseInt(sp.desde ?? "0", 10) || 0);
+  // Escolhido numa sugestão: a linha dessa pessoa fica destacada.
+  const focus = z.string().uuid().safeParse(sp.foco).success ? sp.foco : undefined;
   const [list, tenants] = await Promise.all([
     getTutorList({ search: q, tenant: petshop, app, limit: LIMIT, offset }),
     getTenantOptions(),
@@ -57,7 +59,7 @@ export default async function TutoresPage({
             : "Seu papel não revela dados pessoais."}
         </p>
 
-        <SearchForm action="/tutores" value={q} placeholder="Nome, e-mail ou telefone">
+        <SearchForm action="/tutores" suggest="tutores" value={q} placeholder="Nome, e-mail ou telefone">
           <div className="min-w-[200px] flex-[1_1_200px]">
             <Label htmlFor="petshop">Petshop</Label>
             <Select id="petshop" name="petshop" defaultValue={petshop}>
@@ -107,7 +109,11 @@ export default async function TutoresPage({
                 </thead>
                 <tbody>
                   {list.rows.map((r) => (
-                    <tr key={r.tutor_id}>
+                    <tr
+                      key={r.tutor_id}
+                      aria-current={r.tutor_id === focus ? "true" : undefined}
+                      className={r.tutor_id === focus ? "bg-petrol/[0.06]" : undefined}
+                    >
                       <Td>
                         <span className="block font-semibold">{r.full_name}</span>
                         <span className="block text-xs text-gray-neutral">desde {monthYear(r.since)}</span>

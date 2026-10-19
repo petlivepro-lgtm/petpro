@@ -53,7 +53,7 @@ export default async function PetshopsPage({
         description={`${num(list.counts.all)} cadastrados · ${num(list.counts.active + list.counts.new)} com atividade recente`}
       />
       <PageBody>
-        <SearchForm action="/petshops" value={q} placeholder="Nome, endereço, dono ou e-mail" hidden={{ filtro: filter === "all" ? undefined : filter }} />
+        <SearchForm action="/petshops" suggest="petshops" value={q} placeholder="Nome, endereço, dono ou e-mail" hidden={{ filtro: filter === "all" ? undefined : filter }} />
         <FilterTabs
           label="Situação"
           tabs={[

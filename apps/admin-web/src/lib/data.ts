@@ -163,6 +163,20 @@ export type IdentityResult = {
 
 export const lookupIdentity = (email: string) => rpc<IdentityResult>("admin_identity_lookup", { p_email: email });
 
+export type IdentitySuggestion = {
+  kind: "conta" | "ficha";
+  id: string;
+  name: string | null;
+  /** Já mascarado no banco. */
+  email: string;
+  staff: boolean;
+  tutor: boolean;
+  admin: boolean;
+};
+
+export const suggestIdentity = (search: string, limit = 8) =>
+  rpc<IdentitySuggestion[]>("admin_identity_suggest", { p_search: search, p_limit: limit });
+
 export type CameraTenant = {
   id: string;
   name: string;

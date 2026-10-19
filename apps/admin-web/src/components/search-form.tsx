@@ -1,15 +1,21 @@
 import { Search } from "lucide-react";
-import { Button, Input, Label } from "@mylivepet/ui";
+import { Button, Label } from "@mylivepet/ui";
+import { SuggestInput, type SuggestKind } from "@/components/suggest-input";
 
-/** Busca por GET: o filtro vira URL, então dá para compartilhar e voltar. */
+/**
+ * Busca por GET: o filtro vira URL, então dá para compartilhar e voltar.
+ * Enquanto se digita, o campo sugere resultados (`suggest`).
+ */
 export function SearchForm({
   action,
+  suggest,
   value,
   placeholder,
   hidden = {},
   children,
 }: {
   action: string;
+  suggest: SuggestKind;
   value?: string;
   placeholder: string;
   hidden?: Record<string, string | undefined>;
@@ -20,15 +26,7 @@ export function SearchForm({
       {Object.entries(hidden).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
       <div className="min-w-[220px] flex-[2_1_260px]">
         <Label htmlFor="busca">Buscar</Label>
-        <Input
-          id="busca"
-          name="q"
-          type="search"
-          defaultValue={value}
-          placeholder={placeholder}
-          maxLength={120}
-          className="focus-visible:ring-petrol"
-        />
+        <SuggestInput key={value ?? ""} kind={suggest} id="busca" name="q" defaultValue={value} placeholder={placeholder} />
       </div>
       {children}
       <Button type="submit" variant="secondary" className="h-11">

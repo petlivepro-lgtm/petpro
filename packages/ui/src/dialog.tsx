@@ -30,8 +30,11 @@ export function Dialog({
 
   if (!open) return null;
 
+  // O dialog pode ser renderizado de dentro de uma célula de tabela, de um
+  // botão alinhado à direita etc.; o reset de texto evita herdar nowrap,
+  // alinhamento e peso de fonte e estourar a largura do popup.
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center whitespace-normal break-words p-0 text-left text-base font-normal normal-case tracking-normal sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-graphite/50" onClick={() => onOpenChange(false)} aria-hidden />
       <div
         role="dialog"

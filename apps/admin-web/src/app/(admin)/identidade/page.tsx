@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { AtSign, Search } from "lucide-react";
 import { z } from "zod";
-import { Button, EmptyState, Input, Label } from "@mylivepet/ui";
+import { Button, EmptyState, Label } from "@mylivepet/ui";
 import { requireAdminPage } from "@/lib/auth";
 import { lookupIdentity } from "@/lib/data";
 import { dateBR, relative } from "@/lib/format";
@@ -10,6 +10,8 @@ import { ROLE_LABEL, isAdminRole } from "@/lib/roles";
 import { writeAudit } from "@/lib/audit";
 import { PageBody, PageHeader } from "@/components/page-header";
 import { Panel, Pill } from "@/components/ui";
+import { SuggestInput } from "@/components/suggest-input";
+import { serviceClient } from "@/lib/supabase/service";
 
 export const metadata: Metadata = { title: "Busca de identidade" };
 
@@ -22,10 +24,41 @@ const STAFF_ROLE: Record<string, string> = {
   DELIVERY: "Entregador",
 };
 
-export default async function IdentidadePage({ searchParams }: { searchParams: Promise<{ email?: string }> }) {
+const uuid = z.string().uuid();
+
+/** Mesmo formato do mask_email do banco: duas letras + ***@domínio. */
+function maskEmail(email: string) {
+  const [local, domain] = email.split("@");
+  return `${local.slice(0, 2)}***@${domain}`;
+}
+
+/**
+ * Sugestão escolhida: chega o id da conta ou da ficha, e o e-mail é resolvido
+ * aqui no servidor — o endereço inteiro não passa pela URL nem pelo navegador.
+ */
+async function emailFromSuggestion(sp: { conta?: string; ficha?: string }) {
+  const svc = serviceClient();
+  if (uuid.safeParse(sp.conta).success) {
+    const { data } = await svc.auth.admin.getUserById(sp.conta!);
+    return data.user?.email?.toLowerCase() ?? null;
+  }
+  if (uuid.safeParse(sp.ficha).success) {
+    const { data } = await svc.from("tutor").select("email").eq("id", sp.ficha!).maybeSingle();
+    return data?.email?.toLowerCase() ?? null;
+  }
+  return null;
+}
+
+export default async function IdentidadePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ email?: string; conta?: string; ficha?: string }>;
+}) {
   const admin = await requireAdminPage();
-  const { email: raw } = await searchParams;
-  const parsed = z.string().trim().toLowerCase().email().max(254).safeParse(raw ?? "");
+  const sp = await searchParams;
+  const raw = sp.email;
+  const picked = raw ? null : await emailFromSuggestion(sp);
+  const parsed = z.string().trim().toLowerCase().email().max(254).safeParse(raw ?? picked ?? "");
   const email = parsed.success ? parsed.data : null;
   const result = email ? await lookupIdentity(email) : null;
   if (email) {
@@ -36,6 +69,7 @@ export default async function IdentidadePage({ searchParams }: { searchParams: P
       action: "identity.lookup",
       resourceType: "email",
       resourceId: email,
+      afterData: picked ? { via: "sugestao" } : undefined,
     });
   }
   const nothing = result && !result.user && !result.memberships.length && !result.tutor_rows.length && !result.admin;
@@ -46,16 +80,24 @@ export default async function IdentidadePage({ searchParams }: { searchParams: P
       <PageBody>
         <form action="/identidade" method="get" role="search" className="flex flex-wrap items-end gap-3">
           <div className="min-w-[260px] flex-[1_1_320px]">
-            <Label htmlFor="email">E-mail completo</Label>
-            <Input id="email" name="email" type="email" defaultValue={raw} required maxLength={254} className="focus-visible:ring-petrol" />
+            <Label htmlFor="email">Nome ou e-mail</Label>
+            <SuggestInput key={raw ?? sp.conta ?? sp.ficha ?? ""} kind="identidade" id="email" name="email" type="text" defaultValue={raw} maxLength={254} placeholder="Digite o nome ou parte do e-mail" />
           </div>
           <Button type="submit" className="h-11 bg-petrol hover:bg-petrol/90 focus-visible:ring-petrol">
             <Search className="h-4 w-4" aria-hidden /> Consultar
           </Button>
         </form>
-        <p className="text-[13px] text-gray-neutral">Cada consulta fica registrada na auditoria.</p>
+        <p className="text-[13px] text-gray-neutral">
+          Escolha uma sugestão ou digite o e-mail completo. Cada consulta fica registrada na auditoria.
+        </p>
 
-        {raw && !email && <p className="text-sm font-medium text-[#9A3825]">Digite um e-mail válido.</p>}
+        {picked && (
+          <p className="text-sm text-graphite">
+            Consultando <strong className="tabular">{maskEmail(picked)}</strong>
+          </p>
+        )}
+        {raw && !email && <p className="text-sm font-medium text-[#9A3825]">Escolha uma das sugestões ou digite um e-mail completo.</p>}
+        {(sp.conta || sp.ficha) && !raw && !email && <p className="text-sm font-medium text-[#9A3825]">Esse cadastro não tem e-mail para consultar.</p>}
 
         {nothing && (
           <EmptyState icon={<AtSign className="h-6 w-6" />} title="Nenhum registro com este e-mail" description="Não há conta, ficha de tutor nem acesso administrativo ligados a ele." />

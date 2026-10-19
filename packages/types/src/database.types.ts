@@ -3892,6 +3892,10 @@ export type Database = {
       admin_billing_overview: { Args: never; Returns: Json }
       admin_camera_overview: { Args: never; Returns: Json }
       admin_identity_lookup: { Args: { p_email: string }; Returns: Json }
+      admin_identity_suggest: {
+        Args: { p_limit?: number; p_search: string }
+        Returns: Json
+      }
       admin_overview: { Args: { p_days?: number }; Returns: Json }
       admin_tenant_activity: {
         Args: never
