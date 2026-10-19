@@ -23,6 +23,9 @@ try {
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@mylivepet/ui", "@mylivepet/types", "@mylivepet/notifications"],
+  // O print anexado ao chamado de suporte vai até 4 MB (o padrão é 1 MB; o
+  // Vercel recusa corpo acima de 4,5 MB, então o anexo não pode passar disso).
+  experimental: { serverActions: { bodySizeLimit: "4.5mb" } },
 };
 
 export default nextConfig;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Settings } from "lucide-react";
+import { LifeBuoy, LogOut, Settings } from "lucide-react";
 import { cn, Button } from "@mylivepet/ui";
 import { navItems } from "./nav-items";
 import { TenantBrand } from "./tenant-brand";
@@ -63,6 +63,17 @@ export function SideNav({
         </nav>
       </div>
       <div className="shrink-0 border-t border-graphite/10 p-4 pt-3">
+        <Link
+          href="/ajuda"
+          className={cn(
+            "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+            pathname.startsWith("/ajuda")
+              ? "bg-orange/10 text-orange"
+              : "text-graphite/70 hover:bg-surface-muted",
+          )}
+        >
+          <LifeBuoy className="h-[18px] w-[18px]" /> Ajuda
+        </Link>
         <Link
           href="/configuracoes"
           className={cn(

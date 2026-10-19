@@ -2152,6 +2152,286 @@ export type Database = {
           },
         ]
       }
+      platform_admin: {
+        Row: {
+          activated_at: string | null
+          created_at: string
+          display_name: string | null
+          email: string
+          invited_by: string | null
+          password_set_at: string | null
+          role: string
+          status: string
+          suspended_at: string | null
+          suspension_reason: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activated_at?: string | null
+          created_at?: string
+          display_name?: string | null
+          email: string
+          invited_by?: string | null
+          password_set_at?: string | null
+          role: string
+          status?: string
+          suspended_at?: string | null
+          suspension_reason?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activated_at?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          invited_by?: string | null
+          password_set_at?: string | null
+          role?: string
+          status?: string
+          suspended_at?: string | null
+          suspension_reason?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      platform_admin_audit: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          id: string
+          ip_hash: string | null
+          reason: string | null
+          resource_id: string | null
+          resource_type: string
+          tenant_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          reason?: string | null
+          resource_id?: string | null
+          resource_type: string
+          tenant_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          reason?: string | null
+          resource_id?: string | null
+          resource_type?: string
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
+      platform_admin_invite: {
+        Row: {
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          reason: string | null
+          revoked_at: string | null
+          role: string
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          invited_by?: string | null
+          reason?: string | null
+          revoked_at?: string | null
+          role: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          reason?: string | null
+          revoked_at?: string | null
+          role?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
+      platform_admin_login_attempt: {
+        Row: {
+          created_at: string
+          email_hash: string | null
+          id: number
+          ip_hash: string | null
+          kind: string
+          success: boolean
+        }
+        Insert: {
+          created_at?: string
+          email_hash?: string | null
+          id?: never
+          ip_hash?: string | null
+          kind?: string
+          success: boolean
+        }
+        Update: {
+          created_at?: string
+          email_hash?: string | null
+          id?: never
+          ip_hash?: string | null
+          kind?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
+      platform_admin_note: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          body: string
+          created_at: string
+          id: string
+          tenant_id: string | null
+          tutor_id: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          tenant_id?: string | null
+          tutor_id?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          tenant_id?: string | null
+          tutor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_admin_note_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_admin_note_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_stop_card"
+            referencedColumns: ["tutor_id"]
+          },
+          {
+            foreignKeyName: "platform_admin_note_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "tutor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_admin_session: {
+        Row: {
+          created_at: string
+          ip_hash: string | null
+          last_seen_at: string
+          revoked_at: string | null
+          revoked_reason: string | null
+          session_id: string
+          step_up_at: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ip_hash?: string | null
+          last_seen_at?: string
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          session_id: string
+          step_up_at?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ip_hash?: string | null
+          last_seen_at?: string
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          session_id?: string
+          step_up_at?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      platform_plan: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          cycle: string
+          id: string
+          name: string
+          price_cents: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          cycle?: string
+          id?: string
+          name: string
+          price_cents: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          cycle?: string
+          id?: string
+          name?: string
+          price_cents?: number
+        }
+        Relationships: []
+      }
       product: {
         Row: {
           active: boolean
@@ -2841,6 +3121,248 @@ export type Database = {
           },
         ]
       }
+      subscription_invoice: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          due_date: string
+          failure_reason: string | null
+          gateway_invoice_id: string | null
+          id: string
+          paid_at: string | null
+          status: string
+          subscription_id: string
+          tenant_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          due_date: string
+          failure_reason?: string | null
+          gateway_invoice_id?: string | null
+          id?: string
+          paid_at?: string | null
+          status: string
+          subscription_id: string
+          tenant_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          due_date?: string
+          failure_reason?: string | null
+          gateway_invoice_id?: string | null
+          id?: string
+          paid_at?: string | null
+          status?: string
+          subscription_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_invoice_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_subscription"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_invoice_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_attachment: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          ticket_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          ticket_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+          ticket_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_attachment_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_ticket"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_deflection: {
+        Row: {
+          created_at: string
+          id: number
+          tenant_id: string
+          topic: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          tenant_id: string
+          topic: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          tenant_id?: string
+          topic?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_deflection_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_message: {
+        Row: {
+          author_id: string | null
+          author_kind: string
+          author_name: string | null
+          body: string
+          created_at: string
+          id: string
+          internal: boolean
+          ticket_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_kind: string
+          author_name?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          internal?: boolean
+          ticket_id: string
+        }
+        Update: {
+          author_id?: string | null
+          author_kind?: string
+          author_name?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          internal?: boolean
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_message_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_ticket"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket: {
+        Row: {
+          assigned_admin: string | null
+          category: string
+          context: Json
+          created_at: string
+          first_response_at: string | null
+          first_response_due_at: string
+          hidden_from_tenant: boolean
+          id: string
+          last_customer_message_at: string
+          number: number
+          opened_by: string | null
+          opened_by_email: string | null
+          opened_by_name: string | null
+          origin: string
+          priority: string
+          resolved_at: string | null
+          status: string
+          subject: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_admin?: string | null
+          category: string
+          context?: Json
+          created_at?: string
+          first_response_at?: string | null
+          first_response_due_at: string
+          hidden_from_tenant?: boolean
+          id?: string
+          last_customer_message_at?: string
+          number?: number
+          opened_by?: string | null
+          opened_by_email?: string | null
+          opened_by_name?: string | null
+          origin: string
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          subject: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_admin?: string | null
+          category?: string
+          context?: Json
+          created_at?: string
+          first_response_at?: string | null
+          first_response_due_at?: string
+          hidden_from_tenant?: boolean
+          id?: string
+          last_customer_message_at?: string
+          number?: number
+          opened_by?: string | null
+          opened_by_email?: string | null
+          opened_by_name?: string | null
+          origin?: string
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          subject?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant: {
         Row: {
           created_at: string
@@ -2864,6 +3386,87 @@ export type Database = {
           slug?: string
         }
         Relationships: []
+      }
+      tenant_subscription: {
+        Row: {
+          cancel_reason: string | null
+          cancel_requested_at: string | null
+          cancelled_at: string | null
+          card_brand: string | null
+          card_last4: string | null
+          created_at: string
+          current_period_end: string | null
+          cycle: string
+          gateway: string | null
+          gateway_customer_id: string | null
+          gateway_subscription_id: string | null
+          id: string
+          payment_method: string | null
+          plan_id: string | null
+          price_cents: number
+          status: string
+          tenant_id: string
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          cancel_reason?: string | null
+          cancel_requested_at?: string | null
+          cancelled_at?: string | null
+          card_brand?: string | null
+          card_last4?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          cycle?: string
+          gateway?: string | null
+          gateway_customer_id?: string | null
+          gateway_subscription_id?: string | null
+          id?: string
+          payment_method?: string | null
+          plan_id?: string | null
+          price_cents: number
+          status: string
+          tenant_id: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cancel_reason?: string | null
+          cancel_requested_at?: string | null
+          cancelled_at?: string | null
+          card_brand?: string | null
+          card_last4?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          cycle?: string
+          gateway?: string | null
+          gateway_customer_id?: string | null
+          gateway_subscription_id?: string | null
+          id?: string
+          payment_method?: string | null
+          plan_id?: string | null
+          price_cents?: number
+          status?: string
+          tenant_id?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_subscription_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "platform_plan"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_subscription_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tutor: {
         Row: {
@@ -3273,6 +3876,54 @@ export type Database = {
       }
     }
     Functions: {
+      admin_account_email: {
+        Args: { p_tenant: string; p_tutor: string }
+        Returns: string
+      }
+      admin_activity_feed: {
+        Args: {
+          p_before?: string
+          p_kind?: string
+          p_limit?: number
+          p_tenant?: string
+        }
+        Returns: Json
+      }
+      admin_billing_overview: { Args: never; Returns: Json }
+      admin_camera_overview: { Args: never; Returns: Json }
+      admin_identity_lookup: { Args: { p_email: string }; Returns: Json }
+      admin_overview: { Args: { p_days?: number }; Returns: Json }
+      admin_tenant_activity: {
+        Args: never
+        Returns: {
+          last_activity: string
+          tenant_id: string
+        }[]
+      }
+      admin_tenant_detail: { Args: { p_tenant: string }; Returns: Json }
+      admin_tenant_list: {
+        Args: {
+          p_filter?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: Json
+      }
+      admin_tutor_list: {
+        Args: {
+          p_app?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_tenant?: string
+        }
+        Returns: Json
+      }
+      admin_tutor_reveal: {
+        Args: { p_field: string; p_tutor: string }
+        Returns: string
+      }
       appointment_tutor: { Args: { _appointment: string }; Returns: string }
       br_datetime: { Args: { _ts: string }; Returns: string }
       build_delivery_route: {
@@ -3288,6 +3939,7 @@ export type Database = {
         Returns: boolean
       }
       can_manage_finance: { Args: { p_tenant_id: string }; Returns: boolean }
+      can_see_support_ticket: { Args: { _ticket: string }; Returns: boolean }
       cancel_appointment: {
         Args: { p_appointment_ids: string[]; p_reason: string }
         Returns: number
@@ -3448,11 +4100,18 @@ export type Database = {
           title: string
         }[]
       }
+      log_support_deflection: {
+        Args: { p_tenant: string; p_topic: string }
+        Returns: undefined
+      }
       mark_notifications_read: { Args: { p_ids?: string[] }; Returns: number }
       mark_rejection_seen: {
         Args: { p_reservation_id: string }
         Returns: undefined
       }
+      mask_cpf: { Args: { _cpf: string }; Returns: string }
+      mask_email: { Args: { _email: string }; Returns: string }
+      mask_phone: { Args: { _phone: string }; Returns: string }
       my_collaborator_id: { Args: { _tenant: string }; Returns: string }
       my_delivery_stop: {
         Args: { _stop: string; _tenant: string }
@@ -3461,6 +4120,17 @@ export type Database = {
       my_route_ids: { Args: { _tenant: string }; Returns: string[] }
       my_tutor_id: { Args: { _tenant: string }; Returns: string }
       normalize_phone_br: { Args: { p_value: string }; Returns: string }
+      open_support_ticket: {
+        Args: {
+          p_body: string
+          p_category: string
+          p_context?: Json
+          p_origin: string
+          p_subject: string
+          p_tenant: string
+        }
+        Returns: Json
+      }
       payment_method_uses_terminal: {
         Args: { p_method: Database["public"]["Enums"]["payment_method"] }
         Returns: boolean
@@ -3538,6 +4208,10 @@ export type Database = {
           p_type: Database["public"]["Enums"]["stock_movement_type"]
           p_variant_id?: string
         }
+        Returns: undefined
+      }
+      reply_support_ticket: {
+        Args: { p_body: string; p_ticket: string }
         Returns: undefined
       }
       reserve_products: {
@@ -3698,6 +4372,8 @@ export type Database = {
         | "ROUTE_ASSIGNED"
         | "PICKUP_ARRIVED"
         | "DROPOFF_READY"
+        | "SUPPORT_REPLIED"
+        | "SUPPORT_RESOLVED"
       payment_method:
         | "CASH"
         | "PIX"
@@ -3926,6 +4602,8 @@ export const Constants = {
         "ROUTE_ASSIGNED",
         "PICKUP_ARRIVED",
         "DROPOFF_READY",
+        "SUPPORT_REPLIED",
+        "SUPPORT_RESOLVED",
       ],
       payment_method: [
         "CASH",

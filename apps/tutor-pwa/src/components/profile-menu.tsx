@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Settings } from "lucide-react";
+import { LifeBuoy, LogOut, Settings } from "lucide-react";
 import { Avatar, cn } from "@mylivepet/ui";
 import { signOut } from "@/app/(app)/actions";
 
@@ -74,6 +74,14 @@ export function ProfileMenu({ fullName }: { fullName: string }) {
             onClick={() => setOpen(false)}
           >
             <Settings className="h-4 w-4 text-gray-neutral" /> Configurações
+          </Link>
+          <Link
+            href="/ajuda"
+            role="menuitem"
+            className={itemClass}
+            onClick={() => setOpen(false)}
+          >
+            <LifeBuoy className="h-4 w-4 text-gray-neutral" /> Ajuda
           </Link>
           <form action={signOut}>
             <button type="submit" role="menuitem" className={itemClass}>

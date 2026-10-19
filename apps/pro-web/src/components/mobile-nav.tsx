@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu, X, LogOut, Settings } from "lucide-react";
+import { Menu, X, LifeBuoy, LogOut, Settings } from "lucide-react";
 import { Avatar, Button } from "@mylivepet/ui";
 import { STAFF_ROLE_LABEL, type StaffRole } from "@mylivepet/types";
 import { Nav } from "./nav";
@@ -24,6 +24,7 @@ export function MobileNav({
 }) {
   const [open, setOpen] = useState(false);
   const isCollaborator = role === "COLLABORATOR";
+  const canOpenSupport = role === "OWNER" || role === "MANAGER";
 
   // trava o scroll do body e fecha com Esc enquanto o drawer está aberto
   useEffect(() => {
@@ -100,6 +101,15 @@ export function MobileNav({
                   )}
                 </div>
               </div>
+              {canOpenSupport && (
+                <Link
+                  href="/suporte"
+                  onClick={() => setOpen(false)}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-graphite/70 transition-colors hover:bg-surface-muted"
+                >
+                  <LifeBuoy className="h-4 w-4" /> Ajuda e suporte
+                </Link>
+              )}
               {!isCollaborator && (
                 <Link
                   href="/configuracoes"

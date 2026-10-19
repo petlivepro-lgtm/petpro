@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LogOut, Building2, Settings } from "lucide-react";
+import { LogOut, Building2, LifeBuoy, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { Nav } from "@/components/nav";
@@ -24,6 +24,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const fullName = (user.user_metadata?.full_name as string | undefined)?.trim();
   const userName = fullName || user.email || "Usuário";
   const isCollaborator = tenant?.role === "COLLABORATOR";
+  // Chamados com a plataforma: só dono e gerente (a RPC confere de novo).
+  const canOpenSupport = tenant?.role === "OWNER" || tenant?.role === "MANAGER";
 
   // Todo mundo com vínculo tem sino: a gestão recebe os pedidos dos tutores e
   // o colaborador recebe o que entra e sai da agenda dele. Quem separa as duas
@@ -85,6 +87,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               )}
             </div>
           </div>
+          {canOpenSupport && (
+            <Link
+              href="/suporte"
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-graphite/70 transition-colors hover:bg-surface-muted"
+            >
+              <LifeBuoy className="h-4 w-4" />
+              Ajuda e suporte
+            </Link>
+          )}
           {!isCollaborator && (
             <Link
               href="/configuracoes"
