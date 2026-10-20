@@ -39,6 +39,8 @@ export type Chegada = {
   petName: string;
   petPhoto: string | null;
   scheduledAt: string | null;
+  /** Previsão de chegada informada pela rota, quando houver. */
+  etaAt: string | null;
   /** Destino — a casa do tutor. Null quando o endereço não virou coordenada. */
   destino: { lat: number; lng: number } | null;
 };
@@ -61,6 +63,7 @@ export function mapChegadas(rows: RawChegada[]): Chegada[] {
     petName: s.appointment?.pet?.name ?? "seu pet",
     petPhoto: s.appointment?.pet?.photo_path ?? null,
     scheduledAt: s.appointment?.scheduled_at ?? null,
+    etaAt: s.eta_at,
     destino:
       s.lat !== null && s.lng !== null
         ? { lat: Number(s.lat), lng: Number(s.lng) }

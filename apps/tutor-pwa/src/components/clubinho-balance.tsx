@@ -1,5 +1,5 @@
 import { CalendarClock, CalendarCheck, Crown } from "lucide-react";
-import { Avatar, Card, cn } from "@mylivepet/ui";
+import { cn } from "@mylivepet/ui";
 import {
   daysUntil,
   formatSchedule,
@@ -17,12 +17,14 @@ function shortDate(iso: string | null): string {
 
 /**
  * O saldo do Clubinho na visão do tutor: quantos banhos ainda cabem no mês.
+ * Mora dentro do card do pet na home — o pet já está identificado ali, então
+ * aqui vêm só o plano, o saldo e os horários fixos.
  *
  * Diferente do painel do petshop, aqui não aparece nem preço nem forma de
  * pagamento — o tutor quer saber o que ainda tem direito, não a contabilidade
  * da mensalidade.
  */
-export function ClubinhoCard({
+export function ClubinhoBalance({
   subscription,
   schedules = [],
 }: {
@@ -34,36 +36,24 @@ export function ClubinhoCard({
   const paused = subscription.status === "PAUSED";
 
   return (
-    <Card className="min-w-[17rem] shrink-0 snap-start">
-      <div className="flex items-center gap-3">
-        <Avatar
-          name={subscription.pet_name}
-          src={subscription.pet_photo_path}
-          size="md"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-heading font-semibold text-graphite">
-            {subscription.pet_name}
-          </p>
-          <p className="flex items-center gap-1 truncate text-xs text-petrol">
-            <Crown className="h-3 w-3 shrink-0" />
-            {subscription.plan_name}
-          </p>
-        </div>
-      </div>
+    <div>
+      <p className="flex items-center gap-1.5 truncate text-sm font-medium text-petrol">
+        <Crown className="h-3.5 w-3.5 shrink-0" />
+        {subscription.plan_name}
+      </p>
 
       {paused ? (
-        <p className="mt-3 border-t border-graphite/5 pt-3 text-sm text-gray-neutral">
+        <p className="mt-2 text-sm text-gray-neutral">
           Assinatura pausada com o petshop. O saldo volta quando ela for
           retomada.
         </p>
       ) : !subscription.period_id ? (
-        <p className="mt-3 border-t border-graphite/5 pt-3 text-sm text-gray-neutral">
+        <p className="mt-2 text-sm text-gray-neutral">
           O ciclo virou em {shortDate(subscription.period_end)} — o saldo novo
           entra na renovação.
         </p>
       ) : (
-        <div className="mt-3 space-y-2 border-t border-graphite/5 pt-3">
+        <div className="mt-3 space-y-2">
           {subscription.credits.map((credit) => {
             const empty = credit.quantity_left === 0;
             return (
@@ -140,6 +130,6 @@ export function ClubinhoCard({
           </p>
         </div>
       )}
-    </Card>
+    </div>
   );
 }

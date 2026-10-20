@@ -36,9 +36,10 @@ export default async function HistoricoPage({
     pet?: string;
     erro?: string;
     cancelado?: string;
+    abrir?: string;
   }>;
 }) {
-  const { from, to, pet: petId, erro, cancelado } = await searchParams;
+  const { from, to, pet: petId, erro, cancelado, abrir } = await searchParams;
   const fromDate = from && ISO_DATE.test(from) ? from : undefined;
   const toDate = to && ISO_DATE.test(to) ? to : undefined;
 
@@ -182,6 +183,7 @@ export default async function HistoricoPage({
                 serviceName={service?.name ?? "Serviço"}
                 status={status}
                 dateLabel={fmt(a.finished_at ?? a.scheduled_at)}
+                defaultOpen={a.id === abrir}
                 canCancel={cancelable(a)}
                 siblings={siblings}
                 cancellation={

@@ -69,6 +69,7 @@ export function AppointmentHistoryCard({
   canCancel = false,
   siblings = [],
   cancellation = null,
+  defaultOpen = false,
 }: {
   appointmentId: string;
   petName: string;
@@ -85,13 +86,15 @@ export function AppointmentHistoryCard({
   siblings?: HistorySibling[];
   /** Preenchido quando o atendimento está cancelado. */
   cancellation?: HistoryCancellation | null;
+  /** Abre já expandido — quando o tutor chega por um link da home. */
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const completed = status === "COMPLETED";
   const needsReview = completed && !tutorFb;
 
   return (
-    <Card className="p-0">
+    <Card id={`atendimento-${appointmentId}`} className="scroll-mt-6 p-0">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

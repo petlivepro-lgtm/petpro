@@ -4,14 +4,7 @@ import { ChevronLeft, ChevronRight, MessageCircle, Phone } from "lucide-react";
 import { TUTOR_PETSHOP_TOPICS } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
-
-/** 11987654321 → 5511987654321 (WhatsApp precisa do DDI). */
-function waNumber(phone: string | null) {
-  const d = (phone ?? "").replace(/\D/g, "");
-  if (d.length === 10 || d.length === 11) return `55${d}`;
-  if ((d.length === 12 || d.length === 13) && d.startsWith("55")) return d;
-  return null;
-}
+import { waNumber } from "@/lib/whatsapp";
 
 const SHORTCUTS: Record<string, { href: string; label: string }[]> = {
   SCHEDULE: [

@@ -18,7 +18,14 @@ export type PetRow = {
   photo_path: string | null;
 };
 
-export function PetDialog({ pet }: { pet?: PetRow }) {
+export function PetDialog({
+  pet,
+  trigger = "default",
+}: {
+  pet?: PetRow;
+  /** "link": texto discreto ("Completar ficha"), para o aviso de ficha incompleta. */
+  trigger?: "default" | "link";
+}) {
   const router = useRouter();
   const isEdit = !!pet;
   const [open, setOpen] = useState(false);
@@ -36,7 +43,15 @@ export function PetDialog({ pet }: { pet?: PetRow }) {
 
   return (
     <>
-      {isEdit ? (
+      {trigger === "link" ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="font-medium text-petrol underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+        >
+          {isEdit ? "Completar ficha" : "Cadastrar pet"}
+        </button>
+      ) : isEdit ? (
         <button
           type="button"
           onClick={() => setOpen(true)}
