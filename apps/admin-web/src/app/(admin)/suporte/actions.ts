@@ -47,6 +47,9 @@ export async function postMessage(ticketId: string, body: string, internal: bool
     if (!text.success) throw new ActionError("Escreva a mensagem (até 5.000 caracteres).", "INVALID");
     const ticket = await loadTicket(ticketId);
     if (ticket.status === "CLOSED") throw new ActionError("Chamado encerrado.", "INVALID");
+    if (!internal && ticket.status === "RESOLVED") {
+      throw new ActionError("Chamado resolvido: reabra mudando a situação para responder ao cliente.", "INVALID");
+    }
 
     const svc = serviceClient();
     const { error } = await svc.from("support_message").insert({

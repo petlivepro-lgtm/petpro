@@ -183,7 +183,11 @@ export default async function SuportePage({
                     )}
                   </ol>
                   </ChatScroll>
-                  <Composer ticketId={ticket.id} closed={ticket.status === "CLOSED"} />
+                  <Composer
+                    ticketId={ticket.id}
+                    closed={ticket.status === "CLOSED"}
+                    resolved={ticket.status === "RESOLVED"}
+                  />
                 </section>
 
                 <aside aria-label="Contexto do chamado" className="flex min-w-0 flex-[1_1_260px] flex-col gap-4 self-start">

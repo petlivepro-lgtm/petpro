@@ -6,13 +6,15 @@ import { Loader2, Paperclip } from "lucide-react";
 import { Button, Label, Select, Textarea, cn } from "@mylivepet/ui";
 import { openAttachment, postMessage, updateTicket } from "./actions";
 
-export function Composer({ ticketId, closed }: { ticketId: string; closed: boolean }) {
+export function Composer({ ticketId, closed, resolved }: { ticketId: string; closed: boolean; resolved: boolean }) {
   const router = useRouter();
   const [mode, setMode] = useState<"reply" | "note">("reply");
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const note = mode === "note";
+  // Resolvido não fala mais com o cliente: só nota interna. Responder exige
+  // reabrir pela situação (o servidor recusa do mesmo jeito).
+  const note = resolved || mode === "note";
 
   if (closed) {
     return <p className="border-t border-graphite/[0.08] px-5 py-4 text-sm text-gray-neutral">Chamado encerrado. Reabra mudando a situação.</p>;
@@ -35,22 +37,29 @@ export function Composer({ ticketId, closed }: { ticketId: string; closed: boole
       onSubmit={send}
       className={cn("flex flex-col gap-2.5 rounded-b-[14px] border-t border-graphite/[0.08] px-5 pb-5 pt-4", note ? "bg-[#FDF8EE]" : "bg-[#FBFCFD]")}
     >
-      <div role="group" aria-label="Tipo de mensagem" className="flex self-start rounded-[10px] border border-graphite/[0.12] bg-surface p-[3px]">
-        {(["reply", "note"] as const).map((m) => (
-          <button
-            key={m}
-            type="button"
-            aria-pressed={mode === m}
-            onClick={() => setMode(m)}
-            className={cn(
-              "min-h-[34px] rounded-[7px] px-3 text-[13px] font-semibold transition-colors",
-              mode === m ? (m === "note" ? "bg-[#C98A12] text-white" : "bg-petrol text-white") : "text-gray-neutral hover:text-graphite",
-            )}
-          >
-            {m === "reply" ? "Responder ao cliente" : "Nota interna"}
-          </button>
-        ))}
-      </div>
+      {resolved ? (
+        <p className="text-[13px] text-gray-neutral">
+          <span className="font-semibold text-graphite">Chamado resolvido.</span> O cliente não recebe mais mensagens; só
+          notas internas. Para responder, reabra mudando a situação.
+        </p>
+      ) : (
+        <div role="group" aria-label="Tipo de mensagem" className="flex self-start rounded-[10px] border border-graphite/[0.12] bg-surface p-[3px]">
+          {(["reply", "note"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={mode === m}
+              onClick={() => setMode(m)}
+              className={cn(
+                "min-h-[34px] rounded-[7px] px-3 text-[13px] font-semibold transition-colors",
+                mode === m ? (m === "note" ? "bg-[#C98A12] text-white" : "bg-petrol text-white") : "text-gray-neutral hover:text-graphite",
+              )}
+            >
+              {m === "reply" ? "Responder ao cliente" : "Nota interna"}
+            </button>
+          ))}
+        </div>
+      )}
       <Label htmlFor="msg" className="sr-only">
         Mensagem
       </Label>
