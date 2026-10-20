@@ -15,7 +15,7 @@ import { signOut } from "@/app/(app)/actions";
  * Dropdown ancorado por posição absoluta em vez de portal: o cabeçalho não fica
  * dentro de nada com overflow, então não há o que cortar o painel.
  */
-export function ProfileMenu({ fullName }: { fullName: string }) {
+export function ProfileMenu({ fullName, supportUnread = 0 }: { fullName: string; supportUnread?: number }) {
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -45,15 +45,18 @@ export function ProfileMenu({ fullName }: { fullName: string }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Minha conta"
+        aria-label={supportUnread > 0 ? "Minha conta (resposta nova do suporte)" : "Minha conta"}
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors",
+          "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors",
           open ? "bg-surface-muted" : "hover:bg-surface-muted",
         )}
       >
         <Avatar name={fullName} size="sm" />
+        {supportUnread > 0 && (
+          <span className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface bg-orange" aria-hidden />
+        )}
       </button>
 
       {open && (
@@ -82,6 +85,12 @@ export function ProfileMenu({ fullName }: { fullName: string }) {
             onClick={() => setOpen(false)}
           >
             <LifeBuoy className="h-4 w-4 text-gray-neutral" /> Ajuda
+            {supportUnread > 0 && (
+              <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-orange px-1.5 text-[11px] font-bold text-white">
+                {supportUnread}
+                <span className="sr-only"> com resposta nova</span>
+              </span>
+            )}
           </Link>
           <form action={signOut}>
             <button type="submit" role="menuitem" className={itemClass}>

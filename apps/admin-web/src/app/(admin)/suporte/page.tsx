@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { EyeOff, MessageSquare } from "lucide-react";
 import { z } from "zod";
-import { EmptyState, cn } from "@mylivepet/ui";
+import { ChatScroll, EmptyState, RatingStars, cn } from "@mylivepet/ui";
 import { requireAdminPage } from "@/lib/auth";
 import { dateTimeBR, relative, until } from "@/lib/format";
 import {
@@ -20,7 +20,6 @@ import { PageBody, PageHeader } from "@/components/page-header";
 import { FilterTabs, Panel, Pill, type PillTone } from "@/components/ui";
 import { AttachmentButton, Composer, TicketControls } from "./ticket-client";
 import { SupportLive } from "./support-live";
-import { ChatScroll } from "@/components/chat-scroll";
 
 export const metadata: Metadata = { title: "Suporte" };
 
@@ -52,6 +51,8 @@ export default async function SuportePage({
   ]);
   const selectedId = z.string().uuid().safeParse(sp.t).success ? sp.t! : tickets[0]?.id;
   const ticket = selectedId ? await getTicket(selectedId) : null;
+  // Anexo vive na mensagem em que foi enviado; sem mensagem (raro), vai ao fim.
+  const attachmentsOf = (messageId: string | null) => (ticket?.attachments ?? []).filter((a) => a.message_id === messageId);
 
   const href = (params: Record<string, string | undefined>) => {
     const s = new URLSearchParams();
@@ -160,23 +161,32 @@ export default async function SuportePage({
                             <span className="text-xs text-gray-neutral">
                               <strong className="text-graphite">{m.author_name ?? "—"}</strong> · {dateTimeBR(m.created_at)}
                             </span>
-                            <p
-                              className={cn(
-                                "whitespace-pre-wrap break-words px-3.5 py-3 text-sm leading-relaxed",
-                                m.author_kind === "ADMIN"
-                                  ? "rounded-[14px_4px_14px_14px] bg-petrol text-white"
-                                  : "rounded-[4px_14px_14px_14px] bg-surface-muted",
-                              )}
-                            >
-                              {m.body}
-                            </p>
+                            {m.body && (
+                              <p
+                                className={cn(
+                                  "whitespace-pre-wrap break-words px-3.5 py-3 text-sm leading-relaxed",
+                                  m.author_kind === "ADMIN"
+                                    ? "rounded-[14px_4px_14px_14px] bg-petrol text-white"
+                                    : "rounded-[4px_14px_14px_14px] bg-surface-muted",
+                                )}
+                              >
+                                {m.body}
+                              </p>
+                            )}
+                            {attachmentsOf(m.id).length > 0 && (
+                              <span className="flex flex-wrap gap-2">
+                                {attachmentsOf(m.id).map((a) => (
+                                  <AttachmentButton key={a.id} id={a.id} name={a.file_name} />
+                                ))}
+                              </span>
+                            )}
                           </div>
                         )}
                       </li>
                     ))}
-                    {ticket.attachments.length > 0 && (
+                    {attachmentsOf(null).length > 0 && (
                       <li className="flex flex-wrap gap-2">
-                        {ticket.attachments.map((a) => (
+                        {attachmentsOf(null).map((a) => (
                           <AttachmentButton key={a.id} id={a.id} name={a.file_name} />
                         ))}
                       </li>
@@ -203,6 +213,20 @@ export default async function SuportePage({
                       <p className={cn("mt-3 text-[13px] font-semibold", slaInfo(ticket).tone)}>
                         Primeira resposta {until(ticket.first_response_due_at)}
                       </p>
+                    )}
+                    {ticket.satisfaction_rating && (
+                      <div className="mt-4 flex flex-col gap-1.5 border-t border-graphite/[0.08] pt-3">
+                        <span className="text-xs font-semibold text-gray-neutral">Avaliação do cliente</span>
+                        <span className="flex items-center gap-2">
+                          <RatingStars value={ticket.satisfaction_rating} size="sm" />
+                          <span className="text-[13px] font-semibold tabular-nums">{ticket.satisfaction_rating}/5</span>
+                        </span>
+                        {ticket.satisfaction_comment && (
+                          <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-graphite/80">
+                            “{ticket.satisfaction_comment}”
+                          </p>
+                        )}
+                      </div>
                     )}
                   </Panel>
                   <Panel title="Contexto">

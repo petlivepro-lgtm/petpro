@@ -3,9 +3,10 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { TUTOR_APP_TOPICS } from "@mylivepet/types";
+import type { SupportChatResult } from "@mylivepet/ui";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
-import { readSupportFile, storeSupportFile } from "@/lib/support-attachment";
+import { readSupportFile, removeSupportFile, storeSupportFile, uploadSupportFile } from "@/lib/support-attachment";
 
 export type TutorSupportResult = { ok: true; id: string; warning?: string } | { ok: false; error: string };
 
@@ -52,10 +53,60 @@ export async function openTutorTicket(formData: FormData): Promise<TutorSupportR
   return { ok: true, id: ticket.id, warning };
 }
 
-export async function replyTutorTicket(ticketId: string, body: string): Promise<TutorSupportResult> {
+const UUID = /^[0-9a-f-]{36}$/i;
+
+/**
+ * Resposta na conversa, com anexo opcional. O arquivo sobe antes (service
+ * role, tipo conferido pelos bytes) e a RPC registra mensagem e anexo juntos;
+ * se ela recusar, o arquivo sai do bucket.
+ */
+export async function replyTutorTicket(ticketId: string, formData: FormData): Promise<SupportChatResult> {
+  if (!UUID.test(ticketId)) return { ok: false, error: "Chamado não encontrado." };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("reply_support_ticket", { p_ticket: ticketId, p_body: body });
-  if (error) return { ok: false, error: error.message };
+  const file = await readSupportFile(formData.get("anexo"));
+  if (file === "invalid") return { ok: false, error: "O anexo precisa ser imagem (PNG, JPG, WEBP) ou PDF de até 4 MB." };
+
+  let path: string | null = null;
+  if (file) {
+    // Só sobe arquivo para chamado que este tutor abriu (RLS).
+    const { data: visible } = await supabase.from("support_ticket").select("id").eq("id", ticketId).maybeSingle();
+    if (!visible) return { ok: false, error: "Chamado não encontrado." };
+    path = await uploadSupportFile(ticketId, file);
+    if (!path) return { ok: false, error: "O anexo não subiu. Tente de novo." };
+  }
+
+  const { error } = await supabase.rpc("reply_support_ticket", {
+    p_ticket: ticketId,
+    p_body: str(formData.get("body")),
+    ...(file && path ? { p_file_path: path, p_file_name: file.name } : {}),
+  });
+  if (error) {
+    if (path) await removeSupportFile(path);
+    return { ok: false, error: error.message };
+  }
   revalidatePath(`/ajuda/${ticketId}`);
-  return { ok: true, id: ticketId };
+  return { ok: true };
+}
+
+/** Encerramento pelo tutor, com avaliação opcional do atendimento. */
+export async function closeTutorTicket(ticketId: string, rating: number | null, comment: string): Promise<SupportChatResult> {
+  if (!UUID.test(ticketId)) return { ok: false, error: "Chamado não encontrado." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("close_support_ticket", {
+    p_ticket: ticketId,
+    ...(rating ? { p_rating: rating } : {}),
+    p_comment: comment.slice(0, 1000),
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/ajuda");
+  revalidatePath(`/ajuda/${ticketId}`);
+  return { ok: true };
+}
+
+/** Leu a resposta da equipe: apaga o selo de "nova resposta" (menu e lista). */
+export async function markTutorTicketRead(ticketId: string) {
+  if (!UUID.test(ticketId)) return;
+  const supabase = await createClient();
+  await supabase.rpc("mark_support_read", { p_ticket: ticketId });
+  revalidatePath(`/ajuda/${ticketId}`);
 }

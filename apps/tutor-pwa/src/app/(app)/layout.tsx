@@ -34,12 +34,19 @@ export default async function AppLayout({
   // O que o petshop respondeu sobre os pedidos deste tutor (0044). A RPC já
   // recorta por destinatário, então nunca vem nada de outra pessoa.
   const notifications = await listNotifications();
+  // Chamados com resposta do suporte que o tutor ainda não leu (0079).
+  const { data: unreadIds } = await supabase.rpc("support_unread_tickets", {
+    p_tenant: ctx.tenantId,
+    p_origin: "TUTOR",
+  });
+  const supportUnread = (unreadIds ?? []).length;
 
   return (
     <div className="min-h-screen bg-surface lg:bg-surface-muted">
       <SideNav
         tenantName={ctx.tenantName}
         tenantLogoUrl={ctx.tenantLogoUrl}
+        supportUnread={supportUnread}
         bell={
           <NotificationBell initial={notifications} channelName="notificacoes-desktop" />
         }
@@ -65,7 +72,7 @@ export default async function AppLayout({
             <NotificationBell initial={notifications} channelName="notificacoes-mobile" />
             {/* Conta: Configurações e Sair. No desktop os dois já estão no pé
                 da barra lateral. */}
-            <ProfileMenu fullName={ctx.fullName} />
+            <ProfileMenu fullName={ctx.fullName} supportUnread={supportUnread} />
           </div>
         </header>
 

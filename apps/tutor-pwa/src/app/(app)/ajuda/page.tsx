@@ -1,11 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, ChevronRight } from "lucide-react";
-import {
-  SUPPORT_STATUS_LABEL,
-  TUTOR_APP_TOPICS,
-  TUTOR_PETSHOP_TOPICS,
-  type SupportStatus,
-} from "@mylivepet/types";
+import { SupportStatusChip } from "@mylivepet/ui";
+import { TUTOR_APP_TOPICS, TUTOR_PETSHOP_TOPICS, type SupportStatus } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
@@ -39,11 +35,15 @@ export default async function AjudaPage() {
   if (!ctx) return null;
 
   // RLS: só os chamados que este tutor abriu.
-  const { data: tickets } = await supabase
-    .from("support_ticket")
-    .select("id, number, subject, status, updated_at")
-    .order("updated_at", { ascending: false })
-    .limit(10);
+  const [{ data: tickets }, { data: unreadIds }] = await Promise.all([
+    supabase
+      .from("support_ticket")
+      .select("id, number, subject, status, updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(10),
+    supabase.rpc("support_unread_tickets", { p_tenant: ctx.tenantId, p_origin: "TUTOR" }),
+  ]);
+  const unread = new Set<string>((unreadIds ?? []) as string[]);
 
   return (
     <div className="space-y-6 lg:max-w-2xl">
@@ -85,12 +85,15 @@ export default async function AjudaPage() {
           <ul className="overflow-hidden rounded-2xl border border-graphite/10 bg-surface">
             {tickets.map((t) => (
               <li key={t.id} className="border-b border-graphite/[0.06] last:border-0">
-                <Link href={`/ajuda/${t.id}`} className="flex flex-col gap-1 px-4 py-3 transition-colors hover:bg-surface-muted">
+                <Link href={`/ajuda/${t.id}`} className="flex flex-col gap-1.5 px-4 py-3 transition-colors hover:bg-surface-muted">
                   <span className="flex items-center gap-2 text-xs text-gray-neutral">
-                    #{t.number}
-                    <span className="rounded-full bg-orange/10 px-2 py-0.5 font-semibold text-orange">
-                      {SUPPORT_STATUS_LABEL[t.status as SupportStatus]}
-                    </span>
+                    <span className="tabular-nums">#{t.number}</span>
+                    <SupportStatusChip status={t.status as SupportStatus} className="px-2 py-0.5" />
+                    {unread.has(t.id) && (
+                      <span className="ml-auto flex items-center gap-1.5 font-semibold text-orange">
+                        <span className="h-2 w-2 rounded-full bg-orange" aria-hidden /> Nova resposta
+                      </span>
+                    )}
                   </span>
                   <span className="text-[15px] font-semibold text-graphite">{t.subject}</span>
                 </Link>

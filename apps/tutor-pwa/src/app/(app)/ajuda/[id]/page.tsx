@@ -1,20 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckCircle2, ChevronLeft } from "lucide-react";
-import { SUPPORT_STATUS_LABEL, type SupportStatus } from "@mylivepet/types";
+import { SupportChat, SupportStatusChip, type SupportChatMessage } from "@mylivepet/ui";
+import { SUPPORT_CATEGORY_LABEL, type SupportStatus } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/server";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
-import { TutorReplyForm } from "./reply-form";
-
-function when(iso: string) {
-  return new Date(iso).toLocaleString("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { closeTutorTicket, markTutorTicketRead, replyTutorTicket } from "../actions";
 
 export default async function ChamadoPage({
   params,
@@ -28,16 +19,35 @@ export default async function ChamadoPage({
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const supabase = await createClient();
 
-  // RLS: só chamado aberto por este tutor; mensagens sem notas internas.
-  const [{ data: ticket }, { data: messages }] = await Promise.all([
-    supabase.from("support_ticket").select("id, number, subject, status").eq("id", id).maybeSingle(),
+  // RLS: só chamado aberto por este tutor; mensagens e anexos sem notas internas.
+  const [{ data: ticket }, { data: messages }, { data: attachments }, { data: read }] = await Promise.all([
+    supabase
+      .from("support_ticket")
+      .select("id, number, category, subject, status, first_response_due_at, satisfaction_rating")
+      .eq("id", id)
+      .maybeSingle(),
     supabase.from("support_message").select("id, author_kind, author_name, body, created_at").eq("ticket_id", id).order("created_at"),
+    supabase.from("support_attachment").select("id, message_id, file_name, mime_type, size_bytes").eq("ticket_id", id).order("created_at"),
+    supabase.from("support_read").select("last_read_at").eq("ticket_id", id).maybeSingle(),
   ]);
   if (!ticket) notFound();
   const status = ticket.status as SupportStatus;
 
+  const byMessage = new Map<string, SupportChatMessage["attachments"]>();
+  for (const a of attachments ?? []) {
+    if (!a.message_id) continue;
+    byMessage.set(a.message_id, [...(byMessage.get(a.message_id) ?? []), a]);
+  }
+  const chat: SupportChatMessage[] = (messages ?? []).map((m) => ({
+    ...m,
+    author_kind: m.author_kind as SupportChatMessage["author_kind"],
+    attachments: byMessage.get(m.id) ?? [],
+  }));
+  const lastRead = read?.last_read_at ? new Date(read.last_read_at).getTime() : 0;
+  const unread = chat.some((m) => m.author_kind === "ADMIN" && new Date(m.created_at).getTime() > lastRead);
+
   return (
-    <div className="space-y-5 lg:max-w-2xl">
+    <div className="space-y-4 lg:max-w-2xl">
       <RealtimeRefresh
         channel={`ajuda-${ticket.id}`}
         watches={[
@@ -54,39 +64,42 @@ export default async function ChamadoPage({
           <div className="space-y-0.5">
             <p className="font-bold text-graphite">Recebemos seu chamado #{ticket.number}</p>
             <p className="text-sm text-graphite/75">Você recebe um aviso no app quando a gente responder.</p>
-            {anexo === "falhou" && <p className="text-sm text-graphite/75">O anexo não subiu — descreva o que viu aqui na conversa.</p>}
+            {anexo === "falhou" && <p className="text-sm text-graphite/75">O anexo não subiu — anexe de novo aqui na conversa.</p>}
           </div>
         </div>
       )}
-      <header className="space-y-1">
-        <h1 className="font-heading text-xl font-bold text-graphite">{ticket.subject}</h1>
-        <p className="text-sm text-gray-neutral">
-          #{ticket.number} · {SUPPORT_STATUS_LABEL[status]}
+      <header className="space-y-1.5">
+        <p className="flex flex-wrap items-center gap-2 text-sm text-gray-neutral">
+          <span className="font-semibold tabular-nums text-graphite/80">#{ticket.number}</span>
+          <span aria-hidden>·</span>
+          {SUPPORT_CATEGORY_LABEL[ticket.category] ?? ticket.category}
+          <SupportStatusChip status={status} className="ml-auto" />
         </p>
+        <h1 className="font-heading text-xl font-bold text-graphite lg:text-2xl">{ticket.subject}</h1>
       </header>
-      <ol className="space-y-3.5">
-        {(messages ?? []).map((m) =>
-          m.author_kind === "SYSTEM" ? null : (
-            <li key={m.id} className={`flex max-w-[88%] flex-col gap-1 ${m.author_kind === "ADMIN" ? "items-start" : "ml-auto items-end"}`}>
-              <span className="text-xs text-gray-neutral">
-                <strong className="text-graphite">{m.author_kind === "ADMIN" ? "Equipe Pet Live Pro" : "Você"}</strong> · {when(m.created_at)}
-              </span>
-              <p
-                className={`whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
-                  m.author_kind === "ADMIN" ? "bg-petrol text-white" : "bg-surface-muted text-graphite"
-                }`}
-              >
-                {m.body}
-              </p>
-            </li>
-          ),
-        )}
-      </ol>
-      {status === "CLOSED" ? (
-        <p className="text-sm text-gray-neutral">Este chamado foi encerrado. Abra um novo em Ajuda, se precisar.</p>
-      ) : (
-        <TutorReplyForm ticketId={ticket.id} />
-      )}
+
+      <SupportChat
+        layout="page"
+        ticketId={ticket.id}
+        ticketNumber={ticket.number}
+        status={status}
+        messages={chat}
+        attachmentBase="/ajuda/anexo"
+        firstResponseDueAt={ticket.first_response_due_at}
+        rating={ticket.satisfaction_rating}
+        unread={unread}
+        reply={replyTutorTicket.bind(null, ticket.id)}
+        close={closeTutorTicket.bind(null, ticket.id)}
+        markRead={markTutorTicketRead.bind(null, ticket.id)}
+        closedFooter={
+          <>
+            Este chamado foi encerrado e não recebe mais mensagens.{" "}
+            <Link href="/ajuda" className="font-semibold text-petrol hover:underline">
+              Abrir um novo em Ajuda
+            </Link>
+          </>
+        }
+      />
     </div>
   );
 }

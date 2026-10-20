@@ -1,19 +1,11 @@
 import Link from "next/link";
 import { LifeBuoy } from "lucide-react";
-import { Card, EmptyState, PageHeader } from "@mylivepet/ui";
-import { SUPPORT_CATEGORY_LABEL, SUPPORT_STATUS_LABEL, type SupportStatus } from "@mylivepet/types";
+import { Card, EmptyState, PageHeader, SupportStatusChip } from "@mylivepet/ui";
+import { SUPPORT_CATEGORY_LABEL, type SupportStatus } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
 import { NewTicketForm } from "./new-ticket-form";
-
-const STATUS_STYLE: Record<SupportStatus, string> = {
-  NEW: "bg-surface-muted text-graphite/80",
-  IN_PROGRESS: "bg-petrol/10 text-petrol",
-  WAITING_CUSTOMER: "bg-orange/10 text-orange",
-  RESOLVED: "bg-success/10 text-success",
-  CLOSED: "bg-surface-muted text-gray-neutral",
-};
 
 export default async function SuportePage() {
   const supabase = await createClient();
@@ -22,13 +14,17 @@ export default async function SuportePage() {
   const canOpen = tenant.role === "OWNER" || tenant.role === "MANAGER";
 
   // RLS: só os chamados abertos por este petshop (nunca os de tutores).
-  const { data } = await supabase
-    .from("support_ticket")
-    .select("id, number, category, subject, status, updated_at")
-    .eq("tenant_id", tenant.tenantId)
-    .order("updated_at", { ascending: false })
-    .limit(30);
+  const [{ data }, { data: unreadIds }] = await Promise.all([
+    supabase
+      .from("support_ticket")
+      .select("id, number, category, subject, status, updated_at")
+      .eq("tenant_id", tenant.tenantId)
+      .order("updated_at", { ascending: false })
+      .limit(30),
+    supabase.rpc("support_unread_tickets", { p_tenant: tenant.tenantId, p_origin: "TENANT" }),
+  ]);
   const tickets = data ?? [];
+  const unread = new Set<string>((unreadIds ?? []) as string[]);
 
   return (
     <>
@@ -54,20 +50,31 @@ export default async function SuportePage() {
             <h2 className="mb-3 font-heading text-base font-bold">Seus chamados</h2>
             {tickets.length ? (
               <ul className="flex flex-col gap-2">
-                {tickets.map((t) => (
-                  <li key={t.id}>
-                    <Link href={`/suporte/${t.id}`} className="flex flex-col gap-1 rounded-xl bg-surface-muted px-3 py-2.5 transition-colors hover:bg-gray-soft">
-                      <span className="flex items-center gap-2 text-xs text-gray-neutral">
-                        #{t.number}
-                        <span className={`rounded-full px-2 py-0.5 font-semibold ${STATUS_STYLE[t.status as SupportStatus]}`}>
-                          {SUPPORT_STATUS_LABEL[t.status as SupportStatus]}
+                {tickets.map((t) => {
+                  const fresh = unread.has(t.id);
+                  return (
+                    <li key={t.id}>
+                      <Link
+                        href={`/suporte/${t.id}`}
+                        className={`flex flex-col gap-1.5 rounded-xl px-3 py-2.5 transition-colors ${fresh ? "bg-orange/[0.07] ring-1 ring-orange/25 hover:bg-orange/10" : "bg-surface-muted hover:bg-gray-soft"}`}
+                      >
+                        <span className="flex items-center gap-2 text-xs text-gray-neutral">
+                          <span className="tabular-nums">#{t.number}</span>
+                          <SupportStatusChip status={t.status as SupportStatus} className="px-2 py-0.5" />
+                          <span className="ml-auto truncate">{SUPPORT_CATEGORY_LABEL[t.category] ?? t.category}</span>
                         </span>
-                        <span className="ml-auto">{SUPPORT_CATEGORY_LABEL[t.category] ?? t.category}</span>
-                      </span>
-                      <span className="text-sm font-semibold text-graphite">{t.subject}</span>
-                    </Link>
-                  </li>
-                ))}
+                        <span className="flex items-center gap-2">
+                          <span className="min-w-0 flex-1 text-sm font-semibold text-graphite">{t.subject}</span>
+                          {fresh && (
+                            <span className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-orange">
+                              <span className="h-2 w-2 rounded-full bg-orange" aria-hidden /> Nova resposta
+                            </span>
+                          )}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <EmptyState icon={<LifeBuoy className="h-6 w-6" />} title="Nenhum chamado ainda" className="py-8" />

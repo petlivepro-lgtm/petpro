@@ -50,6 +50,14 @@ export { TabbedSections, type TabbedSection } from "./tabbed-sections";
 export { StatusChip } from "./status-chip";
 export { EmptyState } from "./empty-state";
 export { Dialog } from "./dialog";
+export { ChatScroll } from "./chat-scroll";
+export {
+  SupportChat,
+  type SupportChatAttachment,
+  type SupportChatMessage,
+  type SupportChatResult,
+} from "./support-chat";
+export { SupportStatusChip } from "./support-status";
 export { ConfirmDialog } from "./confirm-dialog";
 export { useScrollLock } from "./use-scroll-lock";
 export {

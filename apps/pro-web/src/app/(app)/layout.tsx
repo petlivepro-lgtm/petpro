@@ -26,6 +26,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const isCollaborator = tenant?.role === "COLLABORATOR";
   // Chamados com a plataforma: só dono e gerente (a RPC confere de novo).
   const canOpenSupport = tenant?.role === "OWNER" || tenant?.role === "MANAGER";
+  // Chamados com resposta da equipe que esta pessoa ainda não leu (0079).
+  const supportUnread =
+    canOpenSupport && tenant
+      ? ((await supabase.rpc("support_unread_tickets", { p_tenant: tenant.tenantId, p_origin: "TENANT" })).data ?? []).length
+      : 0;
 
   // Todo mundo com vínculo tem sino: a gestão recebe os pedidos dos tutores e
   // o colaborador recebe o que entra e sai da agenda dele. Quem separa as duas
@@ -94,6 +99,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             >
               <LifeBuoy className="h-4 w-4" />
               Ajuda e suporte
+              {supportUnread > 0 && (
+                <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-orange px-1.5 text-[11px] font-bold text-white">
+                  {supportUnread}
+                  <span className="sr-only"> com resposta nova</span>
+                </span>
+              )}
             </Link>
           )}
           {!isCollaborator && (
@@ -124,6 +135,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           logoUrl={tenant?.logoUrl ?? null}
           userName={userName}
           role={tenant?.role}
+          supportUnread={supportUnread}
           bell={
             showBell ? (
               <NotificationBell

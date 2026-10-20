@@ -12,9 +12,12 @@ export function SideNav({
   tenantName,
   tenantLogoUrl,
   bell,
+  supportUnread = 0,
 }: {
   tenantName: string;
   tenantLogoUrl: string | null;
+  /** Chamados de suporte com resposta nova. */
+  supportUnread?: number;
   /** Sino de notificações, montado no layout (server component). */
   bell?: React.ReactNode;
 }) {
@@ -73,6 +76,12 @@ export function SideNav({
           )}
         >
           <LifeBuoy className="h-[18px] w-[18px]" /> Ajuda
+          {supportUnread > 0 && (
+            <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-orange px-1.5 text-[11px] font-bold text-white">
+              {supportUnread}
+              <span className="sr-only"> com resposta nova</span>
+            </span>
+          )}
         </Link>
         <Link
           href="/configuracoes"

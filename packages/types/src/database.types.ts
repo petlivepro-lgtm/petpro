@@ -204,13 +204,6 @@ export type Database = {
             foreignKeyName: "appointment_tutor_id_fkey"
             columns: ["tutor_id"]
             isOneToOne: false
-            referencedRelation: "delivery_stop_card"
-            referencedColumns: ["tutor_id"]
-          },
-          {
-            foreignKeyName: "appointment_tutor_id_fkey"
-            columns: ["tutor_id"]
-            isOneToOne: false
             referencedRelation: "tutor"
             referencedColumns: ["id"]
           },
@@ -982,13 +975,6 @@ export type Database = {
             foreignKeyName: "clubinho_subscription_tutor_id_fkey"
             columns: ["tutor_id"]
             isOneToOne: false
-            referencedRelation: "delivery_stop_card"
-            referencedColumns: ["tutor_id"]
-          },
-          {
-            foreignKeyName: "clubinho_subscription_tutor_id_fkey"
-            columns: ["tutor_id"]
-            isOneToOne: false
             referencedRelation: "tutor"
             referencedColumns: ["id"]
           },
@@ -1211,13 +1197,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenant"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "consent_tutor_id_fkey"
-            columns: ["tutor_id"]
-            isOneToOne: false
-            referencedRelation: "delivery_stop_card"
-            referencedColumns: ["tutor_id"]
           },
           {
             foreignKeyName: "consent_tutor_id_fkey"
@@ -2061,13 +2040,6 @@ export type Database = {
             foreignKeyName: "pet_tutor_id_fkey"
             columns: ["tutor_id"]
             isOneToOne: false
-            referencedRelation: "delivery_stop_card"
-            referencedColumns: ["tutor_id"]
-          },
-          {
-            foreignKeyName: "pet_tutor_id_fkey"
-            columns: ["tutor_id"]
-            isOneToOne: false
             referencedRelation: "tutor"
             referencedColumns: ["id"]
           },
@@ -2354,13 +2326,6 @@ export type Database = {
             foreignKeyName: "platform_admin_note_tutor_id_fkey"
             columns: ["tutor_id"]
             isOneToOne: false
-            referencedRelation: "delivery_stop_card"
-            referencedColumns: ["tutor_id"]
-          },
-          {
-            foreignKeyName: "platform_admin_note_tutor_id_fkey"
-            columns: ["tutor_id"]
-            isOneToOne: false
             referencedRelation: "tutor"
             referencedColumns: ["id"]
           },
@@ -2593,13 +2558,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "payment_terminal"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_reservation_tutor_id_fkey"
-            columns: ["tutor_id"]
-            isOneToOne: false
-            referencedRelation: "delivery_stop_card"
-            referencedColumns: ["tutor_id"]
           },
           {
             foreignKeyName: "product_reservation_tutor_id_fkey"
@@ -3180,6 +3138,7 @@ export type Database = {
           created_at: string
           file_name: string
           id: string
+          message_id: string | null
           mime_type: string
           size_bytes: number
           storage_path: string
@@ -3190,6 +3149,7 @@ export type Database = {
           created_at?: string
           file_name: string
           id?: string
+          message_id?: string | null
           mime_type: string
           size_bytes: number
           storage_path: string
@@ -3200,6 +3160,7 @@ export type Database = {
           created_at?: string
           file_name?: string
           id?: string
+          message_id?: string | null
           mime_type?: string
           size_bytes?: number
           storage_path?: string
@@ -3207,6 +3168,13 @@ export type Database = {
           uploaded_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "support_attachment_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "support_message"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "support_attachment_ticket_id_fkey"
             columns: ["ticket_id"]
@@ -3286,6 +3254,32 @@ export type Database = {
           },
         ]
       }
+      support_read: {
+        Row: {
+          last_read_at: string
+          profile_id: string
+          ticket_id: string
+        }
+        Insert: {
+          last_read_at?: string
+          profile_id: string
+          ticket_id: string
+        }
+        Update: {
+          last_read_at?: string
+          profile_id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_read_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_ticket"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_ticket: {
         Row: {
           assigned_admin: string | null
@@ -3304,6 +3298,8 @@ export type Database = {
           origin: string
           priority: string
           resolved_at: string | null
+          satisfaction_comment: string | null
+          satisfaction_rating: number | null
           status: string
           subject: string
           tenant_id: string
@@ -3326,6 +3322,8 @@ export type Database = {
           origin: string
           priority?: string
           resolved_at?: string | null
+          satisfaction_comment?: string | null
+          satisfaction_rating?: number | null
           status?: string
           subject: string
           tenant_id: string
@@ -3348,6 +3346,8 @@ export type Database = {
           origin?: string
           priority?: string
           resolved_at?: string | null
+          satisfaction_comment?: string | null
+          satisfaction_rating?: number | null
           status?: string
           subject?: string
           tenant_id?: string
@@ -3642,13 +3642,6 @@ export type Database = {
             foreignKeyName: "clubinho_subscription_tutor_id_fkey"
             columns: ["tutor_id"]
             isOneToOne: false
-            referencedRelation: "delivery_stop_card"
-            referencedColumns: ["tutor_id"]
-          },
-          {
-            foreignKeyName: "clubinho_subscription_tutor_id_fkey"
-            columns: ["tutor_id"]
-            isOneToOne: false
             referencedRelation: "tutor"
             referencedColumns: ["id"]
           },
@@ -3669,6 +3662,34 @@ export type Database = {
           tutor_id: string | null
           tutor_name: string | null
         }
+        Insert: {
+          birth_date?: string | null
+          breed?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          notes?: string | null
+          photo_path?: string | null
+          size?: string | null
+          species?: string | null
+          tenant_id?: string | null
+          tutor_id?: string | null
+          tutor_name?: never
+        }
+        Update: {
+          birth_date?: string | null
+          breed?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          notes?: string | null
+          photo_path?: string | null
+          size?: string | null
+          species?: string | null
+          tenant_id?: string | null
+          tutor_id?: string | null
+          tutor_name?: never
+        }
         Relationships: [
           {
             foreignKeyName: "pet_tenant_id_fkey"
@@ -3676,13 +3697,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenant"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pet_tutor_id_fkey"
-            columns: ["tutor_id"]
-            isOneToOne: false
-            referencedRelation: "delivery_stop_card"
-            referencedColumns: ["tutor_id"]
           },
           {
             foreignKeyName: "pet_tutor_id_fkey"
@@ -3730,6 +3744,13 @@ export type Database = {
           tutor_phone: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "appointment_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "tutor"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "delivery_stop_appointment_id_fkey"
             columns: ["appointment_id"]
@@ -3965,6 +3986,10 @@ export type Database = {
         Returns: undefined
       }
       claim_tutor_access: { Args: never; Returns: undefined }
+      close_support_ticket: {
+        Args: { p_comment?: string; p_rating?: number; p_ticket: string }
+        Returns: undefined
+      }
       clubinho_cycle_interval: {
         Args: {
           p_cycle: Database["public"]["Enums"]["clubinho_cycle"]
@@ -4113,6 +4138,7 @@ export type Database = {
         Args: { p_reservation_id: string }
         Returns: undefined
       }
+      mark_support_read: { Args: { p_ticket: string }; Returns: undefined }
       mask_cpf: { Args: { _cpf: string }; Returns: string }
       mask_email: { Args: { _email: string }; Returns: string }
       mask_phone: { Args: { _phone: string }; Returns: string }
@@ -4215,8 +4241,13 @@ export type Database = {
         Returns: undefined
       }
       reply_support_ticket: {
-        Args: { p_body: string; p_ticket: string }
-        Returns: undefined
+        Args: {
+          p_body: string
+          p_file_name?: string
+          p_file_path?: string
+          p_ticket: string
+        }
+        Returns: string
       }
       reserve_products: {
         Args: { p_items: Json; p_note?: string; p_tenant_id: string }
@@ -4291,6 +4322,10 @@ export type Database = {
         Returns: undefined
       }
       staff_reset_target: { Args: { p_email: string }; Returns: Json }
+      support_unread_tickets: {
+        Args: { p_origin: string; p_tenant: string }
+        Returns: string[]
+      }
       sync_product_aggregate: {
         Args: { p_product_id: string }
         Returns: undefined

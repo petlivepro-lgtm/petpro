@@ -14,6 +14,7 @@ export function MobileNav({
   userName,
   role,
   bell,
+  supportUnread = 0,
 }: {
   tenantName: string;
   logoUrl?: string | null;
@@ -21,6 +22,8 @@ export function MobileNav({
   role?: StaffRole;
   /** Sino de notificações, montado no layout (server) e só exibido à gestão. */
   bell?: React.ReactNode;
+  /** Chamados de suporte com resposta nova. */
+  supportUnread?: number;
 }) {
   const [open, setOpen] = useState(false);
   const isCollaborator = role === "COLLABORATOR";
@@ -44,11 +47,14 @@ export function MobileNav({
       <header className="sticky top-0 z-30 flex items-center border-b border-graphite/10 bg-surface px-4 py-3 md:hidden">
         <button
           type="button"
-          aria-label="Abrir menu"
+          aria-label={supportUnread > 0 ? "Abrir menu (resposta nova do suporte)" : "Abrir menu"}
           onClick={() => setOpen(true)}
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-graphite hover:bg-surface-muted"
+          className="relative flex h-10 w-10 items-center justify-center rounded-xl text-graphite hover:bg-surface-muted"
         >
           <Menu className="h-5 w-5" />
+          {supportUnread > 0 && (
+            <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-surface bg-orange" aria-hidden />
+          )}
         </button>
         {bell && <div className="ml-auto">{bell}</div>}
       </header>
@@ -108,6 +114,12 @@ export function MobileNav({
                   className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-graphite/70 transition-colors hover:bg-surface-muted"
                 >
                   <LifeBuoy className="h-4 w-4" /> Ajuda e suporte
+                  {supportUnread > 0 && (
+                <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-orange px-1.5 text-[11px] font-bold text-white">
+                  {supportUnread}
+                  <span className="sr-only"> com resposta nova</span>
+                </span>
+              )}
                 </Link>
               )}
               {!isCollaborator && (

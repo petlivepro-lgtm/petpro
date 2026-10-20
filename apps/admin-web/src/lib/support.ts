@@ -109,8 +109,10 @@ export type TicketDetail = TicketListItem & {
   opened_by_email: string | null;
   context: Record<string, string>;
   resolved_at: string | null;
+  satisfaction_rating: number | null;
+  satisfaction_comment: string | null;
   messages: TicketMessage[];
-  attachments: { id: string; file_name: string; mime_type: string; size_bytes: number }[];
+  attachments: { id: string; message_id: string | null; file_name: string; mime_type: string; size_bytes: number }[];
   previous: number;
   subscription: { status: string; plan: string | null } | null;
   gateway_seen_at: string | null;
@@ -121,7 +123,7 @@ export async function getTicket(id: string): Promise<TicketDetail | null> {
   const svc = serviceClient();
   const { data: t } = await svc
     .from("support_ticket")
-    .select(`${LIST_COLUMNS}, opened_by, opened_by_email, context, resolved_at`)
+    .select(`${LIST_COLUMNS}, opened_by, opened_by_email, context, resolved_at, satisfaction_rating, satisfaction_comment`)
     .eq("id", id)
     .maybeSingle();
   if (!t) return null;
@@ -130,6 +132,8 @@ export async function getTicket(id: string): Promise<TicketDetail | null> {
     opened_by_email: string | null;
     context: Record<string, string>;
     resolved_at: string | null;
+    satisfaction_rating: number | null;
+    satisfaction_comment: string | null;
   };
 
   const [messages, attachments, previous, sub, gateway, cameras] = await Promise.all([
@@ -138,7 +142,7 @@ export async function getTicket(id: string): Promise<TicketDetail | null> {
       .select("id, author_kind, author_name, body, internal, created_at")
       .eq("ticket_id", id)
       .order("created_at"),
-    svc.from("support_attachment").select("id, file_name, mime_type, size_bytes").eq("ticket_id", id),
+    svc.from("support_attachment").select("id, message_id, file_name, mime_type, size_bytes").eq("ticket_id", id).order("created_at"),
     ticket.opened_by
       ? svc
           .from("support_ticket")

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef } from "react";
-import { cn } from "@mylivepet/ui";
+import * as React from "react";
+import { cn } from "./cn";
 
 /**
  * Área de conversa com rolagem própria. Abre na última mensagem e, quando
@@ -12,6 +12,7 @@ export function ChatScroll({
   children,
   count,
   conversationKey,
+  label = "Mensagens do chamado",
   className,
 }: {
   children: React.ReactNode;
@@ -19,18 +20,19 @@ export function ChatScroll({
   count: number;
   /** Trocou de conversa: volta para o fim sem perguntar. */
   conversationKey: string;
+  label?: string;
   className?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const atBottom = useRef(true);
+  const ref = React.useRef<HTMLDivElement>(null);
+  const atBottom = React.useRef(true);
 
-  useLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     const el = ref.current;
     if (el) el.scrollTop = el.scrollHeight;
     atBottom.current = true;
   }, [conversationKey]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const el = ref.current;
     if (el && atBottom.current) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [count]);
@@ -40,7 +42,7 @@ export function ChatScroll({
       ref={ref}
       tabIndex={0}
       role="log"
-      aria-label="Mensagens do chamado"
+      aria-label={label}
       aria-live="polite"
       onScroll={(e) => {
         const el = e.currentTarget;
