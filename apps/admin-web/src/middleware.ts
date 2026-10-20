@@ -82,7 +82,10 @@ export async function middleware(request: NextRequest) {
     return redirect;
   }
 
-  response.headers.set("Content-Security-Policy", csp);
+  // Anexo do suporte é arquivo, não página: a rota define a CSP dele (imagem)
+  // e o PDF precisa abrir no visualizador do navegador, que object-src 'none'
+  // bloqueia.
+  if (!pathname.startsWith("/api/suporte/anexo/")) response.headers.set("Content-Security-Policy", csp);
   return response;
 }
 

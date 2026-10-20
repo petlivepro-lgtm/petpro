@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { EyeOff, MessageSquare } from "lucide-react";
 import { z } from "zod";
-import { ChatScroll, EmptyState, RatingStars, cn } from "@mylivepet/ui";
+import { ChatScroll, EmptyState, RatingStars, SupportAttachments, cn } from "@mylivepet/ui";
 import { requireAdminPage } from "@/lib/auth";
 import { dateTimeBR, relative, until } from "@/lib/format";
 import {
@@ -13,12 +14,13 @@ import {
   PRIORITY_LABEL,
   QUEUES,
   queueCounts,
+  STATUS_LABEL,
   type QueueKey,
   type TicketListItem,
 } from "@/lib/support";
 import { PageBody, PageHeader } from "@/components/page-header";
 import { FilterTabs, Panel, Pill, type PillTone } from "@/components/ui";
-import { AttachmentButton, Composer, TicketControls } from "./ticket-client";
+import { Composer, TicketControls } from "./ticket-client";
 import { SupportLive } from "./support-live";
 
 export const metadata: Metadata = { title: "Suporte" };
@@ -49,17 +51,24 @@ export default async function SuportePage({
     queueCounts(admin.userId),
     listAssignableAdmins(),
   ]);
-  const selectedId = z.string().uuid().safeParse(sp.t).success ? sp.t! : tickets[0]?.id;
-  const ticket = selectedId ? await getTicket(selectedId) : null;
-  // Anexo vive na mensagem em que foi enviado; sem mensagem (raro), vai ao fim.
-  const attachmentsOf = (messageId: string | null) => (ticket?.attachments ?? []).filter((a) => a.message_id === messageId);
-
   const href = (params: Record<string, string | undefined>) => {
     const s = new URLSearchParams();
     const merged = { fila: queue, origem: origin, petshop: tenant, ...params };
     for (const [k, v] of Object.entries(merged)) if (v) s.set(k, v);
     return `/suporte?${s.toString()}`;
   };
+
+  // O chamado aberto mora na URL. Responder tira o chamado da fila (Novos →
+  // Aguardando cliente); se a seleção fosse "o primeiro da fila", a conversa
+  // trocaria sozinha no meio do atendimento.
+  const selectedId = z.string().uuid().safeParse(sp.t).success ? sp.t! : undefined;
+  if (!selectedId && tickets[0]) redirect(href({ t: tickets[0].id }));
+  const ticket = selectedId ? await getTicket(selectedId) : null;
+  // Saiu da fila, mas segue aberto: fica no topo da lista com a situação nova.
+  const outOfQueue = !!ticket && !tickets.some((t) => t.id === ticket.id);
+  const listed = ticket && outOfQueue ? [ticket, ...tickets] : tickets;
+  // Anexo vive na mensagem em que foi enviado; sem mensagem (raro), vai ao fim.
+  const attachmentsOf = (messageId: string | null) => (ticket?.attachments ?? []).filter((a) => a.message_id === messageId);
 
   return (
     <>
@@ -94,9 +103,13 @@ export default async function SuportePage({
           />
         ) : (
           <div className="flex flex-wrap items-stretch gap-4">
-            <nav aria-label="Chamados" className="flex min-w-0 flex-[1_1_300px] flex-col gap-1 self-start rounded-[14px] bg-surface p-2 shadow-card">
-              {tickets.map((t) => {
+            <nav
+              aria-label="Chamados"
+              className="scrollbar-slim flex max-h-[calc(100dvh-12.75rem)] min-h-0 min-w-0 flex-[1_1_300px] flex-col gap-1 self-start overflow-y-auto rounded-[14px] bg-surface p-2 shadow-card"
+            >
+              {listed.map((t) => {
                 const active = t.id === ticket?.id;
+                const moved = active && outOfQueue;
                 const sla = slaInfo(t);
                 return (
                   <Link
@@ -115,6 +128,11 @@ export default async function SuportePage({
                       <span className="ml-auto">{relative(t.created_at)}</span>
                     </span>
                     <span className="text-sm font-semibold leading-snug text-graphite">{t.subject}</span>
+                    {moved && (
+                      <span className="text-xs font-semibold text-petrol">
+                        Agora em “{STATUS_LABEL[t.status]}” · saiu desta fila
+                      </span>
+                    )}
                     <span className="flex flex-wrap items-center gap-2 text-xs">
                       <span className="text-gray-neutral">{t.tenant?.name ?? "—"}</span>
                       <Pill tone={PRIORITY_TONE[t.priority]}>{PRIORITY_LABEL[t.priority]}</Pill>
@@ -127,8 +145,11 @@ export default async function SuportePage({
 
             {ticket && (
               <>
-                <section aria-label="Conversa" className="flex min-w-0 flex-[3_1_460px] flex-col rounded-[14px] bg-surface shadow-card">
-                  <div className="flex flex-col gap-1.5 border-b border-graphite/[0.08] px-5 py-4">
+                <section
+                  aria-label="Conversa"
+                  className="flex h-[calc(100dvh-12.75rem)] min-h-[460px] min-w-0 flex-[3_1_460px] flex-col overflow-hidden rounded-[14px] bg-surface shadow-card"
+                >
+                  <div className="flex shrink-0 flex-col gap-1.5 border-b border-graphite/[0.08] px-5 py-4">
                     <span className="text-xs text-gray-neutral">
                       #{ticket.number} · {CATEGORY_LABEL[ticket.category] ?? ticket.category} · aberto {relative(ticket.created_at)}
                     </span>
@@ -142,7 +163,7 @@ export default async function SuportePage({
                   <ChatScroll
                     count={ticket.messages.length}
                     conversationKey={ticket.id}
-                    className="h-[min(62vh,620px)] min-h-[280px]"
+                    className="min-h-0 flex-1"
                   >
                   <ol className="flex flex-col gap-3.5 px-5 py-5">
                     {ticket.messages.map((m) => (
@@ -174,21 +195,19 @@ export default async function SuportePage({
                               </p>
                             )}
                             {attachmentsOf(m.id).length > 0 && (
-                              <span className="flex flex-wrap gap-2">
-                                {attachmentsOf(m.id).map((a) => (
-                                  <AttachmentButton key={a.id} id={a.id} name={a.file_name} />
-                                ))}
-                              </span>
+                              <SupportAttachments
+                                items={attachmentsOf(m.id)}
+                                base="/api/suporte/anexo"
+                                align={m.author_kind === "ADMIN" ? "end" : "start"}
+                              />
                             )}
                           </div>
                         )}
                       </li>
                     ))}
                     {attachmentsOf(null).length > 0 && (
-                      <li className="flex flex-wrap gap-2">
-                        {attachmentsOf(null).map((a) => (
-                          <AttachmentButton key={a.id} id={a.id} name={a.file_name} />
-                        ))}
+                      <li>
+                        <SupportAttachments items={attachmentsOf(null)} base="/api/suporte/anexo" />
                       </li>
                     )}
                   </ol>

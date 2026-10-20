@@ -13,6 +13,7 @@ export function ChatScroll({
   count,
   conversationKey,
   label = "Mensagens do chamado",
+  pin = false,
   className,
 }: {
   children: React.ReactNode;
@@ -21,6 +22,8 @@ export function ChatScroll({
   /** Trocou de conversa: volta para o fim sem perguntar. */
   conversationKey: string;
   label?: string;
+  /** Virou true (a pessoa acabou de enviar): desce até o fim mesmo se estava lendo acima. */
+  pin?: boolean;
   className?: string;
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
@@ -36,6 +39,13 @@ export function ChatScroll({
     const el = ref.current;
     if (el && atBottom.current) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [count]);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el || !pin) return;
+    atBottom.current = true;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [pin]);
 
   return (
     <div

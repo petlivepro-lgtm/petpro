@@ -249,19 +249,24 @@ function TeamAvatar() {
   );
 }
 
-function Attachments({
+/**
+ * Anexos de uma mensagem: imagem em miniatura que amplia por cima da tela,
+ * PDF como cartão que abre em outra aba. `base` é a rota do app que entrega
+ * o arquivo (`${base}/${id}`, com `?download=1` para baixar).
+ */
+export function SupportAttachments({
   items,
-  mine,
   base,
-  onOpenImage,
+  align = "start",
 }: {
   items: SupportChatAttachment[];
-  mine: boolean;
   base: string;
-  onOpenImage: (a: SupportChatAttachment) => void;
+  align?: "start" | "end";
 }) {
+  const [viewing, setViewing] = React.useState<SupportChatAttachment | null>(null);
+  const onOpenImage = setViewing;
   return (
-    <div className={cn("flex flex-wrap gap-2", mine ? "justify-end" : "justify-start")}>
+    <div className={cn("flex flex-wrap gap-2", align === "end" ? "justify-end" : "justify-start")}>
       {items.map((a) =>
         a.mime_type.startsWith("image/") ? (
           <button
@@ -295,6 +300,7 @@ function Attachments({
           </a>
         ),
       )}
+      <ImageViewer image={viewing} base={base} onClose={() => setViewing(null)} />
     </div>
   );
 }
@@ -305,14 +311,12 @@ function MessageItem({
   viewerName,
   base,
   large,
-  onOpenImage,
 }: {
   message: SupportChatMessage;
   first: boolean;
   viewerName?: string | null;
   base: string;
   large: boolean;
-  onOpenImage: (a: SupportChatAttachment) => void;
 }) {
   if (m.author_kind === "SYSTEM") {
     return (
@@ -355,7 +359,7 @@ function MessageItem({
         )}
         {m.attachments.length > 0 && (
           <div className={cn(m.pending && "opacity-60")}>
-            <Attachments items={m.attachments} mine={mine} base={base} onOpenImage={onOpenImage} />
+            <SupportAttachments items={m.attachments} base={base} align={mine ? "end" : "start"} />
           </div>
         )}
         {m.pending && (
@@ -631,15 +635,16 @@ export function SupportChat({
   const [preview, setPreview] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [closing, setClosing] = React.useState(false);
-  const [viewing, setViewing] = React.useState<SupportChatAttachment | null>(null);
   const [dragging, setDragging] = React.useState(false);
   const [coarse, setCoarse] = React.useState(false);
+  const [hint, setHint] = React.useState<string | null>(null);
   const textarea = React.useRef<HTMLTextAreaElement>(null);
   const fileInput = React.useRef<HTMLInputElement>(null);
   const dragDepth = React.useRef(0);
   const draftKey = `pet-suporte-rascunho:${ticketId}`;
   const closed = status === "CLOSED";
   const answered = optimistic.some((m) => m.author_kind === "ADMIN");
+  const sending = optimistic.some((m) => m.pending);
   const rows = React.useMemo(() => buildRows(optimistic, now), [optimistic, now]);
 
   // Toque: Enter quebra linha (o teclado do celular não tem Shift fácil).
@@ -709,10 +714,10 @@ export function SupportChat({
     return () => window.removeEventListener("scroll", onScroll);
   }, [layout]);
   React.useEffect(() => {
-    if (layout === "page" && atBottom.current) {
+    if (layout === "page" && (atBottom.current || sending)) {
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
     }
-  }, [layout, optimistic.length]);
+  }, [layout, optimistic.length, sending]);
 
   function pick(f: File | null | undefined) {
     if (!f) return;
@@ -750,6 +755,7 @@ export function SupportChat({
       });
       setBody("");
       setFile(null);
+      setHint(null);
       saveDraft("");
       const res = await reply(fd);
       if (!res.ok) {
@@ -762,8 +768,8 @@ export function SupportChat({
   }
 
   function keepOpen() {
+    setHint("Conte o que ainda não funcionou…");
     textarea.current?.focus();
-    textarea.current?.setAttribute("placeholder", "Conte o que ainda não funcionou…");
   }
 
   const list = (
@@ -785,7 +791,6 @@ export function SupportChat({
             viewerName={viewerName}
             base={attachmentBase}
             large={layout === "page"}
-            onOpenImage={setViewing}
           />
         ),
       )}
@@ -869,7 +874,7 @@ export function SupportChat({
           rows={1}
           value={body}
           maxLength={MAX_CHARS}
-          placeholder={status === "WAITING_CUSTOMER" ? "Responda à equipe…" : "Escreva uma mensagem…"}
+          placeholder={hint ?? (status === "WAITING_CUSTOMER" ? "Responda à equipe…" : "Escreva uma mensagem…")}
           onChange={(e) => {
             setBody(e.target.value);
             saveDraft(e.target.value);
@@ -964,7 +969,7 @@ export function SupportChat({
           {...dropHandlers}
         >
           {banner}
-          <ChatScroll count={optimistic.length} conversationKey={ticketId} className="min-h-0 flex-1 bg-surface-muted/60">
+          <ChatScroll count={optimistic.length} conversationKey={ticketId} pin={sending} className="min-h-0 flex-1 bg-surface-muted/60">
             {list}
           </ChatScroll>
           {composer}
@@ -981,7 +986,6 @@ export function SupportChat({
         </section>
       )}
       <CloseDialog open={closing} onOpenChange={setClosing} number={ticketNumber} askRating={answered} close={close} />
-      <ImageViewer image={viewing} base={attachmentBase} onClose={() => setViewing(null)} />
     </>
   );
 }

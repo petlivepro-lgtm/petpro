@@ -174,30 +174,3 @@ export async function updateTicket(ticketId: string, changes: z.input<typeof upd
     return actionFailure(e);
   }
 }
-
-/** Link temporário (60 s) para abrir um anexo. Cada abertura fica registrada. */
-export async function openAttachment(attachmentId: string): Promise<ActionResult<string>> {
-  try {
-    const p = await requireAdminAction();
-    if (!uuid.safeParse(attachmentId).success) throw new ActionError("Anexo inválido.", "INVALID");
-    const svc = serviceClient();
-    const { data: att } = await svc
-      .from("support_attachment")
-      .select("id, ticket_id, storage_path")
-      .eq("id", attachmentId)
-      .maybeSingle<{ id: string; ticket_id: string; storage_path: string }>();
-    if (!att) throw new ActionError("Anexo não encontrado.", "INVALID");
-    const { data, error } = await svc.storage.from("support").createSignedUrl(att.storage_path, 60);
-    if (error || !data) throw new ActionError("Não foi possível abrir o anexo.");
-    await writeAudit({
-      actorId: p.userId,
-      actorEmail: p.email,
-      action: "support.attachment_opened",
-      resourceType: "support_attachment",
-      resourceId: att.id,
-    });
-    return { ok: true, data: data.signedUrl };
-  } catch (e) {
-    return actionFailure(e);
-  }
-}

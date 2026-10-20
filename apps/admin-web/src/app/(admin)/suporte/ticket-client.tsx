@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Paperclip } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button, Label, Select, Textarea, cn } from "@mylivepet/ui";
-import { openAttachment, postMessage, updateTicket } from "./actions";
+import { postMessage, updateTicket } from "./actions";
 
 export function Composer({ ticketId, closed, resolved }: { ticketId: string; closed: boolean; resolved: boolean }) {
   const router = useRouter();
@@ -65,9 +65,16 @@ export function Composer({ ticketId, closed, resolved }: { ticketId: string; clo
       </Label>
       <Textarea
         id="msg"
-        rows={3}
+        rows={2}
         value={body}
         onChange={(e) => setBody(e.target.value)}
+        onKeyDown={(e) => {
+          // Ctrl+Enter (Cmd+Enter no Mac) envia; Enter sozinho segue quebrando linha.
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            e.currentTarget.form?.requestSubmit();
+          }
+        }}
         maxLength={5000}
         placeholder={note ? "Anotação para a equipe — o cliente nunca vê." : "Escreva a resposta para o cliente…"}
         className="bg-surface focus-visible:ring-petrol"
@@ -82,6 +89,9 @@ export function Composer({ ticketId, closed, resolved }: { ticketId: string; clo
           {note
             ? "Fica no chamado e na auditoria, fora da visão do cliente."
             : "O cliente recebe um aviso no app com o link, sem o texto."}
+          <span className="ml-1.5 hidden whitespace-nowrap text-graphite/50 sm:inline">
+            · <kbd className="font-sans font-semibold">Ctrl + Enter</kbd> envia
+          </span>
         </span>
         <Button
           type="submit"
@@ -170,27 +180,5 @@ export function TicketControls({
         </Button>
       )}
     </div>
-  );
-}
-
-export function AttachmentButton({ id, name }: { id: string; name: string }) {
-  const [pending, start] = useTransition();
-  const [error, setError] = useState(false);
-  return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() =>
-        start(async () => {
-          const res = await openAttachment(id);
-          if (res.ok) window.open(res.data, "_blank", "noopener,noreferrer");
-          else setError(true);
-        })
-      }
-      className="flex min-h-9 items-center gap-2 rounded-lg border border-graphite/15 bg-surface px-3 text-[13px] font-medium text-graphite transition-colors hover:bg-surface-muted"
-    >
-      <Paperclip className="h-4 w-4" aria-hidden />
-      {error ? "Não abriu — tente de novo" : name}
-    </button>
   );
 }

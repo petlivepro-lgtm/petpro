@@ -53,6 +53,7 @@ export { Dialog } from "./dialog";
 export { ChatScroll } from "./chat-scroll";
 export {
   SupportChat,
+  SupportAttachments,
   type SupportChatAttachment,
   type SupportChatMessage,
   type SupportChatResult,
