@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Checkbox, Input, Select } from "@mylivepet/ui";
+import { Button, Card, Checkbox, Input, RatingStars, ScaleSelector, Select } from "@mylivepet/ui";
 import {
   FEEDBACK_FIELD_TYPES,
   FEEDBACK_FIELD_TYPE_LABEL,
@@ -11,6 +11,7 @@ import {
 } from "@mylivepet/types";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { updateFeedbackConfig, type FormState } from "./actions";
+import { PreviewFrame, SettingsSplit, TipCard } from "./settings-layout";
 
 const MAX_FIELDS = 10;
 
@@ -59,7 +60,22 @@ export function FeedbackSettingsForm({ fields: initial }: { fields: FeedbackFiel
   }
 
   return (
-    <Card className="max-w-3xl p-5 sm:p-6">
+    <SettingsSplit
+      aside={
+        <>
+          <FeedbackPreview fields={fields} />
+          <TipCard
+            title="Dicas"
+            items={[
+              "Formulário curto é respondido: duas ou três perguntas bastam.",
+              "Uma pergunta de 0 a 10 (“recomendaria?”) mede a fidelidade ao longo do tempo.",
+              "Deixe o comentário opcional — é nele que aparecem os elogios e as reclamações.",
+            ]}
+          />
+        </>
+      }
+    >
+    <Card className="p-5 sm:p-6">
       <div className="mb-5">
         <h2 className="font-heading text-lg font-semibold text-graphite">
           Avaliação do tutor
@@ -180,5 +196,50 @@ export function FeedbackSettingsForm({ fields: initial }: { fields: FeedbackFiel
         </div>
       </form>
     </Card>
+    </SettingsSplit>
+  );
+}
+
+/** Padrão do app do tutor quando o petshop não configurou nada (tutor-feedback-form). */
+const DEFAULT_PREVIEW: FeedbackField[] = [
+  { id: "default-rating", type: "STARS", label: "Sua avaliação", required: true },
+  { id: "default-comment", type: "TEXT", label: "Comentário", required: false },
+];
+
+/** Mesmo desenho do formulário que o tutor preenche depois do atendimento. */
+function FeedbackPreview({ fields }: { fields: FeedbackField[] }) {
+  const named = fields.filter((f) => f.label.trim());
+  const list = named.length > 0 ? named : DEFAULT_PREVIEW;
+
+  return (
+    <PreviewFrame
+      hint={
+        named.length > 0
+          ? "O tutor responde no app logo depois do atendimento; as respostas chegam em Avaliações."
+          : "Sem campos configurados, o tutor vê esta avaliação padrão."
+      }
+    >
+      <div className="space-y-4 rounded-2xl bg-surface p-3">
+        <p className="font-heading text-sm font-semibold text-graphite">Como foi o atendimento?</p>
+        {list.map((f) => (
+          <div key={f.id}>
+            <p className="mb-1.5 text-[13px] font-medium text-graphite">
+              {f.label}
+              {f.required && <span className="text-orange"> *</span>}
+            </p>
+            {f.type === "STARS" ? (
+              <RatingStars value={0} size="md" />
+            ) : f.type === "SCALE_10" ? (
+              <ScaleSelector value={null} className="pointer-events-none" />
+            ) : (
+              <div className="h-16 rounded-xl border border-graphite/15 bg-surface px-3 py-2 text-xs text-gray-neutral/70">
+                {f.required ? "" : "Opcional."}
+              </div>
+            )}
+          </div>
+        ))}
+        <span className="flex h-10 items-center justify-center rounded-xl bg-orange text-sm font-semibold text-white">Enviar avaliação</span>
+      </div>
+    </PreviewFrame>
   );
 }

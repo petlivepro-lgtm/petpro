@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   formatAddressLine,
   formatCep,
@@ -54,6 +54,7 @@ export function AddressFields({
   tutorAddress,
   inheritNote,
   title = "Endereço",
+  onChange,
 }: {
   /** Prefixo dos `name` dos campos — "pet_" quando o pet vem no mesmo form. */
   prefix?: string;
@@ -68,7 +69,10 @@ export function AddressFields({
    * ali mesmo, logo acima, e não teria como ser repetido aqui.
    */
   inheritNote?: string;
+  /** "" esconde o título (quando a seção já tem o próprio cabeçalho). */
   title?: string;
+  /** Endereço como está na tela, a cada mudança (inclusive o que o CEP preencheu). */
+  onChange?: (parts: AddressParts) => void;
 }) {
   const inherits = tutorAddress !== undefined;
   const [sameAsTutor, setSameAsTutor] = useState(
@@ -82,7 +86,15 @@ export function AddressFields({
   const [district, setDistrict] = useState(defaultValues?.district ?? "");
   const [city, setCity] = useState(defaultValues?.city ?? "");
   const [state, setState] = useState(defaultValues?.state ?? "");
+  const [number, setNumber] = useState(defaultValues?.street_number ?? "");
+  const [complement, setComplement] = useState(defaultValues?.complement ?? "");
   const numberRef = useRef<HTMLInputElement>(null);
+
+  const latestOnChange = useRef(onChange);
+  latestOnChange.current = onChange;
+  useEffect(() => {
+    latestOnChange.current?.({ cep, street, street_number: number, complement, district, city, state });
+  }, [cep, street, number, complement, district, city, state]);
 
   const field = (name: string) => `${prefix}${name}`;
   const fieldId = (name: string) => `${idPrefix}-${name}`;
@@ -90,7 +102,7 @@ export function AddressFields({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-semibold text-graphite">{title}</p>
+      {title && <p className="text-sm font-semibold text-graphite">{title}</p>}
 
       {inherits && (
         <div className="rounded-xl border border-graphite/10 bg-surface-muted/40 p-3">
@@ -145,7 +157,8 @@ export function AddressFields({
               ref={numberRef}
               id={fieldId("street_number")}
               name={field("street_number")}
-              defaultValue={defaultValues?.street_number ?? ""}
+              value={number}
+              onChange={(event) => setNumber(event.target.value)}
               placeholder="Ex.: 1702 ou s/n"
             />
           </div>
@@ -154,7 +167,8 @@ export function AddressFields({
             <Input
               id={fieldId("complement")}
               name={field("complement")}
-              defaultValue={defaultValues?.complement ?? ""}
+              value={complement}
+              onChange={(event) => setComplement(event.target.value)}
               placeholder="Ex.: apto 501, bloco B"
             />
           </div>

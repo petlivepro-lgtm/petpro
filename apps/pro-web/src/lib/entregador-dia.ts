@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@mylivepet/types/database";
-import { consultarNominatim } from "@/lib/nominatim";
+import { formatAddressLine, hasAddress, type AddressParts } from "@mylivepet/types";
+import { consultarNominatim, consultasEstruturadas } from "@/lib/nominatim";
 import { fetchRota, hojeKey, type RotaDoDia } from "@/lib/rotas";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -72,9 +73,11 @@ type GeoCache = { address: string; lat: number | null; lng: number | null };
 /**
  * Onde fica o petshop — o destino de todo pet buscado.
  *
- * O endereço do petshop é texto livre (configurações → `settings.address`),
- * então a coordenada sai de uma busca textual no Nominatim, guardada em
- * `settings.shop_geo` junto com o endereço que a gerou. Mudou o endereço, o
+ * O endereço do petshop vem em campos (configurações → `settings.address_parts`,
+ * preenchido pelo CEP) e a coordenada sai da mesma busca estruturada das
+ * paradas — a linha formatada o Nominatim não acha. Petshop que ainda tem só
+ * o texto livre antigo (`settings.address`) cai na busca textual. O resultado
+ * fica em `settings.shop_geo` junto com o endereço que o gerou. Mudou o endereço, o
  * cache não bate e a busca roda de novo; não achou, o fracasso também fica
  * guardado — sem isso cada abertura de tela esperaria o Nominatim de novo.
  *
@@ -90,14 +93,26 @@ async function localDoPetshop(tenantId: string): Promise<LocalPetshop | null> {
   if (!data) return null;
 
   const settings = (data.settings ?? {}) as Record<string, unknown>;
-  const endereco = typeof settings.address === "string" ? settings.address.trim() : "";
+  const partes = settings.address_parts as AddressParts | null | undefined;
+  const endereco =
+    formatAddressLine(partes) ?? (typeof settings.address === "string" ? settings.address.trim() : "");
   if (!endereco) return null;
 
   let geo = settings.shop_geo as GeoCache | undefined;
   if (!geo || geo.address !== endereco) {
-    const ponto = await consultarNominatim(
-      new URLSearchParams({ format: "jsonv2", limit: "1", countrycodes: "br", q: endereco }),
-    );
+    let ponto: { lat: number; lng: number } | null = null;
+    for (const [i, params] of (hasAddress(partes) ? consultasEstruturadas(partes!) : []).entries()) {
+      // Política do Nominatim: no máximo 1 requisição por segundo.
+      if (i > 0) await new Promise((r) => setTimeout(r, 1_100));
+      ponto = await consultarNominatim(params);
+      if (ponto) break;
+    }
+    if (!ponto) {
+      if (hasAddress(partes)) await new Promise((r) => setTimeout(r, 1_100));
+      ponto = await consultarNominatim(
+        new URLSearchParams({ format: "jsonv2", limit: "1", countrycodes: "br", q: endereco }),
+      );
+    }
     geo = { address: endereco, lat: ponto?.lat ?? null, lng: ponto?.lng ?? null };
     await admin
       .from("tenant")

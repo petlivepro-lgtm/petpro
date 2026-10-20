@@ -6,6 +6,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveTenant } from "@/lib/tenant";
 import { guardUpload, storePublicImage } from "@/lib/upload-guard";
 import {
+  addressColumns,
+  addressFromForm,
+  addressInput,
+  formatAddressLine,
+  hasAddress,
   behaviorConfigSchema,
   canMutateAsRole,
   feedbackConfigSchema,
@@ -48,6 +53,12 @@ export async function updateTenantSettings(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
   }
+  // Mesmo bloco de endereço do cadastro de tutor (CEP → rua, bairro, cidade, UF).
+  const address = addressInput.safeParse(addressFromForm(formData));
+  if (!address.success) {
+    return { ok: false, error: address.error.issues[0]?.message ?? "Endereço inválido" };
+  }
+  const parts = addressColumns(address.data);
 
   const supabase = await createClient();
   const tenant = await getActiveTenant(supabase);
@@ -70,6 +81,12 @@ export async function updateTenantSettings(
   // Merge: o jsonb `settings` é sobrescrito por completo no update, então
   // preservamos as demais chaves (ex.: `feedback`, editado em outro form).
   const current = await readSettings(admin, tenant.tenantId);
+  // `address` continua sendo a linha pronta (admin, rota do entregador);
+  // `address_parts` são os campos, que o formulário e a busca no mapa usam.
+  // Petshop com o endereço antigo em texto livre que ainda não preencheu os
+  // campos mantém o texto até alguém preencher pelo CEP.
+  const filled = hasAddress(parts);
+  const legacy = !filled && !current.address_parts && typeof current.address === "string" ? current.address : null;
   const { error } = await admin
     .from("tenant")
     .update({
@@ -79,7 +96,8 @@ export async function updateTenantSettings(
         logo_path: logoPath,
         phone: parsed.data.phone ?? null,
         email: parsed.data.email || null,
-        address: parsed.data.address ?? null,
+        address: filled ? formatAddressLine(parts) : legacy,
+        address_parts: filled ? parts : null,
       },
     })
     .eq("id", tenant.tenantId);

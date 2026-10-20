@@ -9,8 +9,9 @@ import {
   SERVICE_STEP_LIBRARY_MAX,
   type ServiceStepTemplate,
 } from "@mylivepet/types";
-import { ArrowDown, ArrowUp, Info, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Info, Plus, Sparkles, Trash2 } from "lucide-react";
 import { updateStepLibrary, type FormState } from "./actions";
+import { PreviewFrame, SettingsSplit, TipCard } from "./settings-layout";
 
 function newStep(label = ""): ServiceStepTemplate {
   return { id: crypto.randomUUID(), label };
@@ -71,7 +72,22 @@ export function StepLibraryForm({
   const removalServices = pendingRemoval ? (usage[pendingRemoval.id] ?? []) : [];
 
   return (
-    <Card className="max-w-3xl p-5 sm:p-6">
+    <SettingsSplit
+      aside={
+        <>
+          <StepsPreview labels={steps.map((s) => s.label)} />
+          <TipCard
+            title="Dicas"
+            items={[
+              "Nomes curtos e na ordem em que acontecem: Banho, Secagem, Tosa, Perfume.",
+              "Em Serviços você escolhe quais etapas cada serviço usa — banho simples não precisa de Tosa.",
+              "A equipe marca cada etapa no atendimento; o tutor vê a mudança na hora.",
+            ]}
+          />
+        </>
+      }
+    >
+    <Card className="p-5 sm:p-6">
       <div className="mb-5">
         <h2 className="font-heading text-lg font-semibold text-graphite">
           Etapas do atendimento
@@ -221,5 +237,62 @@ export function StepLibraryForm({
         }}
       />
     </Card>
+    </SettingsSplit>
+  );
+}
+
+/** Mesmo desenho do acompanhamento no app do tutor (tutor-pwa: LiveSteps). */
+function StepsPreview({ labels }: { labels: string[] }) {
+  const named = labels.map((l) => l.trim()).filter(Boolean);
+  const sample = named.length > 0;
+  const list = sample ? named : DEFAULT_SERVICE_STEP_LABELS.slice(0, 4);
+  const done = list.length > 1 ? Math.max(1, Math.floor(list.length / 3)) : 0;
+  const percent = Math.round((done / list.length) * 100);
+
+  return (
+    <PreviewFrame
+      hint={
+        sample
+          ? "Aparece junto da câmera ao vivo, no app do tutor, durante o atendimento."
+          : "Exemplo com as etapas sugeridas. Sem etapas, o tutor vê só a câmera, sem o andamento."
+      }
+    >
+      <div className={sample ? "space-y-3 rounded-2xl bg-surface p-3" : "space-y-3 rounded-2xl bg-surface p-3 opacity-60"}>
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="font-heading text-sm font-semibold text-graphite">Etapas do atendimento</p>
+          <p className="text-xs text-gray-neutral">
+            {done} de {list.length}
+          </p>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-soft">
+          <div className="h-full rounded-full bg-orange" style={{ width: `${percent}%` }} />
+        </div>
+        <ul className="space-y-2">
+          {list.map((label, i) => {
+            const isDone = i < done;
+            const isCurrent = i === done;
+            return (
+              <li key={`${label}-${i}`} className="flex items-center gap-2.5">
+                <span
+                  className={
+                    isDone
+                      ? "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-orange bg-orange text-white"
+                      : isCurrent
+                        ? "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-orange"
+                        : "flex h-5 w-5 shrink-0 rounded-full border border-gray-soft"
+                  }
+                >
+                  {isDone ? <Check className="h-3 w-3" /> : isCurrent ? <span className="h-1.5 w-1.5 rounded-full bg-orange" /> : null}
+                </span>
+                <span className={isCurrent ? "min-w-0 flex-1 truncate text-[13px] font-medium text-graphite" : isDone ? "min-w-0 flex-1 truncate text-[13px] text-graphite" : "min-w-0 flex-1 truncate text-[13px] text-gray-neutral"}>
+                  {label}
+                </span>
+                {isCurrent && <span className="text-[11px] font-medium text-orange">agora</span>}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </PreviewFrame>
   );
 }

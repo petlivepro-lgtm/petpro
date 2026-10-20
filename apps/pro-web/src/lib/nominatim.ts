@@ -1,3 +1,5 @@
+import type { AddressParts } from "@mylivepet/types";
+
 /**
  * Consulta ao Nominatim (OpenStreetMap), só no servidor.
  *
@@ -28,4 +30,48 @@ export async function consultarNominatim(
   } catch {
     return null; // rede do petshop bloqueando, timeout, resposta estranha
   }
+}
+
+/**
+ * As consultas que serão tentadas, em ordem, para um endereço.
+ *
+ * CONSULTA ESTRUTURADA, e não a linha que aparece na tela. Esta distinção
+ * derrubou a primeira versão: passar `formatAddressLine` aqui parecia
+ * natural — é o endereço, afinal — mas aquela função escreve para gente ler,
+ * com travessão entre as partes, "casa 3" no meio e "São Gonçalo/RJ" com
+ * barra. O Nominatim devolve VAZIO para isso e acha o mesmo endereço na hora
+ * quando os campos vêm separados (testado com o endereço real de um cliente).
+ *
+ * O complemento nunca entra: "casa 3", "fundos" e "apto 501" não existem no
+ * mapa e só atrapalham a busca.
+ *
+ * A segunda tentativa tira o número, que é a parte que o OSM mais costuma não
+ * ter mapeada; a rua inteira já põe o pino na quadra certa. Não há terceira
+ * tentativa por bairro ou cidade de propósito: um pino no centro do bairro
+ * parece preciso sem ser, e pior — o botão "Navegar" passaria a mandar o
+ * entregador para lá em vez de deixar o Waze buscar o endereço escrito.
+ */
+export function consultasEstruturadas(p: AddressParts): URLSearchParams[] {
+  const rua = p.street?.trim();
+  const cidade = p.city?.trim();
+  if (!rua || !cidade) return [];
+
+  const numero = p.street_number?.trim();
+  const uf = p.state?.trim();
+
+  const base: Record<string, string> = {
+    format: "jsonv2",
+    limit: "1",
+    country: "Brasil",
+    city: cidade,
+  };
+  if (uf) base.state = uf;
+
+  const tentativas: Record<string, string>[] = [];
+  // "102 Rua Nestor Moreira": o Nominatim espera o número ANTES do logradouro
+  // no campo `street`, à moda anglófona, mesmo para endereços brasileiros.
+  if (numero) tentativas.push({ ...base, street: `${numero} ${rua}` });
+  tentativas.push({ ...base, street: rua });
+
+  return tentativas.map((t) => new URLSearchParams(t));
 }

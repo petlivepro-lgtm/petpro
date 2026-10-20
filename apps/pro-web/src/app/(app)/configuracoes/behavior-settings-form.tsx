@@ -2,14 +2,16 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Checkbox, Input } from "@mylivepet/ui";
+import { Button, Card, Checkbox, Input, RatingStars, StatusChip } from "@mylivepet/ui";
 import {
+  BEHAVIOR_BADGE_LABEL,
   BEHAVIOR_MIN_REPORTS,
   DEFAULT_BEHAVIOR_CATEGORIES,
   type BehaviorCategory,
 } from "@mylivepet/types";
 import { ArrowDown, ArrowUp, Info, Plus, Sparkles, Trash2 } from "lucide-react";
 import { updateBehaviorConfig, type FormState } from "./actions";
+import { PreviewFrame, SettingsSplit, TipCard } from "./settings-layout";
 
 const MAX_CATEGORIES = 8;
 
@@ -63,7 +65,22 @@ export function BehaviorSettingsForm({
   }
 
   return (
-    <Card className="max-w-3xl p-5 sm:p-6">
+    <SettingsSplit
+      aside={
+        <>
+          <BehaviorPreview categories={categories} />
+          <TipCard
+            title="Dicas"
+            items={[
+              "Entre 3 e 5 categorias: com muitas, a equipe para de preencher com cuidado.",
+              "Deixe obrigatórias só as que dá para avaliar em todo atendimento.",
+              `O selo do pet (Bom, Ótimo, Exemplar) aparece a partir de ${BEHAVIOR_MIN_REPORTS} boletins no mês.`,
+            ]}
+          />
+        </>
+      }
+    >
+    <Card className="p-5 sm:p-6">
       <div className="mb-5">
         <h2 className="font-heading text-lg font-semibold text-graphite">
           Boletim de comportamento
@@ -208,5 +225,44 @@ export function BehaviorSettingsForm({
         </div>
       </form>
     </Card>
+    </SettingsSplit>
+  );
+}
+
+const SAMPLE_SCORES = [5, 4, 5, 4, 5, 4, 5, 4];
+
+/** Mesmo desenho do boletim na ficha do pet no app do tutor (BehaviorReportView). */
+function BehaviorPreview({ categories }: { categories: BehaviorCategory[] }) {
+  const named = categories.filter((c) => c.label.trim());
+  const sample = named.length > 0;
+  const list = sample ? named : DEFAULT_BEHAVIOR_CATEGORIES;
+  const month = new Date().toLocaleDateString("pt-BR", { month: "long", timeZone: "America/Sao_Paulo" });
+
+  return (
+    <PreviewFrame
+      hint={
+        sample
+          ? "Aparece na ficha do pet no app do tutor, mês a mês, com a observação da equipe."
+          : "Exemplo com as categorias sugeridas. Sem categorias, o tutor recebe só a observação."
+      }
+    >
+      <div className={sample ? "rounded-2xl bg-surface p-3" : "rounded-2xl bg-surface p-3 opacity-60"}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="font-heading text-sm font-semibold capitalize text-graphite">{month}</p>
+          <StatusChip tone="brand">{BEHAVIOR_BADGE_LABEL.OTIMO}</StatusChip>
+        </div>
+        <div className="mt-3 space-y-1.5 border-t border-graphite/5 pt-3">
+          {list.map((c, i) => (
+            <div key={c.id} className="flex items-center justify-between gap-2">
+              <span className="min-w-0 truncate text-[13px] text-gray-neutral">{c.label}</span>
+              <RatingStars value={c.inverted ? 2 : (SAMPLE_SCORES[i] ?? 4)} size="sm" />
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 border-t border-graphite/5 pt-3 text-[13px] text-gray-neutral">
+          Ficou tranquilo no banho e adorou a secagem. 🐾
+        </p>
+      </div>
+    </PreviewFrame>
   );
 }

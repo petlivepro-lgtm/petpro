@@ -9,18 +9,22 @@ type Props = {
   previewSrc?: string | null;
   id?: string;
   className?: string;
+  /** Avisa quem mostra uma prévia fora do campo (ex.: logo na prévia do app). */
+  onFileChange?: (file: File, previewUrl: string) => void;
 };
 
 /** Upload de imagem estilizado: área tracejada, nome do arquivo e preview. */
-export function FileInput({ name, accept = "image/*", previewSrc, id, className }: Props) {
+export function FileInput({ name, accept = "image/*", previewSrc, id, className, onFileChange }: Props) {
   const [preview, setPreview] = React.useState<string | null>(previewSrc ?? null);
   const [fileName, setFileName] = React.useState<string | null>(null);
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const url = URL.createObjectURL(file);
     setFileName(file.name);
-    setPreview(URL.createObjectURL(file));
+    setPreview(url);
+    onFileChange?.(file, url);
   }
 
   return (
