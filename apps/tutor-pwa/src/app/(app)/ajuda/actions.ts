@@ -6,6 +6,7 @@ import { TUTOR_APP_TOPICS } from "@mylivepet/types";
 import type { SupportChatResult } from "@mylivepet/ui";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
+import { alertNewTicket, alertTicketReply } from "@/lib/admin-alert";
 import { readSupportFile, removeSupportFile, storeSupportFile, uploadSupportFile, type SupportFile } from "@/lib/support-attachment";
 
 export type TutorSupportResult = { ok: true; id: string; warning?: string } | { ok: false; error: string };
@@ -42,6 +43,7 @@ export async function openTutorTicket(formData: FormData): Promise<TutorSupportR
   });
   if (error || !data) return { ok: false, error: error?.message ?? "Não foi possível enviar. Tente de novo." };
   const ticket = data as { id: string; number: number };
+  alertNewTicket({ id: ticket.id, number: ticket.number, category: topic, origin: "TUTOR", tenantId: ctx.tenantId });
 
   let warning: string | undefined;
   const {
@@ -89,6 +91,7 @@ export async function replyTutorTicket(ticketId: string, formData: FormData): Pr
     if (path) await removeSupportFile(path);
     return { ok: false, error: error.message };
   }
+  alertTicketReply(ticketId, !!path);
   revalidatePath(`/ajuda/${ticketId}`);
   return { ok: true };
 }

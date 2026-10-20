@@ -5,6 +5,7 @@ import { z } from "zod";
 import { actionFailure, ActionError, requireAdminAction, type ActionResult } from "@/lib/auth";
 import { serviceClient } from "@/lib/supabase/service";
 import { writeAudit } from "@/lib/audit";
+import { alertTeam } from "@/lib/push";
 import { notifyCustomer, PRIORITY_LABEL, STATUS_LABEL, type TicketPriority, type TicketStatus } from "@/lib/support";
 
 const uuid = z.string().uuid();
@@ -157,6 +158,17 @@ export async function updateTicket(ticketId: string, changes: z.input<typeof upd
     }
     await svc.from("support_message").insert(lines);
     if (patch.status === "RESOLVED") await notifyCustomer(ticket, "SUPPORT_RESOLVED");
+    // Passou o chamado para outra pessoa da equipe: ela fica sabendo na hora.
+    if (c.assigned && c.assigned !== p.userId && patch.assigned_admin === c.assigned) {
+      alertTeam({
+        audience: "support",
+        userIds: [c.assigned],
+        title: `Chamado #${ticket.number} atribuído a você`,
+        body: `${teamLabel(p)} passou este chamado para você.`,
+        href: `/suporte?t=${ticket.id}`,
+        tag: `chamado-${ticket.id}`,
+      });
+    }
 
     await writeAudit({
       actorId: p.userId,

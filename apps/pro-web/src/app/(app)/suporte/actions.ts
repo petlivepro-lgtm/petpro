@@ -6,6 +6,7 @@ import { TENANT_SUPPORT_CATEGORIES } from "@mylivepet/types";
 import type { SupportChatResult } from "@mylivepet/ui";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
+import { alertNewTicket, alertTicketReply } from "@/lib/admin-alert";
 import { readSupportFile, removeSupportFile, storeSupportFile, uploadSupportFile, type SupportFile } from "@/lib/support-attachment";
 
 export type SupportResult = { ok: true; id: string; warning?: string } | { ok: false; error: string };
@@ -58,6 +59,7 @@ export async function openSupportTicket(formData: FormData): Promise<SupportResu
   if (file && !(await storeSupportFile(ticket.id, user.id, file))) {
     warning = "O chamado foi aberto, mas o anexo não subiu. Descreva o problema na conversa.";
   }
+  alertNewTicket({ id: ticket.id, number: ticket.number, category, origin: "TENANT", tenantId: tenant.tenantId });
   revalidatePath("/suporte");
   return { ok: true, id: ticket.id, warning };
 }
@@ -97,6 +99,7 @@ export async function replySupportTicket(ticketId: string, formData: FormData): 
     if (path) await removeSupportFile(path);
     return { ok: false, error: error.message };
   }
+  alertTicketReply(ticketId, !!path);
   revalidatePath(`/suporte/${ticketId}`);
   return { ok: true };
 }

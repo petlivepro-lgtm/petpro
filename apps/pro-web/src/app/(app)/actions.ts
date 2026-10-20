@@ -39,6 +39,12 @@ async function tenantIfCanMutate(supabase: Awaited<ReturnType<typeof createClien
   return tenant && canMutateAsRole(tenant.role) ? tenant : null;
 }
 
+/** Empurra os avisos que a RPC acabou de gerar, quando a action não tem o tenant em mãos. */
+async function dispatchForActiveTenant(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const tenant = await getActiveTenant(supabase);
+  if (tenant) await dispatchNotifications(tenant.tenantId);
+}
+
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
@@ -417,6 +423,7 @@ export async function completeReservation(
     p_installments: parsed.data.installments ?? 1,
   });
   if (error) return { ok: false, error: error.message };
+  await dispatchForActiveTenant(supabase);
 
   revalidatePath("/solicitacoes");
   revalidatePath("/produtos");
@@ -488,6 +495,7 @@ export async function cancelReservationByStaff(
     p_target_status: "CANCELLED",
   });
   if (error) return { ok: false, error: error.message };
+  await dispatchForActiveTenant(supabase);
 
   revalidatePath("/solicitacoes");
   revalidatePath("/produtos");

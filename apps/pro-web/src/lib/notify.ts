@@ -1,5 +1,5 @@
 import "server-only";
-import { dispatchPendingPush } from "@mylivepet/notifications";
+import { dispatchPendingPush, dispatchStalePush } from "@mylivepet/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -13,7 +13,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
  */
 export async function dispatchNotifications(tenantId: string): Promise<void> {
   try {
-    await dispatchPendingPush(createAdminClient(), tenantId);
+    const admin = createAdminClient();
+    await dispatchPendingPush(admin, tenantId);
+    // Aproveita a viagem: o que ficou parado em outro petshop sai junto.
+    await dispatchStalePush(admin);
   } catch {
     // Silencioso de propósito — o erro de envio já é logado no dispatcher.
   }

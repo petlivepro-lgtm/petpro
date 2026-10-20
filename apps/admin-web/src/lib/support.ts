@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@mylivepet/types/database";
-import { dispatchPendingPush } from "@mylivepet/notifications";
+import { dispatchPendingPush, dispatchStalePush } from "@mylivepet/notifications";
 import { serviceClient } from "@/lib/supabase/service";
 import { requiredEnv, supabaseUrl } from "@/lib/env";
 
@@ -214,4 +214,6 @@ export async function notifyCustomer(
     return;
   }
   await dispatchPendingPush(typed, ticket.tenant_id).catch(() => undefined);
+  // O que ficou parado em qualquer petshop sai junto (rede de segurança).
+  await dispatchStalePush(typed).catch(() => undefined);
 }

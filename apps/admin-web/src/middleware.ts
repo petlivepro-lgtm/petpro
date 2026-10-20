@@ -21,6 +21,9 @@ function contentSecurityPolicy(nonce: string) {
     `img-src 'self' data: blob: ${supabase}`,
     "font-src 'self'",
     `connect-src 'self'${isProd ? "" : " ws: wss:"}`,
+    // Service worker do push (public/sw.js). Sem isto o 'strict-dynamic' do
+    // script-src, que vale de fallback, bloquearia o registro.
+    "worker-src 'self'",
     "frame-ancestors 'none'",
     "frame-src 'none'",
     "base-uri 'none'",
@@ -91,6 +94,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|brand/).*)",
+    // sw.js fica de fora: o navegador busca atualização do service worker sem
+    // garantia de sessão, e um redirect para /login quebraria o push.
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sw.js|brand/).*)",
   ],
 };

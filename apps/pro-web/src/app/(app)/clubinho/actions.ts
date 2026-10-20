@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
+import { dispatchNotifications } from "@/lib/notify";
 import {
   CLUBINHO_SUBSCRIPTION_STATUSES,
   canMutateAsRole,
@@ -427,6 +428,9 @@ export async function saveClubinhoSchedule(
   await supabase.rpc("clubinho_materialize_bookings", {
     p_tenant: tenant.tenantId,
   });
+  // Os horários gerados entram na agenda dos colaboradores (0042): eles são
+  // avisados agora, não na próxima ação de alguém do petshop.
+  await dispatchNotifications(tenant.tenantId);
 
   revalidateAgenda(str(formData.get("pet_id")));
   return { ok: true };
@@ -476,6 +480,7 @@ export async function deleteClubinhoSchedule(
     .eq("id", id)
     .eq("tenant_id", tenant.tenantId);
   if (error) return { ok: false, error: error.message };
+  await dispatchNotifications(tenant.tenantId);
 
   revalidateAgenda(str(formData.get("pet_id")));
   return { ok: true };

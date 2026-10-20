@@ -55,22 +55,28 @@ export function isPushConfigured(): boolean {
   return configure();
 }
 
-type Subscription = {
+export { configure as configurePush };
+
+export type Subscription = {
   id: string;
   endpoint: string;
   p256dh: string;
   auth: string;
 };
 
+/** Tabelas de inscrição: petshop e tutor (0040) ou equipe do admin (0081). */
+export type SubscriptionTable = "push_subscription" | "platform_admin_push_subscription";
+
 /**
  * Entrega um payload a uma lista de inscrições. Endpoint morto (404/410) é
  * apagado: o navegador foi desinstalado, a permissão revogada ou a inscrição
  * expirou, e insistir só gera erro em toda notificação futura.
  */
-async function deliver(
+export async function deliver(
   admin: Admin,
   subs: Subscription[],
   payload: PushPayload,
+  table: SubscriptionTable = "push_subscription",
 ): Promise<number> {
   const body = JSON.stringify(payload);
   const dead: string[] = [];
@@ -105,11 +111,11 @@ async function deliver(
   );
 
   if (dead.length) {
-    await admin.from("push_subscription").delete().in("id", dead);
+    await admin.from(table).delete().in("id", dead);
   }
   if (alive.length) {
     await admin
-      .from("push_subscription")
+      .from(table)
       .update({ last_success_at: new Date().toISOString() })
       .in("id", alive);
   }
@@ -229,6 +235,34 @@ export async function dispatchPendingPush(
     return delivered;
   } catch {
     // Push é o canal secundário — o registro no sino já está gravado.
+    return 0;
+  }
+}
+
+/**
+ * Rede de segurança: empurra o que ficou parado em QUALQUER petshop. O aviso
+ * nasce de gatilho no banco e só sai como push quando alguém chama
+ * dispatchPendingPush; um caminho que esquece a chamada (ou o cron que expira
+ * reservas) deixava o aviso esperando a próxima ação daquele petshop — já
+ * houve 19 h de atraso. Roda a cada disparo normal e nos crons.
+ *
+ * Só olha avisos com mais de `olderThanMs` para não disputar com o disparo da
+ * própria ação (a reserva por UPDATE já impede envio em dobro de todo modo).
+ */
+export async function dispatchStalePush(admin: Admin, olderThanMs = 60_000): Promise<number> {
+  try {
+    if (!configure()) return 0;
+    const { data } = await admin
+      .from("notification")
+      .select("tenant_id")
+      .is("pushed_at", null)
+      .lt("created_at", new Date(Date.now() - olderThanMs).toISOString())
+      .limit(500);
+    const tenants = [...new Set((data ?? []).map((n) => n.tenant_id))];
+    let delivered = 0;
+    for (const tenantId of tenants) delivered += await dispatchPendingPush(admin, tenantId);
+    return delivered;
+  } catch {
     return 0;
   }
 }

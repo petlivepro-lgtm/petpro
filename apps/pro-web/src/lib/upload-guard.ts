@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { checkUpload, type CleanFile, type UploadPolicy, type UploadThreat } from "@mylivepet/uploads";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { alertBlockedUpload } from "@/lib/admin-alert";
 
 const APP = "painel";
 
@@ -69,6 +70,7 @@ async function reportThreat(t: UploadThreat, surface: UploadSurface, tenantId: s
         sha256: t.sha256,
       });
     if (error) console.error("[upload-guard] incidente não gravado:", error.message);
+    alertBlockedUpload({ surface, tenantId, detected: t.detected });
   } catch (e) {
     // O registro nunca derruba a recusa: o arquivo já foi barrado.
     console.error("[upload-guard] incidente não gravado:", e);

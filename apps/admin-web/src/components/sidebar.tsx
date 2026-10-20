@@ -23,6 +23,7 @@ import {
 import { cn } from "@mylivepet/ui";
 import { hasRole, ROLE_LABEL, type AdminRole } from "@/lib/roles";
 import { logoutAction } from "@/app/actions";
+import { PushToggle } from "./push-toggle";
 
 type Item = { href: string; label: string; icon: LucideIcon; minRole: AdminRole; badge?: "support" | "security" };
 
@@ -131,6 +132,7 @@ function NavContent({
             <span className="text-xs text-white/60">{ROLE_LABEL[role]}</span>
           </div>
         </div>
+        <PushToggle />
         <form action={logoutAction}>
           <button
             type="submit"

@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { dispatchNotifications } from "@/lib/notify";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   ClubinhoCreditDTO,
@@ -55,6 +57,10 @@ export async function syncClubinho(
     p_tenant: tenantId,
   });
   if (error) console.warn(`[clubinho] agendamentos adiados: ${error.message}`);
+  // Os horários gerados avisam os colaboradores (0042). Isto roda dentro da
+  // renderização da página, então o push sai depois da resposta — antes ele
+  // só saía na próxima ação de alguém do petshop (já houve 19 h de atraso).
+  else after(() => dispatchNotifications(tenantId));
 }
 
 /** Planos do petshop, com os serviços de cada um e quantos pets já assinam. */

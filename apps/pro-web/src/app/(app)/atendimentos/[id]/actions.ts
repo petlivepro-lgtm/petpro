@@ -174,6 +174,8 @@ export async function startAppointment(formData: FormData) {
     if (!result.ok)
       console.warn(`[camera] falha ao ligar stream: ${result.error}`);
   }
+  // "Começou o atendimento" avisa o tutor (0044).
+  if (appt) await dispatchNotifications(appt.tenant_id);
 
   revalidatePath(`/atendimentos/${id}`);
   revalidatePath("/atendimentos");

@@ -2331,6 +2331,47 @@ export type Database = {
           },
         ]
       }
+      platform_admin_push_subscription: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_success_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_success_at?: string | null
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_success_at?: string | null
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_admin_push_subscription_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "platform_admin"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       platform_admin_session: {
         Row: {
           created_at: string
