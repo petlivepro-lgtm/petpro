@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveTenant } from "@/lib/tenant";
 import { uploadPetPhoto } from "@/lib/pet-photo";
+import { guardUpload } from "@/lib/upload-guard";
 import {
   canMutateAsRole,
   tutorInput,
@@ -90,6 +91,10 @@ export async function createTutor(
   const tenant = await getActiveTenant(supabase);
   if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
 
+  // A foto do pet também é conferida antes de gravar qualquer coisa.
+  const petPhoto = petData ? await guardUpload(formData.get("pet_photo"), "pet_photo", tenant.tenantId) : null;
+  if (petPhoto && !petPhoto.ok) return { ok: false, error: petPhoto.error };
+
   const { data: tutor, error } = await supabase
     .from("tutor")
     .insert({
@@ -110,9 +115,8 @@ export async function createTutor(
     null;
   if (petData) {
     let photoPath: string | null = null;
-    const photo = formData.get("pet_photo");
-    if (photo instanceof File && photo.size > 0) {
-      photoPath = await uploadPetPhoto(tenant.tenantId, photo);
+    if (petPhoto?.ok && petPhoto.file) {
+      photoPath = await uploadPetPhoto(tenant.tenantId, petPhoto.file);
     }
     const { data: pet } = await supabase
       .from("pet")
@@ -218,9 +222,10 @@ export async function createPet(
   if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
 
   let photoPath: string | null = null;
-  const photo = formData.get("photo");
-  if (photo instanceof File && photo.size > 0) {
-    photoPath = await uploadPetPhoto(tenant.tenantId, photo);
+  const photo = await guardUpload(formData.get("photo"), "pet_photo", tenant.tenantId);
+  if (!photo.ok) return { ok: false, error: photo.error };
+  if (photo.file) {
+    photoPath = await uploadPetPhoto(tenant.tenantId, photo.file);
     if (!photoPath) return { ok: false, error: "Falha ao enviar a foto" };
   }
 

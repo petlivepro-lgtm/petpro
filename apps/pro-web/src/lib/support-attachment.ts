@@ -1,24 +1,24 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { SUPPORT_ATTACHMENT_MAX_BYTES, sniffSupportFile } from "@mylivepet/types";
+import { SUPPORT_ATTACHMENT_MAX_BYTES } from "@mylivepet/types";
+import type { CleanFile } from "@mylivepet/uploads";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { createClient } from "@/lib/supabase/server";
+import { guardUpload } from "@/lib/upload-guard";
 
-export type SupportFile = { bytes: Uint8Array; mime: string; ext: string; name: string };
+export type SupportFile = CleanFile;
 
 /**
- * Lê o anexo do formulário e confere o tipo pelos BYTES, não pela extensão
- * nem pelo content-type do navegador (os dois são do cliente). SVG e HTML
- * ficam de fora: abririam script no domínio do Storage.
+ * Anexo do suporte pelo guard de upload: tipo pelos bytes, imagem regravada
+ * (o print continua legível até 2400 px) e PDF sem conteúdo ativo. Tentativa
+ * de ataque vai para admin → Segurança.
  */
-export async function readSupportFile(entry: FormDataEntryValue | null): Promise<SupportFile | null | "invalid"> {
-  if (!entry || typeof entry === "string" || entry.size === 0) return null;
-  if (entry.size > SUPPORT_ATTACHMENT_MAX_BYTES) return "invalid";
-  const bytes = new Uint8Array(await entry.arrayBuffer());
-  const kind = sniffSupportFile(bytes);
-  if (!kind) return "invalid";
-  const name = entry.name.replace(/[^\p{L}\p{N}._ -]/gu, "").slice(0, 120) || `anexo.${kind.ext}`;
-  return { bytes, mime: kind.mime, ext: kind.ext, name };
+export function readSupportFile(entry: FormDataEntryValue | null, tenantId: string | null) {
+  return guardUpload(entry, "support_attachment", tenantId, {
+    accept: "image-or-pdf",
+    maxBytes: SUPPORT_ATTACHMENT_MAX_BYTES,
+    maxSide: 2400,
+  });
 }
 
 /**

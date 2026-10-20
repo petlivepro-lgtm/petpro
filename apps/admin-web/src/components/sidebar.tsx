@@ -24,7 +24,7 @@ import { cn } from "@mylivepet/ui";
 import { hasRole, ROLE_LABEL, type AdminRole } from "@/lib/roles";
 import { logoutAction } from "@/app/actions";
 
-type Item = { href: string; label: string; icon: LucideIcon; minRole: AdminRole; badge?: "support" };
+type Item = { href: string; label: string; icon: LucideIcon; minRole: AdminRole; badge?: "support" | "security" };
 
 const GROUPS: { title: string; items: Item[] }[] = [
   {
@@ -45,7 +45,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     items: [
       { href: "/admins", label: "Administradores", icon: ShieldCheck, minRole: "admin" },
       { href: "/auditoria", label: "Auditoria", icon: FileText, minRole: "admin" },
-      { href: "/seguranca", label: "Segurança", icon: Lock, minRole: "admin" },
+      { href: "/seguranca", label: "Segurança", icon: Lock, minRole: "admin", badge: "security" },
     ],
   },
 ];
@@ -59,10 +59,12 @@ function NavContent({
   role,
   name,
   supportCount,
+  securityCount,
 }: {
   role: AdminRole;
   name: string;
   supportCount: number;
+  securityCount: number;
 }) {
   const pathname = usePathname();
   return (
@@ -104,6 +106,12 @@ function NavContent({
                       {supportCount}
                     </span>
                   )}
+                  {item.badge === "security" && securityCount > 0 && (
+                    <span className="ml-auto grid h-[22px] min-w-[22px] place-items-center rounded-full bg-danger px-1.5 text-xs font-bold text-white">
+                      <span className="sr-only">uploads suspeitos para analisar: </span>
+                      {securityCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -136,7 +144,7 @@ function NavContent({
   );
 }
 
-export function Sidebar(props: { role: AdminRole; name: string; supportCount: number }) {
+export function Sidebar(props: { role: AdminRole; name: string; supportCount: number; securityCount: number }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   useEffect(() => setOpen(false), [pathname]);

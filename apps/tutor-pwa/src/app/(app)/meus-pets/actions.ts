@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
 import { uploadPetPhoto } from "@/lib/pet-photo";
+import { guardUpload } from "@/lib/upload-guard";
 import { petInput, PET_SIZES, type PetSize } from "@mylivepet/types";
 
 export type FormState = { ok: boolean; error?: string };
@@ -40,9 +41,10 @@ export async function createPet(_prev: FormState, formData: FormData): Promise<F
   }
 
   let photoPath: string | null = null;
-  const photo = formData.get("photo");
-  if (photo instanceof File && photo.size > 0) {
-    photoPath = await uploadPetPhoto(ctx.tenantId, photo);
+  const photo = await guardUpload(formData.get("photo"), "pet_photo", ctx.tenantId);
+  if (!photo.ok) return { ok: false, error: photo.error };
+  if (photo.file) {
+    photoPath = await uploadPetPhoto(ctx.tenantId, photo.file);
     if (!photoPath) return { ok: false, error: "Falha ao enviar a foto" };
   }
 
@@ -87,9 +89,10 @@ export async function updatePet(_prev: FormState, formData: FormData): Promise<F
 
   // Mantém a foto atual a menos que um novo arquivo seja enviado.
   let photoUpdate: { photo_path: string } | undefined;
-  const photo = formData.get("photo");
-  if (photo instanceof File && photo.size > 0) {
-    const url = await uploadPetPhoto(ctx.tenantId, photo);
+  const photo = await guardUpload(formData.get("photo"), "pet_photo", ctx.tenantId);
+  if (!photo.ok) return { ok: false, error: photo.error };
+  if (photo.file) {
+    const url = await uploadPetPhoto(ctx.tenantId, photo.file);
     if (!url) return { ok: false, error: "Falha ao enviar a foto" };
     photoUpdate = { photo_path: url };
   }

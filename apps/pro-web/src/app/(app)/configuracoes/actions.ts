@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveTenant } from "@/lib/tenant";
+import { guardUpload, storePublicImage } from "@/lib/upload-guard";
 import {
   behaviorConfigSchema,
   canMutateAsRole,
@@ -13,8 +14,6 @@ import {
 } from "@mylivepet/types";
 
 export type FormState = { ok: boolean; error?: string };
-
-const BUCKET = "tenant-logos";
 
 function str(v: FormDataEntryValue | null): string | undefined {
   const s = typeof v === "string" ? v.trim() : "";
@@ -34,23 +33,6 @@ async function readSettings(
     .eq("id", tenantId)
     .maybeSingle();
   return (data?.settings as TenantSettingsJson | null) ?? {};
-}
-
-/** Sobe a logo do petshop e retorna a URL pública. Cria o bucket sob demanda. */
-async function uploadLogo(tenantId: string, file: File): Promise<string | null> {
-  const admin = createAdminClient();
-  try {
-    await admin.storage.createBucket(BUCKET, { public: true });
-  } catch {
-    // bucket já existe — ignorável.
-  }
-  const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-  const path = `${tenantId}/logo-${crypto.randomUUID()}.${ext}`;
-  const { error } = await admin.storage
-    .from(BUCKET)
-    .upload(path, file, { upsert: true, contentType: file.type });
-  if (error) return null;
-  return admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
 export async function updateTenantSettings(
@@ -73,9 +55,10 @@ export async function updateTenantSettings(
 
   // Mantém a logo atual a menos que um novo arquivo seja enviado.
   let logoPath = tenant.logoUrl;
-  const file = formData.get("logo");
-  if (file instanceof File && file.size > 0) {
-    const url = await uploadLogo(tenant.tenantId, file);
+  const logo = await guardUpload(formData.get("logo"), "tenant_logo", tenant.tenantId, { accept: "image", maxSide: 800 });
+  if (!logo.ok) return { ok: false, error: logo.error };
+  if (logo.file) {
+    const url = await storePublicImage("tenant-logos", tenant.tenantId, logo.file);
     if (!url) return { ok: false, error: "Falha ao enviar a logo" };
     logoPath = url;
   }

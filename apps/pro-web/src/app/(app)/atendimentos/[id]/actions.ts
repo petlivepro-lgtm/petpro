@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { filesFrom, type CleanFile } from "@mylivepet/uploads";
+import { guardUploads, storePublicImage } from "@/lib/upload-guard";
 import { dispatchNotifications } from "@/lib/notify";
 import {
   behaviorReportInput,
@@ -18,35 +20,21 @@ import {
   type GatewayResult,
 } from "@/lib/camera/mediamtx";
 
-const BUCKET = "appointment-photos";
-
 function str(v: FormDataEntryValue | null): string | undefined {
   const s = typeof v === "string" ? v.trim() : "";
   return s === "" ? undefined : s;
 }
 
-/** Sobe as fotos do atendimento e retorna as URLs públicas. */
+/** Grava as fotos do atendimento (já conferidas) e retorna as URLs públicas. */
 async function uploadPhotos(
   tenantId: string,
   appointmentId: string,
-  files: File[],
+  files: CleanFile[],
 ): Promise<string[]> {
-  if (files.length === 0) return [];
-  const admin = createAdminClient();
-  try {
-    await admin.storage.createBucket(BUCKET, { public: true });
-  } catch {
-    // bucket já existe — ignorável.
-  }
   const urls: string[] = [];
-  for (const file of files.slice(0, 5)) {
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${tenantId}/${appointmentId}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await admin.storage
-      .from(BUCKET)
-      .upload(path, file, { upsert: true, contentType: file.type });
-    if (!error)
-      urls.push(admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl);
+  for (const file of files) {
+    const url = await storePublicImage("appointment-photos", `${tenantId}/${appointmentId}`, file);
+    if (url) urls.push(url);
   }
   return urls;
 }
@@ -423,10 +411,10 @@ export async function finishAppointment(
     return { ok: false, error: "Atendimento não encontrado" };
   }
 
-  const files = formData
-    .getAll("photos")
-    .filter((f): f is File => f instanceof File && f.size > 0);
-  const photos = await uploadPhotos(appt.tenant_id, id, files);
+  // Conferidas antes de concluir: foto recusada não pode fechar o atendimento pela metade.
+  const checked = await guardUploads(filesFrom(formData, "photos").slice(0, 5), "appointment_photo", appt.tenant_id);
+  if (!checked.ok) return { ok: false, error: checked.error };
+  const photos = await uploadPhotos(appt.tenant_id, id, checked.files);
 
   const { error: finishError } = await supabase
     .from("appointment")

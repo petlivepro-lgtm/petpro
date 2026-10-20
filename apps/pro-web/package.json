@@ -12,6 +12,7 @@
     "@mylivepet/notifications": "workspace:*",
     "@mylivepet/types": "workspace:*",
     "@mylivepet/ui": "workspace:*",
+    "@mylivepet/uploads": "workspace:*",
     "@supabase/ssr": "0.5.2",
     "@supabase/supabase-js": "2.45.4",
     "jose": "^5.9.6",
@@ -21,7 +22,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.9.1",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "sharp": "0.34.5"
   },
   "devDependencies": {
     "@mylivepet/config": "workspace:*",

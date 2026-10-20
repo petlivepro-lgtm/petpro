@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { uploadPetPhoto } from "@/lib/pet-photo";
+import { guardUpload } from "@/lib/upload-guard";
 import {
   canMutateAsRole,
   petInput,
@@ -45,7 +46,10 @@ export async function updatePetPhoto(_prev: FormState, formData: FormData): Prom
     .maybeSingle();
   if (!pet) return { ok: false, error: "Pet não encontrado" };
 
-  const url = await uploadPetPhoto(pet.tenant_id, photo);
+  const checked = await guardUpload(photo, "pet_photo", pet.tenant_id);
+  if (!checked.ok) return { ok: false, error: checked.error };
+  if (!checked.file) return { ok: false, error: "Escolha uma imagem" };
+  const url = await uploadPetPhoto(pet.tenant_id, checked.file);
   if (!url) return { ok: false, error: "Falha ao enviar a foto" };
 
   const { error } = await supabase.from("pet").update({ photo_path: url }).eq("id", petId);

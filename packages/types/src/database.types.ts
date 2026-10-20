@@ -3552,6 +3552,74 @@ export type Database = {
           },
         ]
       }
+      upload_incident: {
+        Row: {
+          actor_email: string | null
+          actor_name: string | null
+          app: string
+          created_at: string
+          declared_type: string
+          detected: string
+          file_name: string
+          id: string
+          profile_id: string | null
+          reason: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sha256: string
+          size_bytes: number
+          surface: string
+          tenant_id: string | null
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_name?: string | null
+          app: string
+          created_at?: string
+          declared_type: string
+          detected: string
+          file_name: string
+          id?: string
+          profile_id?: string | null
+          reason: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sha256: string
+          size_bytes: number
+          surface: string
+          tenant_id?: string | null
+        }
+        Update: {
+          actor_email?: string | null
+          actor_name?: string | null
+          app?: string
+          created_at?: string
+          declared_type?: string
+          detected?: string
+          file_name?: string
+          id?: string
+          profile_id?: string | null
+          reason?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sha256?: string
+          size_bytes?: number
+          surface?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upload_incident_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       clubinho_subscription_view: {

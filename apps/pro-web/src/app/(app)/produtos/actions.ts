@@ -2,13 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveTenant } from "@/lib/tenant";
+import { filesFrom, type CleanFile } from "@mylivepet/uploads";
+import { guardUploads, storePublicImage } from "@/lib/upload-guard";
 import { productInput, type ProductVariantInput } from "@mylivepet/types";
 
 export type FormState = { ok: boolean; error?: string };
-
-const BUCKET = "product-photos";
 
 function str(v: FormDataEntryValue | null): string | undefined {
   const s = typeof v === "string" ? v.trim() : "";
@@ -26,29 +25,19 @@ function toInt(v: FormDataEntryValue | null): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-/** Sobe vários arquivos e retorna as URLs públicas. Cria o bucket sob demanda. */
-async function uploadProductPhotos(
-  tenantId: string,
-  productId: string,
-  files: File[],
-): Promise<string[]> {
-  if (files.length === 0) return [];
-  const admin = createAdminClient();
-  try {
-    await admin.storage.createBucket(BUCKET, { public: true });
-  } catch {
-    // bucket já existe — ignorável.
-  }
+/** Grava as fotos já conferidas (guardUploads) e retorna as URLs públicas. */
+async function uploadProductPhotos(tenantId: string, productId: string, files: CleanFile[]): Promise<string[]> {
   const urls: string[] = [];
   for (const file of files) {
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${tenantId}/${productId}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await admin.storage
-      .from(BUCKET)
-      .upload(path, file, { upsert: true, contentType: file.type });
-    if (!error) urls.push(admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl);
+    const url = await storePublicImage("product-photos", `${tenantId}/${productId}`, file);
+    if (url) urls.push(url);
   }
   return urls;
+}
+
+/** Fotos novas do formulário, conferidas ANTES de gravar o produto (no máx. 5 no total). */
+async function checkNewPhotos(formData: FormData, tenantId: string) {
+  return guardUploads(filesFrom(formData, "photos").slice(0, 5), "product_photo", tenantId);
 }
 
 /** Lê o JSON de variações enviado pelo ProductVariantsInput. */
@@ -124,6 +113,7 @@ async function resolvePhotos(
   formData: FormData,
   tenantId: string,
   productId: string,
+  newFiles: CleanFile[],
 ): Promise<string[]> {
   let kept: string[] = [];
   try {
@@ -132,9 +122,6 @@ async function resolvePhotos(
   } catch {
     // JSON inválido — ignora as mantidas.
   }
-  const newFiles = formData
-    .getAll("photos")
-    .filter((f): f is File => f instanceof File && f.size > 0);
   const room = Math.max(0, 5 - kept.length);
   const uploaded = await uploadProductPhotos(tenantId, productId, newFiles.slice(0, room));
   return [...kept, ...uploaded].slice(0, 5);
@@ -159,6 +146,8 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
   const supabase = await createClient();
   const tenant = await getActiveTenant(supabase);
   if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
+  const newPhotos = await checkNewPhotos(formData, tenant.tenantId);
+  if (!newPhotos.ok) return { ok: false, error: newPhotos.error };
 
   const { data: product, error } = await supabase
     .from("product")
@@ -185,7 +174,7 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
   );
   if (variantError) return { ok: false, error: variantError };
 
-  const photos = await resolvePhotos(formData, tenant.tenantId, product.id);
+  const photos = await resolvePhotos(formData, tenant.tenantId, product.id, newPhotos.files);
   if (photos.length > 0) {
     await supabase
       .from("product")
@@ -220,8 +209,11 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
   const tenant = await getActiveTenant(supabase);
   if (!tenant) return { ok: false, error: "Sem petshop vinculado" };
 
+  const newPhotos = await checkNewPhotos(formData, tenant.tenantId);
+  if (!newPhotos.ok) return { ok: false, error: newPhotos.error };
+
   const variants = parsed.data.variants ?? [];
-  const photos = await resolvePhotos(formData, tenant.tenantId, id);
+  const photos = await resolvePhotos(formData, tenant.tenantId, id, newPhotos.files);
   const update: Record<string, unknown> = {
     name: parsed.data.name,
     description: parsed.data.description ?? null,

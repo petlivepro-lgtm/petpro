@@ -6,7 +6,7 @@ import { TUTOR_APP_TOPICS } from "@mylivepet/types";
 import type { SupportChatResult } from "@mylivepet/ui";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
-import { readSupportFile, removeSupportFile, storeSupportFile, uploadSupportFile } from "@/lib/support-attachment";
+import { readSupportFile, removeSupportFile, storeSupportFile, uploadSupportFile, type SupportFile } from "@/lib/support-attachment";
 
 export type TutorSupportResult = { ok: true; id: string; warning?: string } | { ok: false; error: string };
 
@@ -27,8 +27,9 @@ export async function openTutorTicket(formData: FormData): Promise<TutorSupportR
 
   const topic = str(formData.get("assunto"));
   if (!SUBJECT[topic]) return { ok: false, error: "Escolha o assunto de novo." };
-  const file = await readSupportFile(formData.get("anexo"));
-  if (file === "invalid") return { ok: false, error: "O anexo precisa ser imagem (PNG, JPG, WEBP) ou PDF de até 4 MB." };
+  const attachment = await readSupportFile(formData.get("anexo"), ctx.tenantId);
+  if (!attachment.ok) return { ok: false, error: attachment.error };
+  const file = attachment.file;
 
   const h = await headers();
   const { data, error } = await supabase.rpc("open_support_ticket", {
@@ -63,14 +64,18 @@ const UUID = /^[0-9a-f-]{36}$/i;
 export async function replyTutorTicket(ticketId: string, formData: FormData): Promise<SupportChatResult> {
   if (!UUID.test(ticketId)) return { ok: false, error: "Chamado não encontrado." };
   const supabase = await createClient();
-  const file = await readSupportFile(formData.get("anexo"));
-  if (file === "invalid") return { ok: false, error: "O anexo precisa ser imagem (PNG, JPG, WEBP) ou PDF de até 4 MB." };
-
+  const entry = formData.get("anexo");
+  let file: SupportFile | null = null;
   let path: string | null = null;
-  if (file) {
+  if (entry && typeof entry !== "string" && entry.size > 0) {
     // Só sobe arquivo para chamado que este tutor abriu (RLS).
-    const { data: visible } = await supabase.from("support_ticket").select("id").eq("id", ticketId).maybeSingle();
+    const { data: visible } = await supabase.from("support_ticket").select("id, tenant_id").eq("id", ticketId).maybeSingle();
     if (!visible) return { ok: false, error: "Chamado não encontrado." };
+    const attachment = await readSupportFile(entry, visible.tenant_id);
+    if (!attachment.ok) return { ok: false, error: attachment.error };
+    file = attachment.file;
+  }
+  if (file) {
     path = await uploadSupportFile(ticketId, file);
     if (!path) return { ok: false, error: "O anexo não subiu. Tente de novo." };
   }

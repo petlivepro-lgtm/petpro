@@ -234,6 +234,15 @@ export async function countNewTickets(): Promise<number> {
   return count ?? 0;
 }
 
+/** Uploads bloqueados como tentativa de ataque que ninguém da equipe analisou ainda (0080). */
+export async function countOpenUploadIncidents(): Promise<number> {
+  const { count } = await serviceClient()
+    .from("upload_incident")
+    .select("id", { count: "exact", head: true })
+    .is("reviewed_at", null);
+  return count ?? 0;
+}
+
 export type AdminNote = { id: string; body: string; author_name: string | null; created_at: string };
 
 export async function getTenantNotes(tenantId: string): Promise<AdminNote[]> {
