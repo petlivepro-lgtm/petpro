@@ -9,6 +9,7 @@ export * from "./cpf";
 export * from "./address";
 export * from "./address-form";
 export * from "./support";
+export * from "./password-policy";
 export type { Database, Tables, TablesInsert, Json } from "./database.types";
 
 /** Formata centavos (integer) em moeda BRL. */

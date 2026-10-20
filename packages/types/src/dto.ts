@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { failedPetshopPasswordRules } from "./password-policy";
 import {
   APPOINTMENT_STATUSES,
   COLLABORATOR_ACCESS_ROLES,
@@ -367,13 +368,24 @@ export const appointmentCancel = z.object({
 export type AppointmentCancel = z.infer<typeof appointmentCancel>;
 
 // Autocadastro de petshop (cria tenant + dono OWNER no CRM)
-export const petshopSignup = z.object({
-  petshop_name: z.string().min(2, "Informe o nome do petshop"),
-  full_name: z.string().min(2, "Informe seu nome"),
-  email: z.string().email("E-mail inválido"),
-  password: z.string().min(8, "A senha deve ter ao menos 8 caracteres"),
-  phone: z.string().optional(),
-});
+export const petshopSignup = z
+  .object({
+    petshop_name: z.string().min(2, "Informe o nome do petshop"),
+    full_name: z.string().min(2, "Informe seu nome"),
+    email: z.string().email("E-mail inválido"),
+    password: z.string().min(1, "Informe a senha"),
+    phone: z.string().optional(),
+  })
+  .superRefine((v, ctx) => {
+    const failed = failedPetshopPasswordRules(v.password, v.email);
+    if (failed.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["password"],
+        message: `A senha precisa de: ${failed.map((r) => r.label.toLowerCase()).join(", ")}.`,
+      });
+    }
+  });
 export type PetshopSignup = z.infer<typeof petshopSignup>;
 
 // --- Biblioteca de etapas do atendimento (Configurações → Etapas) ---
