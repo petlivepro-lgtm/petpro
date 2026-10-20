@@ -1,14 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Label, PasswordInput } from "@mylivepet/ui";
+import { Button, NewPasswordFields } from "@mylivepet/ui";
+import { failedPasswordRules, PASSWORD_MAX, PASSWORD_RULES } from "@mylivepet/types";
 
 export default function RedefinirSenhaPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [email, setEmail] = useState<string | undefined>();
+
+  // Só para a regra "não conter o seu e-mail"; conta de telefone tem e-mail técnico.
+  useEffect(() => {
+    void createClient()
+      .auth.getUser()
+      .then(({ data: { user } }) => setEmail(user?.user_metadata?.phone_login ? undefined : (user?.email ?? undefined)));
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -16,14 +25,7 @@ export default function RedefinirSenhaPage() {
     e.preventDefault();
     setError(null);
 
-    if (password.length < 8) {
-      setError("A senha deve ter pelo menos 8 caracteres.");
-      return;
-    }
-    if (password !== confirm) {
-      setError("As senhas não coincidem.");
-      return;
-    }
+    if (failedPasswordRules(password, email).length || password !== confirm) return;
 
     setLoading(true);
     const supabase = createClient();
@@ -56,28 +58,22 @@ export default function RedefinirSenhaPage() {
         </p>
       </div>
       <form onSubmit={onSubmit} className="space-y-4">
-        <div>
-          <Label htmlFor="password">Nova senha</Label>
-          <PasswordInput
-            id="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="confirm">Confirmar senha</Label>
-          <PasswordInput
-            id="confirm"
-            autoComplete="new-password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            required
-          />
-        </div>
+        <NewPasswordFields
+          rules={PASSWORD_RULES}
+          password={password}
+          confirm={confirm}
+          onPasswordChange={setPassword}
+          onConfirmChange={setConfirm}
+          email={email}
+          maxLength={PASSWORD_MAX}
+          autoFocus
+        />
         {error && <p className="text-sm text-danger">{error}</p>}
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={loading || failedPasswordRules(password, email).length > 0 || password !== confirm}
+        >
           {loading ? "Salvando..." : "Salvar senha"}
         </Button>
       </form>

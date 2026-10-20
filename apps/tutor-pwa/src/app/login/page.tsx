@@ -8,17 +8,18 @@ import {
   Button,
   Input,
   Label,
+  NewPasswordFields,
   PasswordInput,
   PhoneInput,
   cn,
 } from "@mylivepet/ui";
+import { failedPasswordRules, PASSWORD_MAX, PASSWORD_RULES } from "@mylivepet/types";
 import {
   activateTutorAccess,
   sendTutorResetLink,
   signInTutor,
   type Identifier,
 } from "./actions";
-import { MIN_PASSWORD_LENGTH } from "./password-rules";
 
 export default function LoginPage() {
   return (
@@ -73,6 +74,8 @@ function LoginForm() {
   /** Rótulo do identificador nas telas seguintes (readonly). */
   const identifierLabel = mode === "email" ? "E-mail" : "Telefone";
   const identifierText = mode === "email" ? email.trim() : formatPhoneBR(phone);
+  // A regra "não conter o seu e-mail" só vale para quem entra por e-mail.
+  const ruleEmail = mode === "email" ? email.trim().toLowerCase() : undefined;
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -139,12 +142,7 @@ function LoginForm() {
   async function onSubmitCreate(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      setError(
-        `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`,
-      );
-      return;
-    }
+    if (failedPasswordRules(newPassword, ruleEmail).length) return;
     if (newPassword !== confirm) {
       setError("As senhas não coincidem.");
       return;
@@ -294,31 +292,21 @@ function LoginForm() {
             <Label htmlFor="identifier-new">{identifierLabel}</Label>
             <Input id="identifier-new" value={identifierText} disabled />
           </div>
-          <div>
-            <Label htmlFor="new-password">Nova senha</Label>
-            <PasswordInput
-              id="new-password"
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
+          <NewPasswordFields
+              rules={PASSWORD_RULES}
+              password={newPassword}
+              confirm={confirm}
+              onPasswordChange={setNewPassword}
+              onConfirmChange={setConfirm}
+            email={ruleEmail}
+              maxLength={PASSWORD_MAX}
             />
-            <p className="mt-1 text-xs text-gray-neutral">
-              Pelo menos {MIN_PASSWORD_LENGTH} caracteres.
-            </p>
-          </div>
-          <div>
-            <Label htmlFor="confirm-password">Confirmar senha</Label>
-            <PasswordInput
-              id="confirm-password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              required
-            />
-          </div>
           {error && <p className="text-sm text-danger">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading || failedPasswordRules(newPassword, ruleEmail).length > 0 || newPassword !== confirm}
+          >
             {loading ? "Criando senha..." : "Criar senha"}
           </Button>
           <div className="text-center">

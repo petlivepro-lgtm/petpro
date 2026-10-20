@@ -5,7 +5,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { isValidPhoneBR, phoneDigits } from "@mylivepet/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { MIN_PASSWORD_LENGTH } from "./password-rules";
+import { passwordPolicyError } from "@mylivepet/types";
 import { phoneAuthEmail } from "./phone-account";
 
 /** O tutor entra pelo e-mail ou pelo telefone (DDD + número, mascarado). */
@@ -103,12 +103,9 @@ export async function activateTutorAccess(
   identifier: Identifier,
   password: string,
 ): Promise<ActivateResult> {
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return {
-      ok: false,
-      error: `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`,
-    };
-  }
+  // Mesmas regras que a tela mostra marcando (NewPasswordFields): aqui é a que vale.
+  const weak = passwordPolicyError(password, identifier.kind === "email" ? identifier.value : undefined);
+  if (weak) return { ok: false, error: weak };
 
   const resolved = await resolveIdentifier(identifier);
   if (!resolved.ok) return resolved;

@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2 } from "lucide-react";
-import { Button, Label, PasswordInput, cn } from "@mylivepet/ui";
+import { Loader2 } from "lucide-react";
+import { Button, Label, PasswordInput, PasswordRules } from "@mylivepet/ui";
 import {
   ADMIN_PASSWORD_MAX,
   ADMIN_PASSWORD_MIN,
@@ -105,32 +105,7 @@ export function NewPasswordForm({ email }: { email: string }) {
           aria-invalid={password.length > 0 && failed.length > 0}
           className="focus-visible:ring-petrol"
         />
-        <ul id="password-rules" aria-label="Regras da senha" className="mt-2.5 grid gap-1.5 sm:grid-cols-2">
-          {ADMIN_PASSWORD_RULES.map((rule) => {
-            const ok = rule.test(password, email);
-            return (
-              <li
-                key={rule.id}
-                className={cn(
-                  "flex items-center gap-2 text-xs transition-colors duration-150",
-                  ok ? "font-medium text-[#22603F]" : "text-gray-neutral",
-                )}
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    "grid h-4 w-4 shrink-0 place-items-center rounded-full transition-colors duration-150",
-                    ok ? "bg-success text-white" : "border border-graphite/25",
-                  )}
-                >
-                  {ok && <Check className="h-2.5 w-2.5" strokeWidth={3.5} />}
-                </span>
-                {rule.label}
-                <span className="sr-only">{ok ? " (cumprida)" : " (falta)"}</span>
-              </li>
-            );
-          })}
-        </ul>
+        <PasswordRules id="password-rules" rules={ADMIN_PASSWORD_RULES} password={password} email={email} />
       </div>
       <div>
         <Label htmlFor="confirm-password">Repita a senha</Label>

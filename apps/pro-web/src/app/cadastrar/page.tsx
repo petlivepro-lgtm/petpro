@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   Button,
@@ -11,8 +10,8 @@ import {
   Input,
   Label,
   PasswordInput,
+  PasswordRules,
   PhoneInput,
-  cn,
 } from "@mylivepet/ui";
 import {
   failedPetshopPasswordRules,
@@ -137,32 +136,7 @@ export default function CadastrarPage() {
               aria-describedby="password-rules"
               aria-invalid={password.length > 0 && failed.length > 0}
             />
-            <ul id="password-rules" aria-label="Regras da senha" className="mt-2.5 grid gap-1.5">
-              {PETSHOP_PASSWORD_RULES.map((rule) => {
-                const ok = rule.test(password, email);
-                return (
-                  <li
-                    key={rule.id}
-                    className={cn(
-                      "flex items-center gap-2 text-xs transition-colors duration-150",
-                      ok ? "font-medium text-[#22603F]" : "text-gray-neutral",
-                    )}
-                  >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "grid h-4 w-4 shrink-0 place-items-center rounded-full transition-colors duration-150",
-                        ok ? "bg-success text-white" : "border border-graphite/25",
-                      )}
-                    >
-                      {ok && <Check className="h-2.5 w-2.5" strokeWidth={3.5} />}
-                    </span>
-                    {rule.label}
-                    <span className="sr-only">{ok ? " (cumprida)" : " (falta)"}</span>
-                  </li>
-                );
-              })}
-            </ul>
+            <PasswordRules id="password-rules" rules={PETSHOP_PASSWORD_RULES} password={password} email={email} columns={1} />
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading || failed.length > 0}>

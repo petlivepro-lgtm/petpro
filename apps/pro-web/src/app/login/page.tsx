@@ -4,13 +4,13 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Card, Input, Label, PasswordInput } from "@mylivepet/ui";
+import { Button, Card, Input, Label, NewPasswordFields, PasswordInput } from "@mylivepet/ui";
+import { failedPasswordRules, PASSWORD_MAX, PASSWORD_RULES } from "@mylivepet/types";
 import {
   activateCollaboratorAccess,
   identifyStaff,
   sendStaffResetLink,
 } from "./actions";
-import { MIN_PASSWORD_LENGTH } from "./password-rules";
 
 export default function LoginPage() {
   return (
@@ -87,10 +87,7 @@ function LoginForm() {
 
   async function onSubmitCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      setError(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
-      return;
-    }
+    if (failedPasswordRules(newPassword, email).length) return;
     if (newPassword !== confirmPassword) {
       setError("As senhas não conferem.");
       return;
@@ -224,31 +221,22 @@ function LoginForm() {
 
         {step === "create" && (
           <form onSubmit={onSubmitCreate} className="space-y-4">
-            <div>
-              <Label htmlFor="new-password">Nova senha</Label>
-              <PasswordInput
-                id="new-password"
-                autoComplete="new-password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-              />
-              <p className="mt-1 text-xs text-gray-neutral">
-                Mínimo de {MIN_PASSWORD_LENGTH} caracteres.
-              </p>
-            </div>
-            <div>
-              <Label htmlFor="confirm-password">Repetir senha</Label>
-              <PasswordInput
-                id="confirm-password"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-            </div>
+            <NewPasswordFields
+              rules={PASSWORD_RULES}
+              password={newPassword}
+              confirm={confirmPassword}
+              onPasswordChange={setNewPassword}
+              onConfirmChange={setConfirmPassword}
+              email={email}
+              confirmLabel="Repetir senha"
+              maxLength={PASSWORD_MAX}
+            />
             {error && <p className="text-sm text-danger">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading || failedPasswordRules(newPassword, email).length > 0 || newPassword !== confirmPassword}
+            >
               {loading ? "Criando..." : "Criar senha"}
             </Button>
             <div className="text-center">

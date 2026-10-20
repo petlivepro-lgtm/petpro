@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { MIN_PASSWORD_LENGTH } from "./password-rules";
+import { passwordPolicyError } from "@mylivepet/types";
 
 export type ResetResult =
   | { ok: true; email: string }
@@ -74,12 +74,9 @@ export async function activateCollaboratorAccess(
 ): Promise<ActivateResult> {
   const email = rawEmail.trim().toLowerCase();
   if (!email) return { ok: false, error: "Informe seu e-mail." };
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return {
-      ok: false,
-      error: `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`,
-    };
-  }
+  // Mesmas regras que a tela mostra marcando (NewPasswordFields): aqui é a que vale.
+  const weak = passwordPolicyError(password, email);
+  if (weak) return { ok: false, error: weak };
 
   const resolved = await resolveAccess(email);
   if (!resolved.ok) return resolved;

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Card, Label, PasswordInput } from "@mylivepet/ui";
+import { Button, Card, NewPasswordFields } from "@mylivepet/ui";
+import { failedPasswordRules, PASSWORD_MAX, PASSWORD_RULES } from "@mylivepet/types";
 
 type Phase = "checking" | "form" | "error";
 
@@ -14,6 +15,7 @@ export default function RedefinirSenhaPage() {
   const [phase, setPhase] = useState<Phase>("checking");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [email, setEmail] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -42,6 +44,7 @@ export default function RedefinirSenhaPage() {
         setPhase("error");
         return;
       }
+      setEmail(user?.email ?? undefined);
       setPhase("form");
     }
 
@@ -98,14 +101,7 @@ export default function RedefinirSenhaPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (password.length < 8) {
-      setError("A senha deve ter pelo menos 8 caracteres.");
-      return;
-    }
-    if (password !== confirm) {
-      setError("As senhas não coincidem.");
-      return;
-    }
+    if (failedPasswordRules(password, email).length || password !== confirm) return;
     setLoading(true);
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setLoading(false);
@@ -153,28 +149,22 @@ export default function RedefinirSenhaPage() {
 
         {phase === "form" && (
           <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="password">Nova senha</Label>
-              <PasswordInput
-                id="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="confirm">Confirmar senha</Label>
-              <PasswordInput
-                id="confirm"
-                autoComplete="new-password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                required
-              />
-            </div>
+            <NewPasswordFields
+              rules={PASSWORD_RULES}
+              password={password}
+              confirm={confirm}
+              onPasswordChange={setPassword}
+              onConfirmChange={setConfirm}
+              email={email}
+              maxLength={PASSWORD_MAX}
+              autoFocus
+            />
             {error && <p className="text-sm text-danger">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading || failedPasswordRules(password, email).length > 0 || password !== confirm}
+            >
               {loading ? "Salvando..." : "Salvar senha e entrar"}
             </Button>
           </form>

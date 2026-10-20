@@ -4,6 +4,7 @@ export { Card, CardTitle, CardDescription } from "./card";
 export { Badge } from "./badge";
 export { Input, Label } from "./input";
 export { PasswordInput, type PasswordInputProps } from "./password-input";
+export { PasswordRules, NewPasswordFields, type PasswordRuleView } from "./password-rules";
 export { Textarea } from "./textarea";
 export { Checkbox } from "./checkbox";
 export { Select, type SelectProps } from "./select";
