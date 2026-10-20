@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, MessageCircle } from "lucide-react";
+import { ArrowRight, CircleCheck, MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
 import { type AppointmentStatus } from "@mylivepet/types";
@@ -35,9 +35,9 @@ import {
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ pet?: string }>;
+  searchParams: Promise<{ pet?: string; agendado?: string }>;
 }) {
-  const { pet: petParam } = await searchParams;
+  const { pet: petParam, agendado } = await searchParams;
   const supabase = await createClient();
   const ctx = await getTutorContext(supabase);
   if (!ctx) return null;
@@ -175,6 +175,22 @@ export default async function HomePage({
         channel="inicio"
         watches={[{ table: "appointment" }, { table: "delivery_stop" }]}
       />
+
+      {/* Volta do Agendar (requestBooking redireciona para cá). */}
+      {agendado && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-2xl border border-success/25 bg-success/[0.06] p-4"
+        >
+          <CircleCheck className="mt-0.5 h-5 w-5 shrink-0 text-success" aria-hidden />
+          <div className="min-w-0 text-sm">
+            <p className="font-semibold text-graphite">Pedido enviado</p>
+            <p className="text-graphite/75">
+              O petshop vai confirmar o horário. Você recebe um aviso quando ele responder.
+            </p>
+          </div>
+        </div>
+      )}
 
       <RejectionNotices reservations={(rejections ?? []) as unknown as RejectionNotice[]} />
 

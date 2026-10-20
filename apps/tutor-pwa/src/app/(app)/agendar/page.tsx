@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTutorContext } from "@/lib/tutor-context";
+import { waNumber } from "@/lib/whatsapp";
 import { BookingForm } from "./booking-form";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -27,15 +28,21 @@ export default async function AgendarPage({
     .eq("id", ctx.tutorId)
     .maybeSingle();
 
-  const [{ data: pets }, { data: services }, { data: addons }, { data: collaborators }] =
-    await Promise.all([
+  const [
+    { data: pets },
+    { data: services },
+    { data: addons },
+    { data: collaborators },
+    { data: tenant },
+  ] = await Promise.all([
     // O porte vem junto: é ele que define o preço do serviço (0058). O
     // endereço também: é ele que diz se dá para oferecer leva e traz (0062),
     // e no pet ele pode ser próprio ou herdado do tutor (0059).
     supabase
       .from("pet")
-      .select("id, name, size, cep, street, city")
-      .eq("tutor_id", ctx.tutorId),
+      .select("id, name, size, photo_path, cep, street, city")
+      .eq("tutor_id", ctx.tutorId)
+      .order("name"),
     supabase
       .from("service_type")
       .select(
@@ -62,10 +69,21 @@ export default async function AgendarPage({
       // banho no pet.
       .eq("access_role", "COLLABORATOR")
       .order("full_name"),
+    // Telefone do petshop: sem equipe cadastrada, o caminho é marcar com ele.
+    supabase.from("tenant").select("settings").eq("id", ctx.tenantId).maybeSingle(),
   ]);
 
+  const wa = waNumber(
+    ((tenant?.settings ?? {}) as { phone?: string | null }).phone ?? null,
+  );
+  const whatsappHref = wa
+    ? `https://wa.me/${wa}?text=${encodeURIComponent(
+        `Olá, ${ctx.tenantName}! Aqui é ${ctx.fullName}. Quero marcar um horário.`,
+      )}`
+    : null;
+
   return (
-    <div className="space-y-5 lg:max-w-2xl">
+    <div className="space-y-5">
       <header>
         <h1 className="font-heading text-xl font-bold text-graphite lg:text-2xl">Agendar serviço</h1>
         <p className="text-sm text-gray-neutral">
@@ -86,6 +104,7 @@ export default async function AgendarPage({
         collaborators={collaborators ?? []}
         tutorAddress={meuEndereco ?? null}
         tenantId={ctx.tenantId}
+        whatsappHref={whatsappHref}
       />
     </div>
   );
