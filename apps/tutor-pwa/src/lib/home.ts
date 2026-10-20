@@ -207,6 +207,34 @@ export function shortDay(iso: string | null): string {
   }).format(new Date(iso));
 }
 
+/** "Qui, 22/10 · 10:30" */
+export function dayAndTime(iso: string | null): string {
+  if (!iso) return "—";
+  const weekday = new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, weekday: "short" })
+    .format(new Date(iso))
+    .replace(".", "");
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}, ${shortDay(iso)} · ${timeOf(iso)}`;
+}
+
+/** "Qui · 10:30" — ao lado de um bloco de data, que já mostra dia e mês. */
+export function weekdayAndTime(iso: string | null): string {
+  if (!iso) return "—";
+  const weekday = new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, weekday: "short" })
+    .format(new Date(iso))
+    .replace(".", "");
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} · ${timeOf(iso)}`;
+}
+
+/** "Outubro de 2026", para agrupar o histórico por mês. */
+export function monthLabel(iso: string): string {
+  const label = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: TZ,
+    month: "long",
+    year: "numeric",
+  }).format(new Date(iso));
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 /** Peças do bloco de data: dia do mês, mês e dia da semana abreviados. */
 export function dateTile(iso: string) {
   const date = new Date(iso);

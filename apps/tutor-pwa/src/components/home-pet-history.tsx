@@ -7,7 +7,8 @@ import {
   TUTOR_APPOINTMENT_STATUS_TONE,
 } from "@/lib/status-labels";
 import { appointmentHref, shortDay, timeOf } from "@/lib/home";
-import { DateTile, sectionLink, sectionTitle } from "./home-agenda";
+import { DateTile } from "./date-tile";
+import { sectionLink, sectionTitle } from "./home-agenda";
 
 export type PetHistoryItem = {
   id: string;

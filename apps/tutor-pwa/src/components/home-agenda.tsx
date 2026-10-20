@@ -7,7 +7,6 @@ import {
 } from "@/lib/status-labels";
 import {
   appointmentHref,
-  dateTile,
   joinServices,
   relativeDay,
   shortDay,
@@ -15,36 +14,11 @@ import {
   type HomeVisit,
   type ReviewReminder,
 } from "@/lib/home";
+import { DateTile } from "./date-tile";
 
 export const sectionTitle = "font-heading text-lg font-semibold text-graphite";
 export const sectionLink =
   "inline-flex items-center gap-1 text-sm font-medium text-petrol hover:underline";
-
-/** Bloco de data (dia da semana, dia e mês) usado na home. */
-export function DateTile({ iso, size = "md" }: { iso: string; size?: "sm" | "md" }) {
-  const { day, month, weekday } = dateTile(iso);
-  return (
-    <span
-      className={cn(
-        "flex shrink-0 flex-col items-center justify-center rounded-xl bg-petrol/[0.07] text-center leading-none",
-        size === "md" ? "h-[4.5rem] w-16 gap-1" : "h-12 w-12 gap-0.5",
-      )}
-    >
-      {size === "md" && (
-        <span className="text-[11px] font-semibold capitalize text-petrol">{weekday}</span>
-      )}
-      <span
-        className={cn(
-          "font-heading font-bold tabular-nums text-graphite",
-          size === "md" ? "text-2xl" : "text-base",
-        )}
-      >
-        {day}
-      </span>
-      <span className="text-[11px] capitalize text-gray-neutral">{month}</span>
-    </span>
-  );
-}
 
 /**
  * O próximo horário marcado de qualquer pet do tutor. Sem horário, vira o

@@ -24,6 +24,7 @@ import {
 import { TutorFeedbackForm } from "@/components/tutor-feedback-form";
 import { cancelBooking } from "@/app/(app)/actions";
 import { TUTOR_APPOINTMENT_STATUS_LABEL } from "@/lib/status-labels";
+import { DateTile } from "./date-tile";
 
 const tone: Record<AppointmentStatus, React.ComponentProps<typeof Badge>["tone"]> = {
   REQUESTED: "warning",
@@ -61,6 +62,7 @@ export function AppointmentHistoryCard({
   serviceName,
   status,
   dateLabel,
+  dateIso = null,
   steps,
   behavior,
   photos,
@@ -76,6 +78,8 @@ export function AppointmentHistoryCard({
   serviceName: string;
   status: AppointmentStatus;
   dateLabel: string;
+  /** Instante do atendimento, para o bloco de data à esquerda. */
+  dateIso?: string | null;
   steps: HistoryStep[];
   behavior: HistoryBehavior | null;
   photos: string[];
@@ -99,26 +103,27 @@ export function AppointmentHistoryCard({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-start justify-between gap-3 p-5 text-left"
+        className="flex w-full items-center justify-between gap-3 p-4 text-left sm:p-5"
       >
-        <div className="min-w-0">
+        {dateIso && <DateTile iso={dateIso} size="sm" />}
+        <div className="min-w-0 flex-1">
           <p className="truncate font-heading font-semibold text-graphite">
             {petName} · {serviceName}
           </p>
-          <p className="text-xs text-gray-neutral">{dateLabel}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-xs tabular-nums text-gray-neutral">{dateLabel}</span>
+            <Badge tone={tone[status]}>{TUTOR_APPOINTMENT_STATUS_LABEL[status]}</Badge>
+            {needsReview && (
+              <span className="inline-flex items-center rounded-full bg-orange/10 px-2.5 py-0.5 text-xs font-medium text-orange">
+                Avaliar
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {needsReview && (
-            <span className="inline-flex items-center rounded-full bg-orange/10 px-2.5 py-0.5 text-xs font-medium text-orange">
-              Avaliar
-            </span>
-          )}
-          <Badge tone={tone[status]}>{TUTOR_APPOINTMENT_STATUS_LABEL[status]}</Badge>
-          <ChevronDown
-            className={`h-5 w-5 text-gray-neutral transition-transform ${open ? "rotate-180" : ""}`}
-            aria-hidden
-          />
-        </div>
+        <ChevronDown
+          className={`h-5 w-5 shrink-0 text-gray-neutral transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
       </button>
 
       {open && (
