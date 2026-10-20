@@ -1,17 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Package, Search } from "lucide-react";
+import { Minus, Package, Plus, Search, ShoppingBag, Trash2 } from "lucide-react";
 import {
   Button,
-  Card,
   Badge,
   ChoiceChips,
   ColorSwatchInput,
   Dialog,
+  EmptyState,
   Input,
   Label,
   PhotoGallery,
+  Select,
+  Textarea,
+  cn,
 } from "@mylivepet/ui";
 import {
   formatBRL,
@@ -52,6 +55,11 @@ type VariantChoice = { color: string | null; size: string | null; weight: string
 
 const EMPTY_CHOICE: VariantChoice = { color: null, size: null, weight: null };
 
+type SortKey = "nome" | "menor" | "maior";
+
+/** Abaixo disso o card avisa que está acabando. */
+const LOW_STOCK = 5;
+
 function categoryLabel(category?: string | null): string {
   if (!category) return "";
   return PRODUCT_CATEGORY_LABEL[category as ProductCategory] ?? category;
@@ -71,6 +79,11 @@ function weightKey(v: ProductVariant): string | null {
   return formatWeight(v.weight_value, v.weight_unit);
 }
 
+/** "Azul · M · 500 g" — a variação escolhida, como aparece na sacola. */
+function variantLabel(v: ProductVariant): string {
+  return [v.color_name, v.size, weightKey(v)].filter(Boolean).join(" · ");
+}
+
 /** Chave do carrinho: cada variação é um item próprio. */
 function cartKey(productId: string, variantId?: string | null): string {
   return variantId ? `${productId}:${variantId}` : productId;
@@ -85,12 +98,73 @@ function priceFrom(p: Product): number {
   return Math.min(...pool.map((v) => v.price_cents));
 }
 
-export function ReserveList({ products }: { products: Product[] }) {
+/** − quantidade + */
+function QtyStepper({
+  value,
+  max,
+  onChange,
+  label,
+  className,
+}: {
+  value: number;
+  max: number;
+  onChange: (delta: number) => void;
+  /** Nome do item, para os leitores de tela. */
+  label: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex h-9 items-center justify-between rounded-xl border border-graphite/10 bg-surface",
+        className,
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => onChange(-1)}
+        disabled={value <= 0}
+        aria-label={`Diminuir ${label}`}
+        className="flex h-full w-9 items-center justify-center rounded-l-xl text-graphite transition-colors hover:bg-surface-muted disabled:opacity-40"
+      >
+        <Minus className="h-4 w-4" />
+      </button>
+      <span className="min-w-[1.5rem] text-center text-sm font-semibold tabular-nums text-graphite" aria-live="polite">
+        {value}
+      </span>
+      <button
+        type="button"
+        onClick={() => onChange(1)}
+        disabled={max <= 0 || value >= max}
+        aria-label={`Aumentar ${label}`}
+        className="flex h-full w-9 items-center justify-center rounded-r-xl text-graphite transition-colors hover:bg-surface-muted disabled:opacity-40"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * A loja do petshop no app do tutor: vitrine, sacola e o envio da reserva.
+ * Nada é pago aqui — a reserva separa os produtos e o tutor paga ao retirar.
+ */
+export function ReserveList({
+  products,
+  toolbarAction,
+}: {
+  products: Product[];
+  /** Ação ao lado da busca (o botão "Minhas reservas"). */
+  toolbarAction?: React.ReactNode;
+}) {
   const [qty, setQty] = useState<Record<string, number>>({});
   const [openId, setOpenId] = useState<string | null>(null);
   const [choice, setChoice] = useState<VariantChoice>(EMPTY_CHOICE);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<ProductCategory | null>(null);
+  const [sort, setSort] = useState<SortKey>("nome");
+  const [cartOpen, setCartOpen] = useState(false);
+  const [note, setNote] = useState("");
 
   // Categorias presentes no catálogo, na ordem predefinida.
   const availableCategories = useMemo(() => {
@@ -101,7 +175,7 @@ export function ReserveList({ products }: { products: Product[] }) {
   // Busca por nome do produto e categoria + filtro por categoria selecionada.
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return products.filter((p) => {
+    const list = products.filter((p) => {
       if (category && p.category !== category) return false;
       if (!term) return true;
       return (
@@ -109,11 +183,20 @@ export function ReserveList({ products }: { products: Product[] }) {
         categoryLabel(p.category).toLowerCase().includes(term)
       );
     });
-  }, [products, search, category]);
+    if (sort === "nome") return list;
+    return [...list].sort((a, b) =>
+      sort === "menor" ? priceFrom(a) - priceFrom(b) : priceFrom(b) - priceFrom(a),
+    );
+  }, [products, search, category, sort]);
 
   // Índice das linhas do carrinho para montar o payload e somar o total.
   const cartRows = useMemo(() => {
-    const rows: { product: Product; variant: ProductVariant | null; quantity: number }[] = [];
+    const rows: {
+      key: string;
+      product: Product;
+      variant: ProductVariant | null;
+      quantity: number;
+    }[] = [];
     for (const [key, quantity] of Object.entries(qty)) {
       if (quantity <= 0) continue;
       const [productId, variantId] = key.split(":");
@@ -123,7 +206,7 @@ export function ReserveList({ products }: { products: Product[] }) {
         ? (variantsOf(product).find((v) => v.id === variantId) ?? null)
         : null;
       if (variantId && !variant) continue;
-      rows.push({ product, variant, quantity });
+      rows.push({ key, product, variant, quantity });
     }
     return rows;
   }, [qty, products]);
@@ -138,6 +221,7 @@ export function ReserveList({ products }: { products: Product[] }) {
     (sum, r) => sum + (r.variant?.price_cents ?? r.product.price_cents) * r.quantity,
     0,
   );
+  const itemCount = cartRows.reduce((sum, r) => sum + r.quantity, 0);
 
   function setQ(key: string, delta: number, max: number) {
     setQty((prev) => {
@@ -146,52 +230,16 @@ export function ReserveList({ products }: { products: Product[] }) {
     });
   }
 
+  function removeFromCart(key: string) {
+    setQty((prev) => ({ ...prev, [key]: 0 }));
+  }
+
   const opened = products.find((p) => p.id === openId) ?? null;
   const openedVariants = opened ? variantsOf(opened) : [];
 
   function openProduct(p: Product) {
     setChoice(EMPTY_CHOICE);
     setOpenId(p.id);
-  }
-
-  function Stepper({
-    cartId,
-    max,
-    onClick,
-  }: {
-    cartId: string;
-    max: number;
-    onClick?: (e: React.MouseEvent) => void;
-  }) {
-    return (
-      <div className="flex items-center gap-2" onClick={onClick}>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={(e) => {
-            e.stopPropagation();
-            setQ(cartId, -1, max);
-          }}
-          disabled={(qty[cartId] ?? 0) <= 0}
-        >
-          −
-        </Button>
-        <span className="w-6 text-center text-sm font-medium">{qty[cartId] ?? 0}</span>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={(e) => {
-            e.stopPropagation();
-            setQ(cartId, 1, max);
-          }}
-          disabled={max <= 0 || (qty[cartId] ?? 0) >= max}
-        >
-          +
-        </Button>
-      </div>
-    );
   }
 
   // --- Estado do diálogo com variações --------------------------------------
@@ -249,129 +297,110 @@ export function ReserveList({ products }: { products: Product[] }) {
   const openedSubtotal = openedUnitPrice * openedQty;
   const canAdd = openedHasVariants ? !!chosenVariant && openedStock > 0 : openedStock > 0;
 
-  return (
-    <div className="space-y-4">
-      <div className="space-y-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-neutral" />
-          <Input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nome ou categoria"
-            className="pl-9"
-            aria-label="Buscar produtos"
-          />
-        </div>
-
-        {availableCategories.length > 0 && (
-          <ChoiceChips
-            aria-label="Filtrar por categoria"
-            allowEmpty={false}
-            value={category ?? "todos"}
-            onChange={(v) => setCategory(v === "todos" ? null : (v as ProductCategory))}
-            options={[
-              { value: "todos", label: "Todos" },
-              ...availableCategories.map((c) => ({
-                value: c,
-                label: PRODUCT_CATEGORY_LABEL[c],
-              })),
-            ]}
-          />
-        )}
-      </div>
-
-      {filteredProducts.length === 0 ? (
-        <p className="py-8 text-center text-sm text-gray-neutral">
-          Nenhum produto encontrado.
-        </p>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredProducts.map((p) => {
-          const cover = photosOf(p)[0];
-          const variants = variantsOf(p);
-          const hasVariants = variants.length > 0;
-          const selected = Object.entries(qty).some(
-            ([key, q]) => q > 0 && (key === p.id || key.startsWith(`${p.id}:`)),
-          );
-          return (
-            <Card
-              key={p.id}
-              onClick={() => openProduct(p)}
-              className={`flex cursor-pointer flex-col gap-3 p-3 transition-shadow hover:shadow-card-hover ${
-                selected ? "ring-2 ring-orange/40" : ""
-              }`}
-            >
-              <div className="relative flex h-36 items-center justify-center overflow-hidden rounded-xl bg-surface-muted text-gray-neutral/40">
-                {cover ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={cover} alt={p.name} className="h-full w-full object-cover" />
-                ) : (
-                  <Package className="h-9 w-9" />
-                )}
-                {p.stock <= 0 && (
-                  <span className="absolute right-2 top-2">
-                    <Badge tone="danger">Sem estoque</Badge>
-                  </span>
-                )}
-              </div>
-
-              <div className="flex min-h-[2.5rem] flex-col">
-                <p className="line-clamp-2 font-medium leading-tight text-graphite">{p.name}</p>
-                {p.category && (
-                  <span className="mt-1 text-xs text-gray-neutral">{categoryLabel(p.category)}</span>
-                )}
-                <p className="mt-1 font-heading text-base font-bold text-graphite">
-                  {hasVariants && (
-                    <span className="mr-1 text-xs font-normal text-gray-neutral">a partir de</span>
-                  )}
-                  {formatBRL(priceFrom(p))}
-                </p>
-                {hasVariants && (
-                  <span className="mt-1 text-xs text-gray-neutral">
-                    {variantAxesLabel(variants)}
-                  </span>
-                )}
-              </div>
-
-              <div className="mt-auto flex items-center justify-between">
-                {p.stock > 0 ? (
-                  <span className="text-xs text-gray-neutral">{p.stock} em estoque</span>
-                ) : (
-                  <span className="text-xs text-danger">Indisponível</span>
-                )}
-                {hasVariants ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    disabled={p.stock <= 0}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openProduct(p);
-                    }}
-                  >
-                    Escolher
-                  </Button>
-                ) : (
-                  <Stepper
-                    cartId={p.id}
-                    max={p.stock}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                )}
-              </div>
-            </Card>
-          );
-          })}
-        </div>
-      )}
-
-      <form action={createReservation} className="space-y-3">
+  /**
+   * A sacola, usada na coluna do desktop e no diálogo do celular. É uma função
+   * (e não um componente) para o campo de observação não perder o foco a cada
+   * tecla: os dois lugares compartilham o mesmo estado.
+   */
+  function renderCart(withTitle: boolean) {
+    return (
+      <form action={createReservation} className="space-y-4">
         <input type="hidden" name="items" value={JSON.stringify(items)} />
-        <div className="flex items-center justify-between rounded-2xl bg-surface-muted px-4 py-3">
+
+        {withTitle && (
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="font-heading text-lg font-semibold text-graphite">Sua sacola</h2>
+            {itemCount > 0 && (
+              <span className="text-sm text-gray-neutral">
+                {itemCount} {itemCount === 1 ? "item" : "itens"}
+              </span>
+            )}
+          </div>
+        )}
+
+        {cartRows.length === 0 ? (
+          <div className="flex flex-col items-center rounded-xl bg-surface-muted px-4 py-6 text-center">
+            <ShoppingBag className="h-6 w-6 text-gray-neutral/60" aria-hidden />
+            <p className="mt-2 text-sm font-medium text-graphite">Sua sacola está vazia</p>
+            <p className="mt-0.5 text-xs text-gray-neutral">
+              Adicione produtos para reservar e retirar na loja.
+            </p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-graphite/5">
+            {cartRows.map((r) => {
+              const unit = r.variant?.price_cents ?? r.product.price_cents;
+              const max = r.variant?.stock ?? r.product.stock;
+              const cover = photosOf(r.product)[0];
+              return (
+                <li key={r.key} className="flex gap-3 py-3 first:pt-0">
+                  <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-muted text-gray-neutral/40">
+                    {cover ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={cover} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <Package className="h-5 w-5" />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="line-clamp-2 text-sm font-medium leading-snug text-graphite">
+                        {r.product.name}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => removeFromCart(r.key)}
+                        aria-label={`Tirar ${r.product.name} da sacola`}
+                        className="-mr-1 -mt-0.5 shrink-0 rounded-lg p-1 text-gray-neutral transition-colors hover:bg-danger/10 hover:text-danger"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {r.variant && (
+                      <p className="text-xs text-gray-neutral">{variantLabel(r.variant)}</p>
+                    )}
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <QtyStepper
+                        value={r.quantity}
+                        max={max}
+                        label={r.product.name}
+                        onChange={(delta) => setQ(r.key, delta, max)}
+                        className="h-8 w-[6.5rem]"
+                      />
+                      <span className="text-sm font-semibold tabular-nums text-graphite">
+                        {formatBRL(unit * r.quantity)}
+                      </span>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {cartRows.length > 0 && (
+          <div>
+            <Label htmlFor={withTitle ? "note-lateral" : "note-sacola"}>
+              Observação para a loja{" "}
+              <span className="font-normal text-gray-neutral">(opcional)</span>
+            </Label>
+            <Textarea
+              id={withTitle ? "note-lateral" : "note-sacola"}
+              name="note"
+              rows={2}
+              maxLength={300}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Ex.: retiro no sábado de manhã."
+            />
+          </div>
+        )}
+
+        <div className="flex items-baseline justify-between gap-3 border-t border-graphite/5 pt-4">
           <span className="text-sm text-gray-neutral">Total a pagar na loja</span>
-          <span className="font-heading text-lg font-bold text-graphite">{formatBRL(total)}</span>
+          <span className="font-heading text-xl font-bold tabular-nums text-graphite">
+            {formatBRL(total)}
+          </span>
         </div>
         <Button type="submit" className="w-full" disabled={items.length === 0}>
           Reservar para retirar na loja
@@ -380,6 +409,237 @@ export function ReserveList({ products }: { products: Product[] }) {
           O pagamento é feito presencialmente. A reserva vale por 48h.
         </p>
       </form>
+    );
+  }
+
+  return (
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-6">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-neutral" />
+            <Input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nome ou categoria"
+              className="pl-9"
+              aria-label="Buscar produtos"
+            />
+          </div>
+          {products.length > 1 && (
+            <div className="w-36 shrink-0 sm:w-44">
+              <Select
+                aria-label="Ordenar produtos"
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+              >
+                <option value="nome">Nome (A–Z)</option>
+                <option value="menor">Menor preço</option>
+                <option value="maior">Maior preço</option>
+              </Select>
+            </div>
+          )}
+        </div>
+
+        {(availableCategories.length > 0 || toolbarAction) && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {availableCategories.length > 0 ? (
+              <ChoiceChips
+                aria-label="Filtrar por categoria"
+                allowEmpty={false}
+                value={category ?? "todos"}
+                onChange={(v) => setCategory(v === "todos" ? null : (v as ProductCategory))}
+                options={[
+                  { value: "todos", label: "Todos" },
+                  ...availableCategories.map((c) => ({
+                    value: c,
+                    label: PRODUCT_CATEGORY_LABEL[c],
+                  })),
+                ]}
+              />
+            ) : (
+              <span />
+            )}
+            {toolbarAction}
+          </div>
+        )}
+
+        {products.length === 0 ? (
+          <EmptyState
+            icon={<ShoppingBag className="h-6 w-6" />}
+            title="A loja ainda não tem produtos no app"
+            description="Quando o petshop cadastrar produtos à venda, eles aparecem aqui para você reservar."
+          />
+        ) : filteredProducts.length === 0 ? (
+          <EmptyState
+            icon={<Search className="h-6 w-6" />}
+            title="Nenhum produto encontrado"
+            description="Tente outra palavra ou veja todas as categorias."
+            action={
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setSearch("");
+                  setCategory(null);
+                }}
+              >
+                Limpar busca
+              </Button>
+            }
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-3">
+            {filteredProducts.map((p) => {
+              const cover = photosOf(p)[0];
+              const variants = variantsOf(p);
+              const hasVariants = variants.length > 0;
+              const inCart = Object.entries(qty)
+                .filter(([key]) => key === p.id || key.startsWith(`${p.id}:`))
+                .reduce((sum, [, q]) => sum + q, 0);
+              const soldOut = p.stock <= 0;
+              const low = !soldOut && p.stock <= LOW_STOCK;
+
+              return (
+                <article
+                  key={p.id}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-graphite/5 bg-surface shadow-card transition-shadow hover:shadow-card-hover"
+                >
+                  <button
+                    type="button"
+                    onClick={() => openProduct(p)}
+                    aria-label={`Ver detalhes de ${p.name}`}
+                    className="relative block aspect-square w-full overflow-hidden bg-surface-muted text-gray-neutral/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
+                  >
+                    {cover ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={cover}
+                        alt=""
+                        loading="lazy"
+                        className={cn(
+                          "h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]",
+                          soldOut && "opacity-60 grayscale",
+                        )}
+                      />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center">
+                        <Package className="h-10 w-10" />
+                      </span>
+                    )}
+                    {/* Fundo sólido: o Badge translúcido some em cima da foto. */}
+                    {(soldOut || low) && (
+                      <span
+                        className={cn(
+                          "absolute left-2 top-2 rounded-full bg-surface/95 px-2 py-0.5 text-xs font-semibold shadow-card",
+                          soldOut ? "text-danger" : "text-[#8a6418]",
+                        )}
+                      >
+                        {soldOut ? "Esgotado" : `Só ${p.stock} em estoque`}
+                      </span>
+                    )}
+                    {inCart > 0 && (
+                      <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-orange px-2 py-0.5 text-xs font-semibold text-white">
+                        <ShoppingBag className="h-3 w-3" aria-hidden /> {inCart}
+                      </span>
+                    )}
+                  </button>
+
+                  <div className="flex flex-1 flex-col p-3 sm:p-4">
+                    <button
+                      type="button"
+                      onClick={() => openProduct(p)}
+                      className="text-left focus-visible:outline-none focus-visible:underline"
+                    >
+                      <p className="line-clamp-2 text-sm font-medium leading-snug text-graphite sm:text-base">
+                        {p.name}
+                      </p>
+                    </button>
+                    <p className="mt-0.5 truncate text-xs text-gray-neutral">
+                      {[categoryLabel(p.category), hasVariants ? variantAxesLabel(variants) : null]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                    <p className="mt-2 font-heading text-lg font-bold tabular-nums text-graphite">
+                      {hasVariants && (
+                        <span className="mr-1 font-sans text-xs font-normal text-gray-neutral">
+                          a partir de
+                        </span>
+                      )}
+                      {formatBRL(priceFrom(p))}
+                    </p>
+
+                    <div className="mt-auto pt-3">
+                      {soldOut ? (
+                        <Button type="button" variant="secondary" size="sm" className="w-full" disabled>
+                          Esgotado
+                        </Button>
+                      ) : hasVariants ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => openProduct(p)}
+                        >
+                          Escolher opções
+                        </Button>
+                      ) : (qty[p.id] ?? 0) > 0 ? (
+                        <QtyStepper
+                          value={qty[p.id] ?? 0}
+                          max={p.stock}
+                          label={p.name}
+                          onChange={(delta) => setQ(p.id, delta, p.stock)}
+                          className="w-full"
+                        />
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => setQ(p.id, 1, p.stock)}
+                        >
+                          <Plus className="h-4 w-4" /> Adicionar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Espaço para a barra da sacola não cobrir o último card no celular. */}
+        {itemCount > 0 && <div className="h-16 lg:hidden" aria-hidden />}
+      </div>
+
+      <aside className="hidden rounded-2xl border border-graphite/5 bg-surface p-5 shadow-card lg:sticky lg:top-8 lg:block">
+        {renderCart(true)}
+      </aside>
+
+      {/* Celular: a sacola vive numa barra acima do menu e abre num diálogo. */}
+      {itemCount > 0 && (
+        <div className="fixed inset-x-0 bottom-[4.25rem] z-20 px-4 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setCartOpen(true)}
+            className="mx-auto flex w-full max-w-md items-center justify-between gap-3 rounded-2xl bg-graphite px-4 py-3 text-white shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2"
+          >
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <ShoppingBag className="h-4 w-4" aria-hidden />
+              {itemCount} {itemCount === 1 ? "item" : "itens"} · {formatBRL(total)}
+            </span>
+            <span className="text-sm font-semibold text-orange">Ver sacola</span>
+          </button>
+        </div>
+      )}
+
+      <Dialog open={cartOpen} onOpenChange={setCartOpen} title="Sua sacola">
+        {renderCart(false)}
+      </Dialog>
 
       <Dialog open={!!opened} onOpenChange={(v) => !v && setOpenId(null)} title={opened?.name}>
         {opened && (
@@ -470,7 +730,13 @@ export function ReserveList({ products }: { products: Product[] }) {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-graphite">Quantidade</span>
                 {canAdd ? (
-                  <Stepper cartId={openedCartId} max={openedStock} />
+                  <QtyStepper
+                    value={openedQty}
+                    max={openedStock}
+                    label={opened.name}
+                    onChange={(delta) => setQ(openedCartId, delta, openedStock)}
+                    className="w-[7.5rem]"
+                  />
                 ) : (
                   <span className="text-xs text-gray-neutral">
                     {openedHasVariants ? "Escolha a variação" : "Indisponível"}
@@ -494,7 +760,7 @@ export function ReserveList({ products }: { products: Product[] }) {
                 setOpenId(null);
               }}
             >
-              Adicionar à reserva
+              <ShoppingBag className="h-4 w-4" /> Adicionar à sacola
             </Button>
           </div>
         )}

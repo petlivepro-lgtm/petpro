@@ -30,7 +30,6 @@ type Product = {
   product_variant?: ProductVariant[];
 };
 
-
 export function ProdutosView({
   initialProducts,
   initialReservations,
@@ -106,16 +105,23 @@ export function ProdutosView({
           botão de reservas, que mostra "(0)" quando nada está em aberto. */}
       <RejectionNotices reservations={rejected} />
 
-      {activeCount > 0 && (
-        <div className="flex justify-end">
-          <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(true)}>
-            <ShoppingBag className="h-4 w-4" />
-            Minhas reservas ({activeCount})
-          </Button>
-        </div>
-      )}
-
-      <ReserveList products={products} />
+      <ReserveList
+        products={products}
+        toolbarAction={
+          activeCount > 0 ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="shrink-0"
+              onClick={() => setOpen(true)}
+            >
+              <ShoppingBag className="h-4 w-4" />
+              Minhas reservas ({activeCount})
+            </Button>
+          ) : null
+        }
+      />
 
       <Dialog open={open} onOpenChange={setOpen} title="Minhas reservas">
         <MyReservations reservations={reservations} />
