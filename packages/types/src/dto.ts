@@ -357,6 +357,23 @@ export const appointmentReassign = z.object({
 });
 export type AppointmentReassignInput = z.input<typeof appointmentReassign>;
 
+// Editar um agendamento que ainda não começou (ficha do atendimento).
+export const appointmentEdit = z.object({
+  appointment_id: z.string().uuid(),
+  service_type_id: z.string().uuid({ message: "Escolha o serviço" }),
+  service_addon_ids: z.array(z.string().uuid()).max(30).default([]),
+  collaborator_id: z.string().uuid({ message: "Escolha o profissional" }),
+  scheduled_at: z
+    .string()
+    .refine((v) => !Number.isNaN(Date.parse(v)), "Escolha data e horário"),
+  notes: z.string().trim().max(1000).optional(),
+  pickup: z.boolean().default(false),
+  dropoff: z.boolean().default(false),
+  off_schedule: z.boolean().default(false),
+  /** Horário, profissional e observações valem também para os irmãos do pedido. */
+  apply_to_group: z.boolean().default(false),
+});
+
 // Atualização em lote: confirmar/recusar vários serviços de uma solicitação.
 export const appointmentStatusBatchUpdate = z.object({
   appointment_ids: z.array(z.string().uuid()).min(1),

@@ -31,6 +31,12 @@ import {
   type CancelSibling,
 } from "@/components/cancel-appointment-dialog";
 import { SwitchCameraDialog } from "@/components/switch-camera-dialog";
+import {
+  EditAppointmentDialog,
+  type EditSibling,
+} from "@/components/edit-appointment-dialog";
+import { groupLeader } from "@/lib/appointment-group";
+import { loadBookingOptions } from "@/lib/booking-options";
 import { BehaviorReportDetail } from "@/components/behavior-report-view";
 import {
   BEHAVIOR_REPORT_SELECT,
@@ -42,6 +48,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import { loadPaymentTerminals } from "@/lib/payment-terminals";
 import {
   canMutateAsRole,
+  EDITABLE_APPOINTMENT_STATUSES,
   formatBRL,
   type AppointmentStatus,
   type FeedbackResponse,
@@ -66,7 +73,7 @@ export default async function AtendimentoPage({
   const { data: appt } = await supabase
     .from("appointment")
     .select(
-      "id, status, scheduled_at, started_at, finished_at, notes, photos, camera_id, request_group_id, cancellation_reason, cancelled_at, cancelled_by_role, pet:pet_id(id, name, photo_path), tutor:tutor_id(full_name), service_type(name, price_cents), collaborator(full_name), camera:camera_id(room_label), appointment_addon(id, name, price_cents)",
+      "id, status, scheduled_at, started_at, finished_at, notes, photos, camera_id, request_group_id, collaborator_id, service_type_id, pickup, dropoff, cancellation_reason, cancelled_at, cancelled_by_role, pet:pet_id(id, name, photo_path, size), tutor:tutor_id(full_name), service_type(name, price_cents), collaborator(full_name), camera:camera_id(room_label), appointment_addon(id, name, price_cents)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -77,6 +84,7 @@ export default async function AtendimentoPage({
     id: string;
     name: string;
     photo_path: string | null;
+    size: string | null;
   } | null;
   // O colaborador não tem acesso à tabela `tutor` (a RLS entregaria telefone e
   // e-mail junto), então o embedding acima vem vazio para ele. O nome sai da
@@ -118,11 +126,62 @@ export default async function AtendimentoPage({
   // caminho é finalizar), mas é decisão de balcão: o colaborador inicia e
   // finaliza atendimento, não desmarca a agenda. A RPC cancel_appointment e a
   // server action repetem a regra — aqui é só para não oferecer um beco.
+  const editableStatus = (
+    EDITABLE_APPOINTMENT_STATUSES as readonly string[]
+  ).includes(status);
   const tenant =
-    status === "IN_PROGRESS" || canStart
+    status === "IN_PROGRESS" || canStart || editableStatus
       ? await getActiveTenant(supabase)
       : null;
   const canCancel = canStart && !!tenant && canMutateAsRole(tenant.role);
+  // Editar segue a mesma regra de balcão: antes de começar, e só a gestão.
+  const canEdit =
+    editableStatus && !!appt.scheduled_at && !!tenant && canMutateAsRole(tenant.role);
+
+  // O pedido inteiro, para a edição: a líder guarda adicionais e leva-e-traz,
+  // e os irmãos no mesmo horário podem acompanhar a troca de horário.
+  const { data: groupRows } =
+    canEdit && appt.request_group_id
+      ? await supabase
+          .from("appointment")
+          .select(
+            "id, status, scheduled_at, pickup, dropoff, service_type(name), appointment_addon(id, service_addon_id)",
+          )
+          .eq("request_group_id", appt.request_group_id)
+          .not("status", "in", "(CANCELLED,REJECTED)")
+      : { data: null };
+  const editLeader = groupLeader(
+    groupRows && groupRows.length > 0
+      ? groupRows
+      : [
+          {
+            id: appt.id,
+            pickup: appt.pickup,
+            dropoff: appt.dropoff,
+            appointment_addon: (appt.appointment_addon ?? []) as unknown as {
+              id: string;
+              service_addon_id: string | null;
+            }[],
+          },
+        ],
+    appt.id,
+  );
+  const editSiblings: EditSibling[] = (groupRows ?? [])
+    .filter(
+      (r) =>
+        r.id !== appt.id &&
+        r.scheduled_at === appt.scheduled_at &&
+        (EDITABLE_APPOINTMENT_STATUSES as readonly string[]).includes(r.status),
+    )
+    .map((r) => ({
+      id: r.id,
+      serviceName:
+        (r.service_type as unknown as { name: string } | null)?.name ??
+        "Serviço",
+    }));
+  const bookingOptions = canEdit
+    ? await loadBookingOptions(supabase, { includeTutors: false })
+    : null;
 
   // Serviços irmãos do mesmo pedido, para o diálogo oferecer derrubar tudo.
   const { data: siblingRows } =
@@ -469,6 +528,31 @@ export default async function AtendimentoPage({
               <p className="flex items-center gap-2 text-sm text-success">
                 <Check className="h-4 w-4" /> Atendimento finalizado
               </p>
+            )}
+
+            {canEdit && bookingOptions && tenant && appt.scheduled_at && (
+              <EditAppointmentDialog
+                tenantId={tenant.tenantId}
+                appointment={{
+                  id: appt.id,
+                  scheduledAt: appt.scheduled_at,
+                  collaboratorId: appt.collaborator_id,
+                  serviceTypeId: appt.service_type_id,
+                  notes: appt.notes,
+                  pickup: editLeader?.pickup ?? appt.pickup,
+                  dropoff: editLeader?.dropoff ?? appt.dropoff,
+                  addonIds: (editLeader?.appointment_addon ?? [])
+                    .map((a) => a.service_addon_id)
+                    .filter((x): x is string => !!x),
+                  petName: pet?.name ?? "Pet",
+                  petSize: pet?.size ?? null,
+                }}
+                siblings={editSiblings}
+                services={bookingOptions.services}
+                addons={bookingOptions.addons}
+                collaborators={bookingOptions.collaborators}
+                className="mt-2 w-full"
+              />
             )}
 
             {canCancel && (

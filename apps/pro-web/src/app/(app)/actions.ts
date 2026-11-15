@@ -7,6 +7,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import { dispatchNotifications } from "@/lib/notify";
 import {
   appointmentCancel,
+  appointmentEdit,
   appointmentReassign,
   appointmentStatusUpdate,
   appointmentStatusBatchUpdate,
@@ -18,9 +19,11 @@ import {
   priceForPetSize,
   reservationCancel,
   reservationReject,
+  EDITABLE_APPOINTMENT_STATUSES,
   REASSIGNABLE_APPOINTMENT_STATUSES,
   type AppointmentReassignInput,
 } from "@mylivepet/types";
+import { groupLeader } from "@/lib/appointment-group";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -287,6 +290,224 @@ export async function updateAppointmentStatus(formData: FormData) {
 
   revalidatePath("/solicitacoes");
   revalidatePath("/atendimentos");
+}
+
+/**
+ * Edita um agendamento que ainda não começou: serviço, adicionais, data e
+ * horário, profissional, leva-e-traz e observações.
+ *
+ * Com `apply_to_group`, horário, profissional e observações valem também para
+ * os irmãos do pedido no mesmo horário — num UPDATE só, para o
+ * appointment_slot_guard (0014) enxergá-los juntos. Adicionais e leva-e-traz
+ * moram na linha líder do pedido (ver lib/appointment-group.ts).
+ *
+ * O resto vem dos gatilhos: rota do entregador (0065), aviso ao profissional
+ * (0042) e ao tutor (0083). Preço do serviço não é congelado no atendimento —
+ * sai do catálogo na conclusão —, então trocar o serviço basta; os adicionais
+ * mantidos conservam o preço gravado e só os novos pegam o do catálogo.
+ *
+ * Não é transacional: o horário vai primeiro, porque é o que mais recusa
+ * (choque de horário, expediente). Falhar depois dele diz o que ficou salvo.
+ */
+export async function editAppointment(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = appointmentEdit.safeParse({
+    appointment_id: formData.get("appointment_id"),
+    service_type_id: formData.get("service_type_id"),
+    service_addon_ids: formData.getAll("service_addon_id"),
+    collaborator_id: formData.get("collaborator_id"),
+    scheduled_at: formData.get("scheduled_at"),
+    notes: formData.get("notes") ?? undefined,
+    pickup: formData.get("pickup") === "on",
+    dropoff: formData.get("dropoff") === "on",
+    off_schedule: formData.get("off_schedule") === "1",
+    apply_to_group: formData.get("apply_to_group") === "on",
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos",
+    };
+  }
+  const input = parsed.data;
+
+  const supabase = await createClient();
+  const tenant = await tenantIfCanMutate(supabase);
+  if (!tenant) return { ok: false, error: "Seu acesso é somente leitura" };
+
+  const { data: appt } = await supabase
+    .from("appointment")
+    .select(
+      "id, status, scheduled_at, collaborator_id, service_type_id, request_group_id, pickup, dropoff, notes, pet:pet_id(size), appointment_addon(id, service_addon_id)",
+    )
+    .eq("id", input.appointment_id)
+    .eq("tenant_id", tenant.tenantId)
+    .maybeSingle();
+  if (!appt) return { ok: false, error: "Atendimento não encontrado" };
+  const editable = EDITABLE_APPOINTMENT_STATUSES as readonly string[];
+  if (!editable.includes(appt.status)) {
+    return {
+      ok: false,
+      error: "Só dá para editar um agendamento que ainda não começou.",
+    };
+  }
+  const petSize =
+    (appt.pet as unknown as { size: string | null } | null)?.size ?? null;
+
+  // Os outros serviços do pedido, para achar a líder e os irmãos de horário.
+  const { data: groupRows } = appt.request_group_id
+    ? await supabase
+        .from("appointment")
+        .select(
+          "id, status, scheduled_at, pickup, dropoff, appointment_addon(id, service_addon_id)",
+        )
+        .eq("request_group_id", appt.request_group_id)
+        .not("status", "in", "(CANCELLED,REJECTED)")
+    : { data: null };
+  const members = groupRows && groupRows.length > 0 ? groupRows : [appt];
+  const leader = groupLeader(members, appt.id) ?? appt;
+  const siblings = (groupRows ?? []).filter(
+    (r) =>
+      r.id !== appt.id &&
+      r.scheduled_at === appt.scheduled_at &&
+      editable.includes(r.status),
+  );
+
+  const newAt = new Date(input.scheduled_at).toISOString();
+  const timeChanged =
+    !appt.scheduled_at ||
+    new Date(appt.scheduled_at).getTime() !== new Date(newAt).getTime();
+  const collabChanged = appt.collaborator_id !== input.collaborator_id;
+
+  if (timeChanged && new Date(newAt).getTime() < Date.now()) {
+    return { ok: false, error: "Escolha um horário que ainda não passou." };
+  }
+
+  const { data: service } = await supabase
+    .from("service_type")
+    .select("id")
+    .eq("id", input.service_type_id)
+    .eq("tenant_id", tenant.tenantId)
+    .eq("active", true)
+    .maybeSingle();
+  if (!service) return { ok: false, error: "Serviço não encontrado" };
+
+  const { data: collaborator } = await supabase
+    .from("collaborator")
+    .select("id, full_name, collaborator_schedule(weekday, start_time, end_time)")
+    .eq("id", input.collaborator_id)
+    .eq("tenant_id", tenant.tenantId)
+    .eq("active", true)
+    .eq("access_role", "COLLABORATOR")
+    .maybeSingle();
+  if (!collaborator) return { ok: false, error: "Profissional não encontrado" };
+
+  if (
+    (timeChanged || collabChanged) &&
+    !input.off_schedule &&
+    !isWithinSchedule(collaborator.collaborator_schedule, newAt)
+  ) {
+    return {
+      ok: false,
+      error: `${collaborator.full_name} não atende nesse dia e horário. Marque "Encaixe" para salvar assim mesmo.`,
+    };
+  }
+
+  // 1. Horário, profissional e observações (do serviço, ou do pedido inteiro).
+  const ids = [
+    appt.id,
+    ...(input.apply_to_group ? siblings.map((s) => s.id) : []),
+  ];
+  const notes = input.notes ? input.notes : null;
+  const { error: slotError } = await supabase
+    .from("appointment")
+    .update({
+      collaborator_id: collaborator.id,
+      scheduled_at: timeChanged ? newAt : appt.scheduled_at,
+      notes,
+    })
+    .in("id", ids);
+  if (slotError) {
+    if (slotError.message.includes("SLOT_TAKEN")) {
+      return {
+        ok: false,
+        error: `${collaborator.full_name} já tem um atendimento nesse horário.`,
+      };
+    }
+    if (slotError.message.includes("OFF_SCHEDULE")) {
+      return {
+        ok: false,
+        error: `Esse pedido foi feito pelo tutor e precisa ficar dentro do expediente de ${collaborator.full_name}.`,
+      };
+    }
+    return { ok: false, error: slotError.message };
+  }
+
+  const partial = (what: string) => ({
+    ok: false,
+    error: `Horário e profissional salvos, mas ${what} não. Tente de novo.`,
+  });
+
+  // 2. O serviço deste atendimento.
+  if (appt.service_type_id !== input.service_type_id) {
+    const { error } = await supabase
+      .from("appointment")
+      .update({ service_type_id: input.service_type_id })
+      .eq("id", appt.id);
+    if (error) return partial("a troca de serviço");
+  }
+
+  // 3. Leva-e-traz, na líder do pedido. A rota se remonta pelo gatilho (0065).
+  if (leader.pickup !== input.pickup || leader.dropoff !== input.dropoff) {
+    const { error } = await supabase
+      .from("appointment")
+      .update({ pickup: input.pickup, dropoff: input.dropoff })
+      .eq("id", leader.id);
+    if (error) return partial("o leva-e-traz");
+  }
+
+  // 4. Adicionais, também na líder: tira os desmarcados, grava os novos.
+  const current = leader.appointment_addon ?? [];
+  const wanted = new Set(input.service_addon_ids);
+  const removed = current.filter(
+    (a) => !a.service_addon_id || !wanted.has(a.service_addon_id),
+  );
+  const kept = new Set(
+    current.map((a) => a.service_addon_id).filter((id): id is string => !!id),
+  );
+  const added = input.service_addon_ids.filter((id) => !kept.has(id));
+  if (removed.length > 0) {
+    const { error } = await supabase
+      .from("appointment_addon")
+      .delete()
+      .in(
+        "id",
+        removed.map((a) => a.id),
+      );
+    if (error) return partial("os adicionais");
+  }
+  if (added.length > 0) {
+    const addonError = await attachAddons(
+      supabase,
+      tenant.tenantId,
+      leader.id,
+      added,
+      petSize,
+    );
+    if (addonError) return partial("os adicionais");
+  }
+
+  await dispatchNotifications(tenant.tenantId);
+
+  revalidatePath("/");
+  revalidatePath("/atendimentos");
+  revalidatePath("/rota");
+  for (const id of new Set([...ids, leader.id])) {
+    revalidatePath(`/atendimentos/${id}`);
+  }
+  return { ok: true };
 }
 
 export type ReassignResult = {

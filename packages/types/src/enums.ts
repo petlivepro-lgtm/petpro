@@ -439,6 +439,15 @@ export const REASSIGNABLE_APPOINTMENT_STATUSES = [
   "IN_PROGRESS",
 ] as const satisfies readonly AppointmentStatus[];
 
+// Status em que o agendamento ainda pode ser editado (horário, serviço,
+// adicionais...). Depois de iniciado já há passos, fotos e câmera amarrados ao
+// serviço; o que resta mudar ali é o profissional (arrastando na agenda).
+export const EDITABLE_APPOINTMENT_STATUSES = [
+  "REQUESTED",
+  "CONFIRMED",
+  "CHECKED_IN",
+] as const satisfies readonly AppointmentStatus[];
+
 // Dias da semana na convenção de Date.getDay(): 0=domingo .. 6=sábado
 // (mesma usada em collaborator_schedule.weekday).
 export const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;

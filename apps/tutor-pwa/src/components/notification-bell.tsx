@@ -7,6 +7,7 @@ import {
   BellOff,
   BellRing,
   CalendarCheck,
+  CalendarSync,
   CalendarX2,
   PackageCheck,
   PackageX,
@@ -38,6 +39,8 @@ const ICONS: Record<string, IconComponent> = {
   BOOKING_CONFIRMED: CalendarCheck,
   BOOKING_REJECTED: CalendarX2,
   BOOKING_CANCELLED: CalendarX2,
+  // Petshop mudou o horário (0083).
+  APPOINTMENT_RESCHEDULED: CalendarSync,
   BOOKING_COMPLETED: PawPrint,
   RESERVATION_READY: PackageCheck,
   RESERVATION_REJECTED: PackageX,
