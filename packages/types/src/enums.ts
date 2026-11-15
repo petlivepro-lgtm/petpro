@@ -429,6 +429,16 @@ export const BUSY_APPOINTMENT_STATUSES = [
   "COMPLETED",
 ] as const satisfies readonly AppointmentStatus[];
 
+// Status em que ainda dá para trocar o profissional (arrastar o card na agenda).
+// Inclui o em andamento: o imprevisto que obriga a troca pode vir no meio do
+// banho. Concluído fica de fora — trocar ali reescreveria quem fez o serviço.
+export const REASSIGNABLE_APPOINTMENT_STATUSES = [
+  "REQUESTED",
+  "CONFIRMED",
+  "CHECKED_IN",
+  "IN_PROGRESS",
+] as const satisfies readonly AppointmentStatus[];
+
 // Dias da semana na convenção de Date.getDay(): 0=domingo .. 6=sábado
 // (mesma usada em collaborator_schedule.weekday).
 export const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;

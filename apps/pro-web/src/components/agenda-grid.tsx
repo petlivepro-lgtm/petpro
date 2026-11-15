@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Avatar, cn } from "@mylivepet/ui";
+import { REASSIGNABLE_APPOINTMENT_STATUSES } from "@mylivepet/types";
 import { AgendaCard } from "@/components/agenda-card";
 import {
   bandLabel,
@@ -41,6 +42,33 @@ type GridColumn = {
   bookable: boolean;
 };
 
+/** O card sendo arrastado, a faixa de onde saiu e a coluna de origem. */
+type DragState = { row: Row; band: number; from: string };
+
+/**
+ * O arrastar-para-trocar-de-profissional, montado só na visão de Dia e para
+ * quem pode mexer na agenda. As células só leem isto; o estado fica na grade.
+ */
+type DragCtx = {
+  drag: DragState | null;
+  /** Coluna sob o cursor que aceita o card. */
+  over: string | null;
+  /** Props de arrastar para o card, ou undefined se ele não pode sair dali. */
+  cardProps: (
+    row: Row,
+    band: number,
+    from: string,
+  ) =>
+    | Pick<React.HTMLAttributes<HTMLAnchorElement>, "onDragStart" | "onDragEnd">
+    | undefined;
+  hover: (col: GridColumn, e: React.DragEvent) => void;
+  drop: (col: GridColumn, e: React.DragEvent) => void;
+};
+
+const canReassign = (row: Row) =>
+  row.scheduledAt != null &&
+  (REASSIGNABLE_APPOINTMENT_STATUSES as readonly string[]).includes(row.status);
+
 /**
  * A grade da agenda. Linhas são sempre faixas de uma hora; o que muda entre os
  * modos é a coluna — o profissional em "Dia", o dia da semana em "Semana".
@@ -51,6 +79,12 @@ type GridColumn = {
  * Abaixo de `md` a grade vira uma lista vertical por faixa de horário: sete
  * colunas não cabem num celular, e espremer o card apagaria justamente o pet, o
  * tutor e o profissional, que são o motivo da tela existir.
+ *
+ * Com `onMove`, na visão de Dia o card arrasta para a coluna de outro
+ * profissional, como num kanban: é a troca de quem atende quando surge um
+ * imprevisto. Solta em qualquer faixa da coluna, mas o horário não muda — a
+ * célula destacada mostra onde ele vai parar. No celular não há colunas para
+ * onde arrastar.
  */
 export function AgendaGrid({
   view,
@@ -60,6 +94,7 @@ export function AgendaGrid({
   collaboratorColumns,
   canBook,
   onPick,
+  onMove,
 }: {
   view: "dia" | "semana";
   /** Dia visível ("dia") ou qualquer dia da semana visível ("semana"). */
@@ -72,7 +107,11 @@ export function AgendaGrid({
   canBook: boolean;
   /** Célula vazia clicada: dia "YYYY-MM-DD", hora cheia e profissional. */
   onPick: (day: string, hour: number, collaboratorId?: string) => void;
+  /** Card solto na coluna de outro profissional (só na visão de Dia). */
+  onMove?: (row: Row, collaboratorId: string) => void;
 }) {
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const [over, setOver] = useState<string | null>(null);
   const cells = byCell(rows, view);
   const todayKey = dayKey(new Date());
 
@@ -130,12 +169,71 @@ export function AgendaGrid({
           };
         });
 
+  const end = () => {
+    setDrag(null);
+    setOver(null);
+  };
+
+  // A coluna aceita o card se for de um profissional e não for a de origem.
+  const accepts = (col: GridColumn) =>
+    drag != null && col.collaboratorId != null && col.key !== drag.from;
+
+  const dnd: DragCtx | null =
+    view === "dia" && onMove
+      ? {
+          drag,
+          over,
+          cardProps: (row, band, from) =>
+            canReassign(row)
+              ? {
+                  onDragStart: (e) => {
+                    e.dataTransfer.effectAllowed = "move";
+                    // Sem dado nenhum o Firefox nem começa o arrasto.
+                    e.dataTransfer.setData("text/plain", row.id);
+                    // A imagem é o próprio card, não a URL do link.
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    e.dataTransfer.setDragImage(
+                      e.currentTarget,
+                      e.clientX - rect.left,
+                      e.clientY - rect.top,
+                    );
+                    setDrag({ row, band, from });
+                  },
+                  onDragEnd: end,
+                }
+              : undefined,
+          hover: (col, e) => {
+            if (!accepts(col)) {
+              if (over !== null) setOver(null);
+              return;
+            }
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            if (over !== col.key) setOver(col.key);
+          },
+          drop: (col, e) => {
+            // Sem isto o Firefox abre o texto arrastado como se fosse URL.
+            e.preventDefault();
+            const moving = drag;
+            const ok = accepts(col);
+            end();
+            if (!ok || !moving || !col.collaboratorId) return;
+            onMove(moving.row, col.collaboratorId);
+          },
+        }
+      : null;
+
   return (
     <>
       {/* Desktop: a grade */}
       <div className="hidden overflow-hidden rounded-2xl border border-graphite/5 bg-surface shadow-card md:block">
         <div className="overflow-x-auto">
           <div
+            // Saiu da grade com o card: nenhuma coluna fica acesa.
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+                setOver(null);
+            }}
             className="min-w-max"
             style={{
               display: "grid",
@@ -148,7 +246,12 @@ export function AgendaGrid({
             {columns.map((col) => (
               <div
                 key={col.key}
-                className="flex items-center justify-center border-b border-l border-graphite/10 bg-surface-muted px-3 py-2.5 text-center"
+                onDragOver={dnd ? (e) => dnd.hover(col, e) : undefined}
+                onDrop={dnd ? (e) => dnd.drop(col, e) : undefined}
+                className={cn(
+                  "flex items-center justify-center border-b border-l border-graphite/10 bg-surface-muted px-3 py-2.5 text-center transition-colors",
+                  dnd?.over === col.key && "bg-orange/10",
+                )}
               >
                 {col.header}
               </div>
@@ -163,6 +266,7 @@ export function AgendaGrid({
                 showCollaborator={view === "semana"}
                 canBook={canBook}
                 onPick={onPick}
+                dnd={dnd}
               />
             ))}
           </div>
@@ -220,6 +324,7 @@ function Band({
   showCollaborator,
   canBook,
   onPick,
+  dnd,
 }: {
   band: number;
   columns: GridColumn[];
@@ -228,6 +333,7 @@ function Band({
   showCollaborator: boolean;
   canBook: boolean;
   onPick: (day: string, hour: number, collaboratorId?: string) => void;
+  dnd: DragCtx | null;
 }) {
   return (
     <>
@@ -245,6 +351,7 @@ function Band({
           showCollaborator={showCollaborator}
           canBook={canBook}
           onPick={onPick}
+          dnd={dnd}
         />
       ))}
     </>
@@ -267,6 +374,7 @@ function Cell({
   showCollaborator,
   canBook,
   onPick,
+  dnd,
 }: {
   col: GridColumn;
   band: number;
@@ -274,14 +382,36 @@ function Cell({
   showCollaborator: boolean;
   canBook: boolean;
   onPick: (day: string, hour: number, collaboratorId?: string) => void;
+  dnd: DragCtx | null;
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  const cell = "border-b border-l border-graphite/10 p-1.5";
+  const hovered = dnd?.over === col.key;
+  // A célula onde o card vai parar: mesma faixa de horário, coluna nova.
+  const landing = hovered && dnd?.drag?.band === band;
+
+  const cell = cn(
+    "border-b border-l border-graphite/10 p-1.5 transition-colors",
+    hovered && "bg-orange/5",
+    landing && "ring-2 ring-inset ring-orange/50",
+  );
+  const dropProps = dnd
+    ? {
+        onDragOver: (e: React.DragEvent) => dnd.hover(col, e),
+        onDrop: (e: React.DragEvent) => dnd.drop(col, e),
+      }
+    : {};
+  const cardDrag = (row: Row) =>
+    dnd
+      ? {
+          drag: dnd.cardProps(row, band, col.key),
+          dragging: dnd.drag?.row.id === row.id,
+        }
+      : {};
 
   if (list.length === 0) {
     return (
-      <div className={cell}>
+      <div className={cell} {...dropProps}>
         {canBook && col.bookable ? (
           <button
             type="button"
@@ -300,8 +430,12 @@ function Cell({
 
   if (list.length === 1) {
     return (
-      <div className={cell}>
-        <AgendaCard row={list[0]!} showCollaborator={showCollaborator} />
+      <div className={cell} {...dropProps}>
+        <AgendaCard
+          row={list[0]!}
+          showCollaborator={showCollaborator}
+          {...cardDrag(list[0]!)}
+        />
       </div>
     );
   }
@@ -310,7 +444,7 @@ function Cell({
   const visible = hidden > 0 ? list.slice(0, MAX_VISIBLE) : list;
 
   return (
-    <div className={cell}>
+    <div className={cell} {...dropProps}>
       <div className="divide-y divide-graphite/10 overflow-hidden rounded-xl border border-graphite/10 shadow-card">
         {visible.map((row) => (
           <AgendaCard
@@ -318,6 +452,7 @@ function Cell({
             row={row}
             showCollaborator={showCollaborator}
             compact
+            {...cardDrag(row)}
           />
         ))}
         {(hidden > 0 || expanded) && (

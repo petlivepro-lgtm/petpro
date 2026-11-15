@@ -347,6 +347,16 @@ export const appointmentStatusUpdate = z.object({
   status: z.enum(APPOINTMENT_STATUSES),
 });
 
+// Troca de profissional arrastando o card na agenda (visão de Dia). Vários ids
+// só quando são serviços irmãos do mesmo pedido, trocados juntos.
+export const appointmentReassign = z.object({
+  appointment_ids: z.array(z.string().uuid()).min(1).max(20),
+  collaborator_id: z.string().uuid(),
+  /** O atendente já confirmou que passar para fora do expediente é de propósito. */
+  off_schedule: z.boolean().default(false),
+});
+export type AppointmentReassignInput = z.input<typeof appointmentReassign>;
+
 // Atualização em lote: confirmar/recusar vários serviços de uma solicitação.
 export const appointmentStatusBatchUpdate = z.object({
   appointment_ids: z.array(z.string().uuid()).min(1),

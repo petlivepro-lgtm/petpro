@@ -28,12 +28,24 @@ export function AgendaCard({
   row,
   showCollaborator = true,
   compact = false,
+  drag,
+  dragging = false,
 }: {
   row: Row;
   /** `false` na visão de Dia: a coluna já é o profissional. */
   showCollaborator?: boolean;
   /** `true` quando a célula tem mais de um atendimento. */
   compact?: boolean;
+  /**
+   * Arrastar para a coluna de outro profissional (visão de Dia). Ausente, o
+   * card é só o link para a ficha.
+   */
+  drag?: Pick<
+    React.HTMLAttributes<HTMLAnchorElement>,
+    "onDragStart" | "onDragEnd"
+  >;
+  /** Este card está sendo arrastado agora: fica apagado no lugar de origem. */
+  dragging?: boolean;
 }) {
   const color = serviceColor(row.serviceId, row.serviceColorHex);
   // O fundo fica na cor escolhida; só o texto escurece quando precisa.
@@ -56,15 +68,21 @@ export function AgendaCard({
     .filter(Boolean)
     .join(" · ");
 
+  // Sem `drag`, o link segue o arrasto nativo do navegador (levar a URL).
+  const dragProps = drag ? { draggable: true, ...drag } : {};
+
   if (compact) {
     return (
       <Link
         href={`/atendimentos/${row.id}`}
         title={title}
+        {...dragProps}
         className={cn(
           "flex items-center gap-2 border-l-[3px] bg-surface py-1.5 pl-2 pr-1.5 transition-colors hover:bg-surface-muted",
           live && "ring-1 ring-inset ring-orange",
           off && "opacity-60",
+          drag && "cursor-grab active:cursor-grabbing",
+          dragging && "opacity-40",
         )}
         style={{ borderLeftColor: color }}
       >
@@ -117,10 +135,13 @@ export function AgendaCard({
     <Link
       href={`/atendimentos/${row.id}`}
       title={title}
+      {...dragProps}
       className={cn(
         "block rounded-xl border border-graphite/10 bg-surface p-2 shadow-card transition-shadow hover:shadow-card-hover",
         live && "ring-2 ring-orange",
         off && "opacity-60",
+        drag && "cursor-grab active:cursor-grabbing",
+        dragging && "opacity-40 shadow-none",
       )}
     >
       <div className="flex items-start gap-2">

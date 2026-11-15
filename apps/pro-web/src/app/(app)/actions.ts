@@ -7,6 +7,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import { dispatchNotifications } from "@/lib/notify";
 import {
   appointmentCancel,
+  appointmentReassign,
   appointmentStatusUpdate,
   appointmentStatusBatchUpdate,
   bookingRequest,
@@ -17,6 +18,8 @@ import {
   priceForPetSize,
   reservationCancel,
   reservationReject,
+  REASSIGNABLE_APPOINTMENT_STATUSES,
+  type AppointmentReassignInput,
 } from "@mylivepet/types";
 
 export type FormState = { ok: boolean; error?: string };
@@ -284,6 +287,126 @@ export async function updateAppointmentStatus(formData: FormData) {
 
   revalidatePath("/solicitacoes");
   revalidatePath("/atendimentos");
+}
+
+export type ReassignResult = {
+  ok: boolean;
+  error?: string;
+  /** O novo profissional não atende nesse horário — o atendente precisa confirmar. */
+  offSchedule?: boolean;
+};
+
+/**
+ * Passa um atendimento para outro profissional — o card arrastado de uma coluna
+ * para outra na visão de Dia, quando quem ia atender teve um imprevisto.
+ *
+ * Vários ids só para serviços irmãos do mesmo pedido (banho + tosa no mesmo
+ * horário), que vão juntos num UPDATE só: ou trocam todos, ou nenhum.
+ *
+ * Só troca o profissional; o horário fica o mesmo. Choque de horário quem barra
+ * é o trigger appointment_slot_guard (0014) — irmãos não se chocam entre si —,
+ * e o aviso ao novo profissional sai do gatilho de 0042/0082, um por serviço.
+ *
+ * Fora do expediente devolve `offSchedule` em vez de gravar, igual ao "Encaixe"
+ * do agendamento pelo balcão: o atendente confirma e a action volta com
+ * `off_schedule`. Pedido do tutor nem assim — o trigger de 0054 recusa.
+ */
+export async function reassignAppointment(
+  input: AppointmentReassignInput,
+): Promise<ReassignResult> {
+  const parsed = appointmentReassign.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Dados inválidos" };
+  const ids = [...new Set(parsed.data.appointment_ids)];
+
+  const supabase = await createClient();
+  const tenant = await tenantIfCanMutate(supabase);
+  if (!tenant) return { ok: false, error: "Seu acesso é somente leitura" };
+
+  const { data: appointments } = await supabase
+    .from("appointment")
+    .select("id, status, scheduled_at, collaborator_id, request_group_id")
+    .in("id", ids)
+    .eq("tenant_id", tenant.tenantId);
+  if (!appointments || appointments.length !== ids.length) {
+    return { ok: false, error: "Atendimento não encontrado" };
+  }
+  // Lote só existe para irmãos do mesmo pedido; fora disso, um id por vez.
+  const groups = new Set(appointments.map((a) => a.request_group_id ?? a.id));
+  if (groups.size > 1) {
+    return { ok: false, error: "Os atendimentos não são do mesmo pedido" };
+  }
+  if (
+    appointments.some(
+      (a) =>
+        !(REASSIGNABLE_APPOINTMENT_STATUSES as readonly string[]).includes(
+          a.status,
+        ),
+    )
+  ) {
+    return {
+      ok: false,
+      error: "Atendimento concluído ou cancelado não troca de profissional.",
+    };
+  }
+
+  const pending = appointments.filter(
+    (a) => a.collaborator_id !== parsed.data.collaborator_id,
+  );
+  if (pending.length === 0) return { ok: true };
+
+  const { data: collaborator } = await supabase
+    .from("collaborator")
+    .select("id, full_name, collaborator_schedule(weekday, start_time, end_time)")
+    .eq("id", parsed.data.collaborator_id)
+    .eq("tenant_id", tenant.tenantId)
+    .eq("active", true)
+    // O entregador (0062) é colaborador, mas não atende.
+    .eq("access_role", "COLLABORATOR")
+    .maybeSingle();
+  if (!collaborator) return { ok: false, error: "Profissional não encontrado" };
+
+  if (
+    !parsed.data.off_schedule &&
+    pending.some(
+      (a) =>
+        a.scheduled_at &&
+        !isWithinSchedule(collaborator.collaborator_schedule, a.scheduled_at),
+    )
+  ) {
+    return { ok: false, offSchedule: true };
+  }
+
+  const pendingIds = pending.map((a) => a.id);
+  const { data: updated, error } = await supabase
+    .from("appointment")
+    .update({ collaborator_id: collaborator.id })
+    .in("id", pendingIds)
+    .select("id");
+  if (error) {
+    if (error.message.includes("SLOT_TAKEN")) {
+      return {
+        ok: false,
+        error: `${collaborator.full_name} já tem um atendimento nesse horário.`,
+      };
+    }
+    if (error.message.includes("OFF_SCHEDULE")) {
+      return {
+        ok: false,
+        error: `Esse pedido foi feito pelo tutor e precisa ficar dentro do expediente de ${collaborator.full_name}.`,
+      };
+    }
+    return { ok: false, error: error.message };
+  }
+  if (!updated || updated.length !== pendingIds.length) {
+    return { ok: false, error: "Sem permissão para alterar este atendimento" };
+  }
+
+  await dispatchNotifications(tenant.tenantId);
+
+  revalidatePath("/");
+  revalidatePath("/atendimentos");
+  for (const id of pendingIds) revalidatePath(`/atendimentos/${id}`);
+  return { ok: true };
 }
 
 /**

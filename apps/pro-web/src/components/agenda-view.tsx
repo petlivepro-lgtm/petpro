@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import {
   Button,
+  ConfirmDialog,
   Dialog,
   Input,
   Label,
@@ -20,11 +21,13 @@ import {
 } from "@mylivepet/ui";
 import {
   APPOINTMENT_STATUS_LABEL,
+  REASSIGNABLE_APPOINTMENT_STATUSES,
   type AppointmentStatus,
   type BehaviorCategory,
   type PaymentTerminalDTO,
 } from "@mylivepet/types";
 import { createClient } from "@/lib/supabase/client";
+import { reassignAppointment } from "@/app/(app)/actions";
 import { useRealtimeList } from "@/lib/use-realtime-list";
 import { AgendaGrid } from "@/components/agenda-grid";
 import { AgendaMonth } from "@/components/agenda-month";
@@ -132,6 +135,28 @@ export function AgendaView({
   const [slot, setSlot] = useState<
     { at: string; collaboratorId?: string } | null
   >(null);
+  // Trocas de profissional feitas arrastando o card, aplicadas na hora — sem
+  // isto o card voltava para a coluna antiga até o tempo real trazer a linha.
+  const [moved, setMoved] = useState<
+    Record<string, { collaboratorId: string; collaboratorName: string | null }>
+  >({});
+  // O card arrastado tem irmãos do mesmo pedido no horário: trocar só ele ou
+  // o pedido inteiro? Os dois casos existem — banho com um, tosa com outro.
+  const [groupChoice, setGroupChoice] = useState<{
+    row: Row;
+    siblings: Row[];
+    collaboratorId: string;
+    name: string;
+  } | null>(null);
+  // A troca que caiu fora do expediente do novo profissional, esperando o "sim".
+  const [offSchedule, setOffSchedule] = useState<{
+    rows: Row[];
+    collaboratorId: string;
+    name: string;
+  } | null>(null);
+  const [offSchedulePending, setOffSchedulePending] = useState(false);
+  const [offScheduleError, setOffScheduleError] = useState<string | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
 
   const isCalendar = view !== "historico";
   const range = agendaRange(view, date);
@@ -160,13 +185,149 @@ export function AgendaView({
   }, [view, date, dateFrom, dateTo]);
 
   const syncKey = `${view}:${date}:${dateFrom ?? ""}:${dateTo ?? ""}`;
-  const rows = useRealtimeList(
+  const serverRows = useRealtimeList(
     initial,
     fetcher,
     [{ table: "appointment" }],
     "agenda",
     syncKey,
   );
+
+  // O servidor alcançou a troca (ou a linha saiu da janela): a sobreposição
+  // otimista já não tem o que dizer.
+  useEffect(() => {
+    setMoved((prev) => {
+      const keep = Object.entries(prev).filter(([id, m]) => {
+        const row = serverRows.find((r) => r.id === id);
+        return row != null && row.collaboratorId !== m.collaboratorId;
+      });
+      return keep.length === Object.keys(prev).length
+        ? prev
+        : Object.fromEntries(keep);
+    });
+  }, [serverRows]);
+
+  const rows = useMemo(
+    () =>
+      Object.keys(moved).length === 0
+        ? serverRows
+        : serverRows.map((r) => (moved[r.id] ? { ...r, ...moved[r.id] } : r)),
+    [serverRows, moved],
+  );
+
+  const unmove = (ids: string[]) =>
+    setMoved((prev) => {
+      const rest = { ...prev };
+      for (const id of ids) delete rest[id];
+      return rest;
+    });
+
+  const collaboratorName = (id: string) =>
+    collaborators.find((c) => c.id === id)?.full_name ?? null;
+
+  /**
+   * Grava a troca, já mostrando os cards na coluna nova. Fora do expediente
+   * eles ficam lá enquanto o atendente decide: cancelar devolve.
+   */
+  const commitMove = async (list: Row[], collaboratorId: string) => {
+    const name = collaboratorName(collaboratorId);
+    const ids = list.map((r) => r.id);
+    setMoveError(null);
+    setMoved((prev) => {
+      const next = { ...prev };
+      for (const id of ids) {
+        next[id] = { collaboratorId, collaboratorName: name };
+      }
+      return next;
+    });
+    try {
+      const res = await reassignAppointment({
+        appointment_ids: ids,
+        collaborator_id: collaboratorId,
+      });
+      if (res.ok) return;
+      if (res.offSchedule) {
+        setOffScheduleError(null);
+        setOffSchedule({
+          rows: list,
+          collaboratorId,
+          name: name ?? "Esse profissional",
+        });
+        return;
+      }
+      unmove(ids);
+      setMoveError(res.error ?? "Não foi possível trocar o profissional.");
+    } catch {
+      unmove(ids);
+      setMoveError("Sem conexão. A troca de profissional não foi salva.");
+    }
+  };
+
+  /**
+   * Card solto na coluna de outro profissional. Com irmãos do mesmo pedido no
+   * mesmo horário e com o mesmo profissional, pergunta antes se vão juntos.
+   */
+  const move = (row: Row, collaboratorId: string) => {
+    const siblings = row.requestGroupId
+      ? rows.filter(
+          (r) =>
+            r.id !== row.id &&
+            r.requestGroupId === row.requestGroupId &&
+            r.collaboratorId === row.collaboratorId &&
+            r.scheduledAt === row.scheduledAt &&
+            (REASSIGNABLE_APPOINTMENT_STATUSES as readonly string[]).includes(
+              r.status,
+            ),
+        )
+      : [];
+    if (siblings.length === 0) {
+      void commitMove([row], collaboratorId);
+      return;
+    }
+    setGroupChoice({
+      row,
+      siblings,
+      collaboratorId,
+      name: collaboratorName(collaboratorId) ?? "o novo profissional",
+    });
+  };
+
+  const chooseGroup = (whole: boolean) => {
+    if (!groupChoice) return;
+    const { row, siblings, collaboratorId } = groupChoice;
+    setGroupChoice(null);
+    void commitMove(whole ? [row, ...siblings] : [row], collaboratorId);
+  };
+
+  const confirmOffSchedule = async () => {
+    if (!offSchedule) return;
+    setOffSchedulePending(true);
+    try {
+      const res = await reassignAppointment({
+        appointment_ids: offSchedule.rows.map((r) => r.id),
+        collaborator_id: offSchedule.collaboratorId,
+        off_schedule: true,
+      });
+      if (res.ok) {
+        setOffSchedule(null);
+      } else {
+        setOffScheduleError(
+          res.error ?? "Não foi possível trocar o profissional.",
+        );
+      }
+    } catch {
+      setOffScheduleError("Sem conexão. A troca não foi salva.");
+    } finally {
+      setOffSchedulePending(false);
+    }
+  };
+
+  const cancelOffSchedule = () => {
+    // Com a gravação a caminho, devolver o card mentiria sobre o resultado.
+    if (offSchedulePending) return;
+    if (offSchedule) unmove(offSchedule.rows.map((r) => r.id));
+    setOffSchedule(null);
+  };
 
   const hasFilter =
     search.trim() !== "" || status !== "" || collaborator !== "";
@@ -268,7 +429,15 @@ export function AgendaView({
     if (!isCalendar) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-      if (e.metaKey || e.ctrlKey || e.altKey || filtersOpen || slot !== null)
+      if (
+        e.metaKey ||
+        e.ctrlKey ||
+        e.altKey ||
+        filtersOpen ||
+        slot !== null ||
+        offSchedule !== null ||
+        groupChoice !== null
+      )
         return;
       const el = document.activeElement;
       if (
@@ -424,6 +593,23 @@ export function AgendaView({
         </div>
       )}
 
+      {moveError && (
+        <div
+          role="alert"
+          className="mt-3 flex items-start gap-2 rounded-xl border border-danger/20 bg-danger/5 px-3 py-2 text-sm text-danger"
+        >
+          <span className="flex-1">{moveError}</span>
+          <button
+            type="button"
+            onClick={() => setMoveError(null)}
+            aria-label="Fechar aviso"
+            className="shrink-0 rounded p-0.5 hover:bg-danger/10"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <div className="mt-4">
         {view === "historico" ? (
           <AgendaHistorico
@@ -456,6 +642,7 @@ export function AgendaView({
             onPick={(day, hour, collaboratorId) =>
               setSlot({ at: slotValue(day, hour), collaboratorId })
             }
+            onMove={canBook ? move : undefined}
           />
         )}
       </div>
@@ -475,7 +662,9 @@ export function AgendaView({
             {view === "mes"
               ? "Clique em um dia para abrir a agenda dele."
               : canBook
-                ? "Clique em um horário vazio para adicionar um novo agendamento."
+                ? view === "dia"
+                  ? "Clique em um horário vazio para agendar, ou arraste um atendimento para a coluna de outro profissional para trocar quem atende."
+                  : "Clique em um horário vazio para adicionar um novo agendamento."
                 : `Mostrando ${range.from === range.to ? "o dia" : "a semana"} selecionado.`}
           </p>
         </div>
@@ -497,6 +686,40 @@ export function AgendaView({
           defaultCollaboratorId={slot?.collaboratorId}
         />
       )}
+
+      <Dialog
+        open={groupChoice !== null}
+        onOpenChange={(open) => !open && setGroupChoice(null)}
+        title="Trocar o pedido inteiro?"
+        description={
+          groupChoice
+            ? `${groupChoice.row.petName} tem ${[groupChoice.row, ...groupChoice.siblings].map((r) => r.serviceName).join(" e ")} neste horário. O que passa para ${groupChoice.name}?`
+            : undefined
+        }
+      >
+        <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+          <Button variant="secondary" onClick={() => chooseGroup(false)}>
+            Só {groupChoice?.row.serviceName ?? "este serviço"}
+          </Button>
+          <Button onClick={() => chooseGroup(true)}>Pedido inteiro</Button>
+        </div>
+      </Dialog>
+
+      <ConfirmDialog
+        open={offSchedule !== null}
+        onOpenChange={(open) => !open && cancelOffSchedule()}
+        title="Fora do expediente"
+        description={
+          offSchedule
+            ? `${offSchedule.name} não atende nesse horário. Passar ${offSchedule.rows.length > 1 ? "o pedido" : "o atendimento"} de ${offSchedule.rows[0]?.petName ?? "este pet"} assim mesmo, como encaixe?`
+            : undefined
+        }
+        confirmLabel="Passar assim mesmo"
+        pending={offSchedulePending}
+        pendingLabel="Trocando..."
+        onConfirm={confirmOffSchedule}
+        error={offScheduleError}
+      />
 
       <Dialog
         open={filtersOpen}

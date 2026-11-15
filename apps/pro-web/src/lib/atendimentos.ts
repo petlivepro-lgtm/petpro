@@ -5,12 +5,13 @@ import type { AppointmentStatus } from "@mylivepet/types";
 // Colunas da tela de Atendimentos — reutilizadas no render inicial (server) e no
 // refetch em tempo real (client), garantindo o mesmo shape nos dois lados.
 export const ATENDIMENTO_SELECT =
-  "id, status, origin, scheduled_at, started_at, finished_at, pet(id, name, photo_path), tutor(full_name), service_type(id, name, price_cents, duration_min, color_hex), collaborator(id, full_name), appointment_addon(id, name, price_cents)";
+  "id, status, origin, request_group_id, scheduled_at, started_at, finished_at, pet(id, name, photo_path), tutor(full_name), service_type(id, name, price_cents, duration_min, color_hex), collaborator(id, full_name), appointment_addon(id, name, price_cents)";
 
 type RawAtendimento = {
   id: string;
   status: AppointmentStatus;
   origin: string | null;
+  request_group_id: string | null;
   scheduled_at: string | null;
   started_at: string | null;
   finished_at: string | null;
@@ -32,6 +33,8 @@ export type AtendimentoRow = {
   id: string;
   status: AppointmentStatus;
   origin: string | null;
+  /** Serviços irmãos do mesmo pedido (banho + tosa no mesmo horário). */
+  requestGroupId: string | null;
   scheduledAt: string | null;
   startedAt: string | null;
   finishedAt: string | null;
@@ -61,6 +64,7 @@ export function mapAtendimentos(rows: RawAtendimento[]): AtendimentoRow[] {
     id: a.id,
     status: a.status,
     origin: a.origin,
+    requestGroupId: a.request_group_id,
     scheduledAt: a.scheduled_at,
     startedAt: a.started_at,
     finishedAt: a.finished_at,
