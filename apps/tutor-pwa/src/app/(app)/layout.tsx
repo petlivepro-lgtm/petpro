@@ -58,7 +58,7 @@ export default async function AppLayout({
           <div className="min-w-0">
             <img
               src="/brand/logopet.svg"
-              alt="Pet Live Pro"
+              alt="MyLivePet"
               className="h-12 max-w-[160px] object-contain"
             />
             <TenantBrand
@@ -83,7 +83,7 @@ export default async function AppLayout({
             ) : (
               <div className="rounded-2xl border border-warning/30 bg-warning/10 p-4 text-sm">
                 Sua conta ainda não está vinculada a um petshop. Peça ao petshop
-                para liberar seu acesso ao Pet Live Pro.
+                para liberar seu acesso ao MyLivePet.
               </div>
             )}
           </div>

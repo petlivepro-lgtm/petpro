@@ -76,7 +76,7 @@ export default async function AjudaPetshopPage({ params }: { params: Promise<{ t
           </a>
         ) : (
           <p className="rounded-xl bg-surface-muted px-4 py-3 text-sm text-graphite/80">
-            O petshop ainda não cadastrou um telefone no Pet Live Pro. Fale com eles no balcão ou pelo contato que você já tem.
+            O petshop ainda não cadastrou um telefone de contato. Fale com eles no balcão ou pelo contato que você já tem.
           </p>
         )}
         {phone && (
@@ -104,7 +104,7 @@ export default async function AjudaPetshopPage({ params }: { params: Promise<{ t
       )}
 
       <p className="px-1 text-[13px] leading-relaxed text-gray-neutral">
-        O Pet Live Pro não vê a agenda nem os valores do petshop. Se aconteceu algo grave,{" "}
+        O MyLivePet não vê a agenda nem os valores do petshop. Se aconteceu algo grave,{" "}
         <Link href="/ajuda/novo?assunto=PETSHOP_REPORT" className="font-semibold text-petrol underline-offset-2 hover:underline">
           fale com a plataforma em sigilo
         </Link>

@@ -19,7 +19,7 @@ pelo petshop. Ele não é o comprador, mas é o motivo de muitas decisões do do
 
 ## Product Purpose
 
-Um só produto, **Pet Live Pro**, com duas faces sobre a mesma base de dados:
+Um só produto, **Pet Live Pro**, com duas faces sobre a mesma base de dados (o app do tutor tem marca própria, **MyLivePet**):
 
 - **Painel do petshop** (`apps/pro-web`, app.petlivepro.com.br) — gestão do petshop:
   agenda e atendimentos com checklist, tutores e pets, serviços com preço por
@@ -56,9 +56,9 @@ C200 nas salas, ligadas por um gateway local.
 
 ## Brand Commitments
 
-- Nome: **Pet Live Pro** em todo o sistema (painel do petshop, app do tutor e landing), seguindo o domínio petlivepro.com.br. "MyLivePet" é um nome antigo e não deve aparecer para o usuário; no painel, o app usado pelo tutor é chamado de "app do tutor".
+- Nome: **Pet Live Pro** no painel do petshop, no admin e na landing, seguindo o domínio petlivepro.com.br. O app do tutor (`apps/tutor-pwa`) se chama **MyLivePet**: título, manifest, push, alt do logo e a equipe de suporte vista pelo tutor ("Equipe MyLivePet"). No painel, o app usado pelo tutor continua sendo chamado de "app do tutor".
 - Slogan: **Transparência e cuidado**.
-- Logo em `public/brand/logopet.svg` (símbolo play + cão + sinal, nome "Pet Live Pro" com "Pro" em laranja e o slogan) e favicon `faviconpet.svg` (só o símbolo) — nunca trocados por ícone genérico. Versão para fundo escuro: `apps/landing/public/brand/logopet-white.svg`.
+- Logo em `public/brand/logopet.svg` (símbolo play + cão + sinal, nome "Pet Live Pro" com "Pro" em laranja e o slogan; no tutor-pwa o mesmo desenho com o nome "MyLivePet", "Pet" em laranja) e favicon `faviconpet.svg` (só o símbolo) — nunca trocados por ícone genérico. Versão para fundo escuro: `apps/landing/public/brand/logopet-white.svg`.
 - Cores do branding: grafite `#1F2A33` (base), laranja `#FF6A00` (destaque/CTA), petróleo `#1D4E5F` (confiança), cinza `#66717C`, cinza claro `#F4F6F8`.
 - Fontes do branding: Manrope (títulos), Inter (texto/UI), Sora (destaques).
 

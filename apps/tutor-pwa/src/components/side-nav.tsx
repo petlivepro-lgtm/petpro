@@ -30,7 +30,7 @@ export function SideNav({
         <div className="mb-8 px-2 pt-2 short:mb-4">
           <img
             src="/brand/logopet.svg"
-            alt="Pet Live Pro"
+            alt="MyLivePet"
             className="h-20 w-auto short:h-12"
           />
           <div className="mt-4 flex items-start gap-2 short:mt-2">

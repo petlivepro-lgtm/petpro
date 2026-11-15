@@ -37,7 +37,7 @@ export function TutorTicketForm({ topic, sensitive }: { topic: string; sensitive
       <p className="flex gap-2.5 rounded-xl bg-surface-muted px-4 py-3 text-[13px] leading-relaxed text-graphite/80">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-petrol" aria-hidden />
         {sensitive
-          ? "Este chamado é só entre você e a equipe do Pet Live Pro. O petshop não vê."
+          ? "Este chamado é só entre você e a equipe do MyLivePet. O petshop não vê."
           : "Mandamos junto o petshop e a versão do app para agilizar. Nunca pedimos sua senha."}
       </p>
       {error && (

@@ -230,7 +230,7 @@ export function AjudaHub({
             <div className="flex items-center gap-2.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/brand/faviconpet.svg" alt="" className="h-9 w-9" />
-              <span className="font-heading font-semibold text-graphite">App Pet Live Pro</span>
+              <span className="font-heading font-semibold text-graphite">App MyLivePet</span>
             </div>
             <p className="mt-2 text-sm text-gray-neutral">
               Acesso, câmera, avisos e erros do app: você abre um chamado e responde por aqui.

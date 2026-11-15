@@ -80,6 +80,7 @@ export default async function ChamadoPage({
 
       <SupportChat
         layout="page"
+        teamName="Equipe MyLivePet"
         ticketId={ticket.id}
         ticketNumber={ticket.number}
         status={status}

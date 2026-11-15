@@ -38,7 +38,7 @@ export type SupportChatMessage = {
 export type SupportChatResult = { ok: true } | { ok: false; error: string };
 
 const TZ = "America/Sao_Paulo";
-const TEAM = "Equipe Pet Live Pro";
+const DEFAULT_TEAM = "Equipe Pet Live Pro";
 const ACCEPT = "image/png,image/jpeg,image/webp,application/pdf";
 const MAX_CHARS = 5000;
 const GROUP_MS = 5 * 60_000;
@@ -311,12 +311,14 @@ function MessageItem({
   viewerName,
   base,
   large,
+  teamName,
 }: {
   message: SupportChatMessage;
   first: boolean;
   viewerName?: string | null;
   base: string;
   large: boolean;
+  teamName: string;
 }) {
   if (m.author_kind === "SYSTEM") {
     return (
@@ -330,7 +332,7 @@ function MessageItem({
   }
 
   const mine = m.author_kind === "CUSTOMER";
-  const who = !mine ? TEAM : !viewerName || !m.author_name || m.author_name === viewerName ? "Você" : m.author_name;
+  const who = !mine ? teamName : !viewerName || !m.author_name || m.author_name === viewerName ? "Você" : m.author_name;
   const time = timeLabel(m.created_at);
 
   return (
@@ -601,6 +603,7 @@ export function SupportChat({
   unread,
   closedFooter,
   layout = "card",
+  teamName = DEFAULT_TEAM,
   className,
   reply,
   close,
@@ -622,6 +625,8 @@ export function SupportChat({
   closedFooter?: React.ReactNode;
   /** "card": altura fixa e rolagem própria (painel). "page": rola com a página e o campo fica preso embaixo (app). */
   layout?: "card" | "page";
+  /** Como a equipe de suporte assina as respostas (o app do tutor usa a marca MyLivePet). */
+  teamName?: string;
   className?: string;
   reply: (formData: FormData) => Promise<SupportChatResult>;
   close: (rating: number | null, comment: string) => Promise<SupportChatResult>;
@@ -791,6 +796,7 @@ export function SupportChat({
             viewerName={viewerName}
             base={attachmentBase}
             large={layout === "page"}
+            teamName={teamName}
           />
         ),
       )}

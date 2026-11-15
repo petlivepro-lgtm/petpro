@@ -18,7 +18,7 @@ export default async function NovoChamadoPage({ searchParams }: { searchParams: 
         <ChevronLeft className="h-4 w-4" aria-hidden /> Ajuda
       </Link>
       <header className="space-y-2">
-        <h1 className="font-heading text-xl font-bold text-graphite lg:text-2xl">Falar com o Pet Live Pro</h1>
+        <h1 className="font-heading text-xl font-bold text-graphite lg:text-2xl">Falar com o MyLivePet</h1>
         <span
           className={`inline-flex rounded-full px-3 py-1.5 text-sm font-bold ${sensitive ? "bg-danger/10 text-danger" : "bg-orange/10 text-orange"}`}
         >
